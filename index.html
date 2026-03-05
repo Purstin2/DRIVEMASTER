@@ -120,21 +120,28 @@
   </header>
 
   <!-- VAULT -->
-  <div class="vault-card">
-    <div class="vault-title">🔐 Minhas Credenciais</div>
+  <div class="vault-card" id="vaultCard" style="display:none">
+    <div class="vault-title">🔐 Credenciais Salvas (somente neste navegador)</div>
     <div class="vault-item">
       <div class="vault-info">
         <div class="vault-label">API Key</div>
-        <div class="vault-value">AIzaSyCNT9rMkDXHYmgZtSFA11rHv_i1EihsJmg</div>
+        <div class="vault-value" id="vaultApiKey">—</div>
       </div>
-      <button class="copy-btn" onclick="copiarVault(this,'AIzaSyCNT9rMkDXHYmgZtSFA11rHv_i1EihsJmg')">Copiar</button>
+      <button class="copy-btn" onclick="copiarVault(this, document.getElementById('vaultApiKey').textContent)">Copiar</button>
     </div>
     <div class="vault-item">
       <div class="vault-info">
-        <div class="vault-label">Client ID</div>
-        <div class="vault-value">252746324509-52i8p6me8uop6lqsvibc910o63um5q44.apps.googleusercontent.com</div>
+        <div class="vault-label">Client ID OAuth</div>
+        <div class="vault-value" id="vaultClientId">—</div>
       </div>
-      <button class="copy-btn" onclick="copiarVault(this,'252746324509-52i8p6me8uop6lqsvibc910o63um5q44.apps.googleusercontent.com')">Copiar</button>
+      <button class="copy-btn" onclick="copiarVault(this, document.getElementById('vaultClientId').textContent)">Copiar</button>
+    </div>
+    <div class="vault-item">
+      <div class="vault-info">
+        <div class="vault-label">ID da Pasta</div>
+        <div class="vault-value" id="vaultFolderId">—</div>
+      </div>
+      <button class="copy-btn" onclick="copiarVault(this, document.getElementById('vaultFolderId').textContent)">Copiar</button>
     </div>
   </div>
 
@@ -143,7 +150,7 @@
     <div class="config-row">
       <div>
         <label>ID da Pasta do Drive</label>
-        <input type="text" id="folderId" value="1FUNpybsoDanYURXOkR_y-ZcnDyRVk3I0" placeholder="Cole o ID da pasta aqui"/>
+        <input type="text" id="folderId" placeholder="Cole o ID da pasta aqui"/>
       </div>
       <div>
         <label>Chave da API do Google</label>
@@ -152,7 +159,7 @@
     </div>
     <div>
       <label>Client ID OAuth 2.0</label>
-      <input type="text" id="clientId" placeholder="252746324509-xxxx.apps.googleusercontent.com" style="margin-bottom:20px"/>
+      <input type="text" id="clientId" placeholder="252746324509-8kpp6v2d3kuq0amihm35efskfq205u0n.apps.googleusercontent.com" style="margin-bottom:20px"/>
     </div>
 
     <label>Operações</label>
@@ -174,6 +181,9 @@
       </button>
       <button class="btn btn-secondary" id="btnRun" onclick="executar()" disabled>
         <span>▶</span> Renomear pastas
+      </button>
+      <button class="btn btn-secondary" onclick="salvarCredenciais()" title="Salva as credenciais no navegador (localStorage)">
+        <span>💾</span> Salvar credenciais
       </button>
       <button class="btn btn-secondary" onclick="limparLog()">Limpar log</button>
     </div>
@@ -205,6 +215,46 @@
   let accessToken = null;
   let totalPastas = 0;
   let processadas = 0;
+
+  // ── Credenciais via localStorage ──────────────────────────────────────────
+  function carregarCredenciais() {
+    const saved = JSON.parse(localStorage.getItem('driveManagerCreds') || '{}');
+    if (saved.apiKey)    document.getElementById('apiKey').value    = saved.apiKey;
+    if (saved.clientId)  document.getElementById('clientId').value  = saved.clientId;
+    if (saved.folderId)  document.getElementById('folderId').value  = saved.folderId;
+    atualizarVault(saved);
+  }
+
+  function salvarCredenciais() {
+    const creds = {
+      apiKey:   document.getElementById('apiKey').value.trim(),
+      clientId: document.getElementById('clientId').value.trim(),
+      folderId: document.getElementById('folderId').value.trim()
+    };
+    localStorage.setItem('driveManagerCreds', JSON.stringify(creds));
+    atualizarVault(creds);
+    const btn = event.currentTarget;
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<span>✓</span> Salvo!';
+    btn.disabled = true;
+    setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 2000);
+  }
+
+  function atualizarVault(creds) {
+    if (!creds) creds = JSON.parse(localStorage.getItem('driveManagerCreds') || '{}');
+    const card = document.getElementById('vaultCard');
+    if (creds.apiKey || creds.clientId || creds.folderId) {
+      card.style.display = 'block';
+      document.getElementById('vaultApiKey').textContent   = creds.apiKey   || '—';
+      document.getElementById('vaultClientId').textContent = creds.clientId || '—';
+      document.getElementById('vaultFolderId').textContent = creds.folderId || '—';
+    } else {
+      card.style.display = 'none';
+    }
+  }
+
+  window.addEventListener('DOMContentLoaded', carregarCredenciais);
+  // ─────────────────────────────────────────────────────────────────────────
 
   function toggleOpt(cb, id) {
     document.getElementById(id).classList.toggle('active', cb.checked);
