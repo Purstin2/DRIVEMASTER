@@ -12,41 +12,45 @@
       --green2:rgba(0,230,118,.15);--red:#ff4444;--text:#e0e0e0;--muted:#555;
     }
     body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh}
-
-    /* NOISE */
     body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:9999}
-
-    .app{max-width:900px;margin:0 auto;padding:48px 24px}
-
-    /* HEADER */
+    .app{max-width:960px;margin:0 auto;padding:48px 24px}
     header{margin-bottom:48px;animation:fadeUp .6s ease both}
     .tag{display:inline-block;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--green);border:1px solid var(--green);padding:5px 14px;border-radius:100px;margin-bottom:20px;box-shadow:0 0 10px rgba(0,230,118,.25)}
     h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,7vw,64px);line-height:.95;color:#fff;margin-bottom:12px}
     h1 span{color:var(--green);text-shadow:0 0 24px rgba(0,230,118,.4)}
     header p{color:var(--muted);font-size:14px}
 
-    /* CONFIG CARD */
-    .config-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;margin-bottom:24px;animation:fadeUp .6s .1s ease both}
-    .config-card label{display:block;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
-    .config-card input{width:100%;background:#000;border:1px solid var(--border);border-radius:8px;padding:12px 16px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;outline:none;transition:border-color .2s}
-    .config-card input:focus{border-color:var(--green)}
-    .config-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
-    @media(max-width:600px){.config-row{grid-template-columns:1fr}}
+    /* TABS */
+    .tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px;animation:fadeUp .6s .05s ease both}
+    .tab{flex:1;padding:12px;text-align:center;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;border-radius:8px;cursor:pointer;transition:all .2s;color:var(--muted)}
+    .tab.active{background:var(--green);color:#000}
 
-    /* OPÇÕES */
+    .panel{display:none}
+    .panel.active{display:block}
+
+    /* CARDS */
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;margin-bottom:20px;animation:fadeUp .6s .1s ease both}
+    .card label{display:block;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+    .card input,.card textarea{width:100%;background:#000;border:1px solid var(--border);border-radius:8px;padding:12px 16px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;outline:none;transition:border-color .2s;margin-bottom:16px}
+    .card input:focus,.card textarea:focus{border-color:var(--green)}
+    .card textarea{resize:vertical;min-height:80px}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    @media(max-width:600px){.row2{grid-template-columns:1fr}}
+
     .options{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px}
     .opt{display:flex;align-items:center;gap:8px;background:#000;border:1px solid var(--border);border-radius:8px;padding:10px 16px;cursor:pointer;transition:border-color .2s,background .2s;font-size:13px;user-select:none}
     .opt input[type=checkbox]{accent-color:var(--green);width:15px;height:15px}
     .opt:hover{border-color:#333}
     .opt.active{border-color:var(--green);background:var(--green2)}
 
-    /* BOTÕES */
     .btn-row{display:flex;gap:12px;flex-wrap:wrap}
     .btn{display:inline-flex;align-items:center;gap:8px;padding:13px 28px;border-radius:10px;font-weight:700;font-size:13px;letter-spacing:.5px;text-transform:uppercase;border:none;cursor:pointer;transition:all .2s}
     .btn-primary{background:var(--green);color:#000;box-shadow:0 0 20px rgba(0,230,118,.3)}
     .btn-primary:hover{box-shadow:0 0 32px rgba(0,230,118,.5);transform:translateY(-1px)}
     .btn-secondary{background:transparent;color:var(--text);border:1px solid var(--border)}
     .btn-secondary:hover{border-color:#333;background:#111}
+    .btn-danger{background:transparent;color:var(--red);border:1px solid rgba(255,68,68,.3)}
+    .btn-danger:hover{background:rgba(255,68,68,.08)}
     .btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shadow:none!important}
 
     /* LOG */
@@ -56,10 +60,8 @@
     .log-count{font-size:11px;color:var(--green);font-family:'DM Mono',monospace}
     .log-body{padding:20px 24px;max-height:420px;overflow-y:auto;font-family:'DM Mono',monospace;font-size:12px;line-height:1.8}
     .log-body::-webkit-scrollbar{width:4px}
-    .log-body::-webkit-scrollbar-track{background:transparent}
     .log-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
     .log-empty{color:var(--muted);text-align:center;padding:40px 0}
-
     .log-line{display:flex;gap:12px;align-items:flex-start;padding:3px 0;animation:slideIn .2s ease both}
     .log-arrow{color:var(--green);flex-shrink:0}
     .log-old{color:var(--muted);text-decoration:line-through}
@@ -67,13 +69,12 @@
     .log-skip{color:#333}
     .log-error{color:var(--red)}
     .log-info{color:var(--green)}
+    .log-cat{color:#64b5f6}
 
-    /* PROGRESS */
-    .progress-wrap{padding:0 24px 20px;display:none}
+    .progress-wrap{padding:0 24px 16px;display:none}
     .progress-bar-bg{background:#1a1a1a;border-radius:100px;height:3px;overflow:hidden}
     .progress-bar{height:100%;background:var(--green);border-radius:100px;transition:width .3s ease;box-shadow:0 0 8px rgba(0,230,118,.5)}
 
-    /* STATUS */
     .status-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:4px 12px;border-radius:100px;font-weight:600;letter-spacing:.5px}
     .status-idle{background:#1a1a1a;color:var(--muted)}
     .status-running{background:rgba(0,230,118,.1);color:var(--green);border:1px solid rgba(0,230,118,.2)}
@@ -82,32 +83,20 @@
     .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
     .dot.pulse{animation:pulse 1s infinite}
 
+    /* PREVIEW CATEGORIAS */
+    .cat-preview{margin-top:16px;display:none}
+    .cat-preview h3{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+    .cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+    .cat-item{background:#000;border:1px solid var(--border);border-radius:8px;padding:12px}
+    .cat-item .cat-name{color:var(--green);font-size:12px;font-weight:600;margin-bottom:6px}
+    .cat-item .cat-folders{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;line-height:1.6}
+
+    .info-box{background:rgba(0,230,118,.05);border:1px solid rgba(0,230,118,.15);border-radius:10px;padding:16px;margin-bottom:20px;font-size:13px;color:#aaa;line-height:1.6}
+    .info-box strong{color:var(--green)}
+
     @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
     @keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-
-    /* CREDENTIALS VAULT */
-    .vault-card{background:#080808;border:1px solid #1a1a1a;border-radius:14px;padding:22px 28px;margin-bottom:24px;animation:fadeUp .6s ease both}
-    .vault-title{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
-    .vault-item{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#000;border:1px solid #1a1a1a;border-radius:8px;padding:10px 14px;margin-bottom:10px}
-    .vault-item:last-child{margin-bottom:0}
-    .vault-info{flex:1;min-width:0}
-    .vault-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
-    .vault-value{font-family:'DM Mono',monospace;font-size:12px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .copy-btn{flex-shrink:0;background:transparent;border:1px solid #222;border-radius:6px;color:var(--muted);font-size:11px;padding:6px 12px;cursor:pointer;transition:all .2s;white-space:nowrap}
-    .copy-btn:hover{border-color:var(--green);color:var(--green);background:rgba(0,230,118,.05)}
-    .copy-btn.copied{border-color:var(--green);color:var(--green);background:rgba(0,230,118,.1)}
-
-    /* AUTH SECTION */
-    .auth-section{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px;text-align:center;margin-bottom:24px;animation:fadeUp .6s ease both}
-    .auth-section h2{font-family:'Bebas Neue',sans-serif;font-size:28px;color:#fff;margin-bottom:8px}
-    .auth-section p{color:var(--muted);font-size:13px;margin-bottom:24px;line-height:1.6}
-    .auth-steps{display:flex;flex-direction:column;gap:10px;text-align:left;margin-bottom:24px}
-    .auth-step{display:flex;gap:12px;align-items:flex-start;font-size:13px;color:#aaa}
-    .step-num{width:22px;height:22px;border-radius:50%;background:var(--green);color:#000;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
-    .api-key-input{width:100%;background:#000;border:1px solid var(--border);border-radius:8px;padding:12px 16px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;outline:none;margin-bottom:16px;transition:border-color .2s}
-    .api-key-input:focus{border-color:var(--green)}
-    .key-note{font-size:11px;color:var(--muted);margin-top:-8px;margin-bottom:20px}
   </style>
 </head>
 <body>
@@ -116,218 +105,195 @@
   <header>
     <div class="tag">Google Drive Manager</div>
     <h1>GERENCIAR<br/><span>PASTAS</span></h1>
-    <p>Renomeie, traduza e organize suas pastas do Drive sem abrir o terminal.</p>
+    <p>Renomeie, numere, traduza e categorize suas pastas com IA — tudo sem abrir o terminal.</p>
   </header>
 
-  <!-- VAULT -->
-  <div class="vault-card" id="vaultCard" style="display:none">
-    <div class="vault-title">🔐 Credenciais Salvas (somente neste navegador)</div>
-    <div class="vault-item">
-      <div class="vault-info">
-        <div class="vault-label">API Key</div>
-        <div class="vault-value" id="vaultApiKey">—</div>
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab active" onclick="setTab('renomear')">Renomear</div>
+    <div class="tab" onclick="setTab('categorizar')">Categorizar com IA</div>
+  </div>
+
+  <!-- PANEL: RENOMEAR -->
+  <div class="panel active" id="panel-renomear">
+    <div class="card">
+      <div class="row2">
+        <div>
+          <label>ID da Pasta do Drive</label>
+          <input type="text" id="folderId" placeholder="1FUNpybsoDanYURXOkR_y-ZcnDyRVk3I0"/>
+        </div>
+        <div>
+          <label>Client ID OAuth 2.0</label>
+          <input type="text" id="clientId" placeholder="252746324509-xxxx.apps.googleusercontent.com"/>
+        </div>
       </div>
-      <button class="copy-btn" onclick="copiarVault(this, document.getElementById('vaultApiKey').textContent)">Copiar</button>
+
+      <label>Operações</label>
+      <div class="options">
+        <label class="opt active" id="opt-maiusculo">
+          <input type="checkbox" checked onchange="toggleOpt(this,'opt-maiusculo')"/> Tudo maiúsculo
+        </label>
+        <label class="opt active" id="opt-limpar">
+          <input type="checkbox" checked onchange="toggleOpt(this,'opt-limpar')"/> Remover _ - + ~ @
+        </label>
+        <label class="opt active" id="opt-traduzir">
+          <input type="checkbox" checked onchange="toggleOpt(this,'opt-traduzir')"/> Traduzir para português
+        </label>
+        <label class="opt" id="opt-numerar">
+          <input type="checkbox" onchange="toggleOpt(this,'opt-numerar')"/> Numerar pastas (1. 2. 3...)
+        </label>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btnAuth" onclick="iniciarAuth()">🔑 Conectar ao Google</button>
+        <button class="btn btn-secondary" id="btnRun" onclick="executarRenomear()" disabled>▶ Renomear pastas</button>
+        <button class="btn btn-secondary" onclick="limparLog('logRenomear')">Limpar log</button>
+      </div>
     </div>
-    <div class="vault-item">
-      <div class="vault-info">
-        <div class="vault-label">Client ID OAuth</div>
-        <div class="vault-value" id="vaultClientId">—</div>
+
+    <div class="log-card">
+      <div class="log-header">
+        <span>Log de execução</span>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="log-count" id="logCountR">0 pastas</span>
+          <span class="status-badge status-idle" id="statusR"><span class="dot"></span> Aguardando</span>
+        </div>
       </div>
-      <button class="copy-btn" onclick="copiarVault(this, document.getElementById('vaultClientId').textContent)">Copiar</button>
-    </div>
-    <div class="vault-item">
-      <div class="vault-info">
-        <div class="vault-label">ID da Pasta</div>
-        <div class="vault-value" id="vaultFolderId">—</div>
+      <div class="progress-wrap" id="progressWrapR">
+        <div class="progress-bar-bg"><div class="progress-bar" id="progressBarR" style="width:0%"></div></div>
       </div>
-      <button class="copy-btn" onclick="copiarVault(this, document.getElementById('vaultFolderId').textContent)">Copiar</button>
+      <div class="log-body" id="logRenomear">
+        <div class="log-empty">Conecte ao Google e clique em "Renomear pastas".</div>
+      </div>
     </div>
   </div>
 
-  <!-- CONFIG -->
-  <div class="config-card">
-    <div class="config-row">
-      <div>
-        <label>ID da Pasta do Drive</label>
-        <input type="text" id="folderId" placeholder="Cole o ID da pasta aqui"/>
+  <!-- PANEL: CATEGORIZAR -->
+  <div class="panel" id="panel-categorizar">
+    <div class="card">
+      <div class="info-box">
+        <strong>Como funciona:</strong> O site lê todas as pastas, manda os nomes para o Claude analisar, e o Claude decide automaticamente quais categorias criar e onde cada pasta se encaixa. Depois cria as subpastas e move tudo.
       </div>
-      <div>
-        <label>Chave da API do Google</label>
-        <input type="text" id="apiKey" placeholder="AIza..."/>
+
+      <div class="row2">
+        <div>
+          <label>ID da Pasta do Drive</label>
+          <input type="text" id="folderIdCat" placeholder="Cole o ID da pasta aqui"/>
+        </div>
+        <div>
+          <label>Chave da API Anthropic (Claude)</label>
+          <input type="password" id="anthropicKey" placeholder="sk-ant-..."/>
+        </div>
       </div>
-    </div>
-    <div>
-      <label>Client ID OAuth 2.0</label>
-      <input type="text" id="clientId" placeholder="252746324509-8kpp6v2d3kuq0amihm35efskfq205u0n.apps.googleusercontent.com" style="margin-bottom:20px"/>
-    </div>
 
-    <label>Operações</label>
-    <div class="options">
-      <label class="opt active" id="opt-maiusculo">
-        <input type="checkbox" checked onchange="toggleOpt(this,'opt-maiusculo')"/> Tudo maiúsculo
-      </label>
-      <label class="opt active" id="opt-limpar">
-        <input type="checkbox" checked onchange="toggleOpt(this,'opt-limpar')"/> Remover _ - + ~ @
-      </label>
-      <label class="opt active" id="opt-traduzir">
-        <input type="checkbox" checked onchange="toggleOpt(this,'opt-traduzir')"/> Traduzir para português
-      </label>
-    </div>
+      <label>Instrução para a IA (opcional)</label>
+      <textarea id="aiPrompt" placeholder="Ex: agrupe por personagem ou franquia. Crie categorias em português.">Analise os nomes das pastas e agrupe em categorias lógicas. Crie nomes de categoria em português e maiúsculo. Cada pasta deve ir para exatamente uma categoria.</textarea>
 
-    <div class="btn-row">
-      <button class="btn btn-primary" id="btnAuth" onclick="iniciarAuth()">
-        <span>🔑</span> Conectar ao Google
-      </button>
-      <button class="btn btn-secondary" id="btnRun" onclick="executar()" disabled>
-        <span>▶</span> Renomear pastas
-      </button>
-      <button class="btn btn-secondary" onclick="salvarCredenciais()" title="Salva as credenciais no navegador (localStorage)">
-        <span>💾</span> Salvar credenciais
-      </button>
-      <button class="btn btn-secondary" onclick="limparLog()">Limpar log</button>
-    </div>
-  </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btnAnalyze" onclick="analisarComIA()">🤖 Analisar com IA</button>
+        <button class="btn btn-secondary" id="btnApplyCategories" onclick="aplicarCategorias()" disabled>✅ Aplicar organização</button>
+        <button class="btn btn-secondary" onclick="limparLog('logCat')">Limpar log</button>
+      </div>
 
-  <!-- LOG -->
-  <div class="log-card">
-    <div class="log-header">
-      <span>Log de execução</span>
-      <div style="display:flex;align-items:center;gap:12px">
-        <span class="log-count" id="logCount">0 pastas</span>
-        <span class="status-badge status-idle" id="statusBadge"><span class="dot"></span> Aguardando</span>
+      <div class="cat-preview" id="catPreview">
+        <h3>Prévia da organização</h3>
+        <div class="cat-grid" id="catGrid"></div>
       </div>
     </div>
-    <div class="progress-wrap" id="progressWrap">
-      <div class="progress-bar-bg"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
-    </div>
-    <div class="log-body" id="logBody">
-      <div class="log-empty">Conecte ao Google e clique em "Renomear pastas" para começar.</div>
+
+    <div class="log-card">
+      <div class="log-header">
+        <span>Log de execução</span>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="log-count" id="logCountC">0 pastas</span>
+          <span class="status-badge status-idle" id="statusC"><span class="dot"></span> Aguardando</span>
+        </div>
+      </div>
+      <div class="progress-wrap" id="progressWrapC">
+        <div class="progress-bar-bg"><div class="progress-bar" id="progressBarC" style="width:0%"></div></div>
+      </div>
+      <div class="log-body" id="logCat">
+        <div class="log-empty">Cole sua chave da Anthropic e clique em "Analisar com IA".</div>
+      </div>
     </div>
   </div>
 
 </div>
 
-<!-- Google APIs -->
-<script src="https://apis.google.com/js/api.js"></script>
 <script src="https://accounts.google.com/gsi/client"></script>
 <script>
   let accessToken = null;
-  let totalPastas = 0;
-  let processadas = 0;
+  let categoriasIA = null;
+  let pastasCache = [];
 
-  // ── Credenciais via localStorage ──────────────────────────────────────────
-  function carregarCredenciais() {
-    const saved = JSON.parse(localStorage.getItem('driveManagerCreds') || '{}');
-    if (saved.apiKey)    document.getElementById('apiKey').value    = saved.apiKey;
-    if (saved.clientId)  document.getElementById('clientId').value  = saved.clientId;
-    if (saved.folderId)  document.getElementById('folderId').value  = saved.folderId;
-    atualizarVault(saved);
+  // TABS
+  function setTab(tab) {
+    document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['renomear','categorizar'][i] === tab));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + tab).classList.add('active');
   }
-
-  function salvarCredenciais() {
-    const creds = {
-      apiKey:   document.getElementById('apiKey').value.trim(),
-      clientId: document.getElementById('clientId').value.trim(),
-      folderId: document.getElementById('folderId').value.trim()
-    };
-    localStorage.setItem('driveManagerCreds', JSON.stringify(creds));
-    atualizarVault(creds);
-    const btn = event.currentTarget;
-    const orig = btn.innerHTML;
-    btn.innerHTML = '<span>✓</span> Salvo!';
-    btn.disabled = true;
-    setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 2000);
-  }
-
-  function atualizarVault(creds) {
-    if (!creds) creds = JSON.parse(localStorage.getItem('driveManagerCreds') || '{}');
-    const card = document.getElementById('vaultCard');
-    if (creds.apiKey || creds.clientId || creds.folderId) {
-      card.style.display = 'block';
-      document.getElementById('vaultApiKey').textContent   = creds.apiKey   || '—';
-      document.getElementById('vaultClientId').textContent = creds.clientId || '—';
-      document.getElementById('vaultFolderId').textContent = creds.folderId || '—';
-    } else {
-      card.style.display = 'none';
-    }
-  }
-
-  window.addEventListener('DOMContentLoaded', carregarCredenciais);
-  // ─────────────────────────────────────────────────────────────────────────
 
   function toggleOpt(cb, id) {
     document.getElementById(id).classList.toggle('active', cb.checked);
   }
 
-  function copiarVault(btn, texto) {
-    navigator.clipboard.writeText(texto).then(() => {
-      btn.textContent = '✓ Copiado';
-      btn.classList.add('copied');
-      setTimeout(() => { btn.textContent = 'Copiar'; btn.classList.remove('copied'); }, 2000);
-    });
-  }
-
-  function setStatus(tipo, texto) {
-    const el = document.getElementById('statusBadge');
+  function setStatus(id, tipo, texto) {
+    const el = document.getElementById(id);
     el.className = `status-badge status-${tipo}`;
     const dot = tipo === 'running' ? '<span class="dot pulse"></span>' : '<span class="dot"></span>';
     el.innerHTML = `${dot} ${texto}`;
   }
 
-  function log(tipo, texto, novo) {
-    const body = document.getElementById('logBody');
+  function log(bodyId, tipo, texto, novo) {
+    const body = document.getElementById(bodyId);
     const empty = body.querySelector('.log-empty');
     if (empty) empty.remove();
-
     const line = document.createElement('div');
     line.className = 'log-line';
-
     if (tipo === 'rename') {
       line.innerHTML = `<span class="log-arrow">→</span><span class="log-old">${texto}</span><span class="log-arrow">→</span><span class="log-new">${novo}</span>`;
+    } else if (tipo === 'cat') {
+      line.innerHTML = `<span class="log-cat">📁 ${texto}</span><span class="log-arrow">→</span><span class="log-new">${novo}</span>`;
     } else if (tipo === 'skip') {
-      line.innerHTML = `<span class="log-skip">— ${texto} (sem mudança)</span>`;
+      line.innerHTML = `<span class="log-skip">— ${texto}</span>`;
     } else if (tipo === 'error') {
       line.innerHTML = `<span class="log-error">✗ ${texto}</span>`;
     } else {
       line.innerHTML = `<span class="log-info">${texto}</span>`;
     }
-
     body.appendChild(line);
     body.scrollTop = body.scrollHeight;
   }
 
-  function limparLog() {
-    document.getElementById('logBody').innerHTML = '<div class="log-empty">Log limpo.</div>';
-    document.getElementById('logCount').textContent = '0 pastas';
-    setStatus('idle', 'Aguardando');
+  function limparLog(id) {
+    document.getElementById(id).innerHTML = '<div class="log-empty">Log limpo.</div>';
   }
 
+  // AUTH
   function iniciarAuth() {
     const clientId = document.getElementById('clientId').value.trim();
     if (!clientId) { alert('Preencha o Client ID OAuth!'); return; }
-
     const client = google.accounts.oauth2.initTokenClient({
       client_id: clientId,
       scope: 'https://www.googleapis.com/auth/drive',
       callback: (resp) => {
         if (resp.access_token) {
           accessToken = resp.access_token;
-          document.getElementById('btnAuth').innerHTML = '<span>✅</span> Conectado';
+          document.getElementById('btnAuth').innerHTML = '✅ Conectado';
           document.getElementById('btnAuth').style.background = '#00c853';
           document.getElementById('btnRun').disabled = false;
-          log('info', '✅ Autenticado com sucesso! Clique em "Renomear pastas".');
-          setStatus('done', 'Conectado');
+          log('logRenomear', 'info', '✅ Autenticado! Clique em "Renomear pastas".');
+          setStatus('statusR', 'done', 'Conectado');
         }
       }
     });
     client.requestAccessToken();
   }
 
+  // RENAME
   function limparNome(nome) {
     const limpar = document.querySelector('#opt-limpar input').checked;
     const maiusculo = document.querySelector('#opt-maiusculo input').checked;
-
     if (limpar) {
       nome = nome.replace(/[_+´~\[\]–—@()]/g, ' ');
       nome = nome.replace(/-/g, ' ');
@@ -340,77 +306,203 @@
   }
 
   async function traduzirTexto(texto) {
-    const traduzir = document.querySelector('#opt-traduzir input').checked;
-    if (!traduzir) return texto;
+    if (!document.querySelector('#opt-traduzir input').checked) return texto;
     try {
       const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=pt&dt=t&q=${encodeURIComponent(texto.toLowerCase())}`;
       const resp = await fetch(url);
       const data = await resp.json();
-      const traduzido = data[0].map(x => x[0]).join('');
-      return traduzido.toUpperCase();
-    } catch (e) {
-      return texto;
-    }
+      return data[0].map(x => x[0]).join('').toUpperCase();
+    } catch (e) { return texto; }
   }
 
-  async function executar() {
+  async function executarRenomear() {
     if (!accessToken) { alert('Conecte ao Google primeiro!'); return; }
     const folderId = document.getElementById('folderId').value.trim();
     if (!folderId) { alert('Preencha o ID da pasta!'); return; }
+    const numerar = document.querySelector('#opt-numerar input').checked;
 
     document.getElementById('btnRun').disabled = true;
-    document.getElementById('progressWrap').style.display = 'block';
-    setStatus('running', 'Buscando pastas...');
-    log('info', `🔍 Buscando pastas em: ${folderId}`);
+    document.getElementById('progressWrapR').style.display = 'block';
+    setStatus('statusR', 'running', 'Buscando...');
 
     try {
+      const resp = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+mimeType='application/vnd.google-apps.folder'+and+trashed=false&fields=files(id,name)&pageSize=500&orderBy=name`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      const data = await resp.json();
+      const pastas = data.files || [];
+      document.getElementById('logCountR').textContent = `${pastas.length} pastas`;
+      log('logRenomear', 'info', `📁 ${pastas.length} pastas encontradas.`);
+      setStatus('statusR', 'running', 'Processando...');
+
+      for (let i = 0; i < pastas.length; i++) {
+        const pasta = pastas[i];
+        const nomeOriginal = pasta.name;
+        let nomeLimpo = limparNome(nomeOriginal);
+        let nomeFinal = await traduzirTexto(nomeLimpo);
+        if (numerar) nomeFinal = `${i + 1}. ${nomeFinal}`;
+
+        await fetch(`https://www.googleapis.com/drive/v3/files/${pasta.id}`, {
+          method: 'PATCH',
+          headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: nomeFinal })
+        });
+
+        if (nomeOriginal !== nomeFinal) log('logRenomear', 'rename', nomeOriginal, nomeFinal);
+        else log('logRenomear', 'skip', nomeOriginal);
+
+        document.getElementById('progressBarR').style.width = `${((i+1)/pastas.length)*100}%`;
+        await new Promise(r => setTimeout(r, 200));
+      }
+
+      setStatus('statusR', 'done', 'Concluído!');
+      log('logRenomear', 'info', `✅ ${pastas.length} pastas processadas!`);
+    } catch(e) {
+      log('logRenomear', 'error', e.message);
+      setStatus('statusR', 'error', 'Erro');
+    }
+    document.getElementById('btnRun').disabled = false;
+  }
+
+  // CATEGORIZAR COM IA
+  async function analisarComIA() {
+    const folderId = document.getElementById('folderIdCat').value.trim();
+    const apiKey = document.getElementById('anthropicKey').value.trim();
+    const prompt = document.getElementById('aiPrompt').value.trim();
+
+    if (!folderId) { alert('Preencha o ID da pasta!'); return; }
+    if (!apiKey) { alert('Preencha a chave da API Anthropic!'); return; }
+    if (!accessToken) {
+      // Tenta auth com o clientId do painel renomear
+      alert('Conecte ao Google primeiro na aba "Renomear"!');
+      return;
+    }
+
+    document.getElementById('btnAnalyze').disabled = true;
+    document.getElementById('progressWrapC').style.display = 'block';
+    setStatus('statusC', 'running', 'Buscando pastas...');
+    log('logCat', 'info', '🔍 Buscando pastas...');
+
+    try {
+      // 1. Busca pastas
       const resp = await fetch(
         `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+mimeType='application/vnd.google-apps.folder'+and+trashed=false&fields=files(id,name)&pageSize=500`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       const data = await resp.json();
-      const pastas = data.files || [];
-      totalPastas = pastas.length;
-      processadas = 0;
+      pastasCache = data.files || [];
 
-      document.getElementById('logCount').textContent = `${totalPastas} pastas`;
-      log('info', `📁 ${totalPastas} pastas encontradas. Iniciando...`);
-      setStatus('running', `Processando...`);
-
-      for (const pasta of pastas) {
-        const nomeOriginal = pasta.name;
-        const nomeLimpo = limparNome(nomeOriginal);
-        const nomeFinal = await traduzirTexto(nomeLimpo);
-
-        await fetch(
-          `https://www.googleapis.com/drive/v3/files/${pasta.id}`,
-          {
-            method: 'PATCH',
-            headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: nomeFinal })
-          }
-        );
-
-        if (nomeOriginal !== nomeFinal) {
-          log('rename', nomeOriginal, nomeFinal);
-        } else {
-          log('skip', nomeOriginal);
-        }
-
-        processadas++;
-        document.getElementById('progressBar').style.width = `${(processadas/totalPastas)*100}%`;
-        await new Promise(r => setTimeout(r, 200));
+      if (pastasCache.length === 0) {
+        log('logCat', 'error', 'Nenhuma pasta encontrada!');
+        document.getElementById('btnAnalyze').disabled = false;
+        return;
       }
 
-      setStatus('done', 'Concluído!');
-      log('info', `✅ ${processadas} pastas processadas com sucesso!`);
+      document.getElementById('logCountC').textContent = `${pastasCache.length} pastas`;
+      log('logCat', 'info', `📁 ${pastasCache.length} pastas encontradas. Enviando para o Claude...`);
+      setStatus('statusC', 'running', 'Analisando com IA...');
 
-    } catch (e) {
-      log('error', 'Erro: ' + e.message);
-      setStatus('error', 'Erro');
+      // 2. Manda para Claude
+      const nomes = pastasCache.map(p => p.name).join('\n');
+      const mensagem = `${prompt}\n\nLista de pastas:\n${nomes}\n\nResponda APENAS com um JSON válido no formato:\n{"categorias": {"NOME DA CATEGORIA": ["pasta1", "pasta2"], "OUTRA CATEGORIA": ["pasta3"]}}`;
+
+      const aiResp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 4000,
+          messages: [{ role: 'user', content: mensagem }]
+        })
+      });
+
+      const aiData = await aiResp.json();
+      if (aiData.error) throw new Error(aiData.error.message);
+
+      const texto = aiData.content[0].text;
+      const jsonMatch = texto.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('IA não retornou JSON válido');
+
+      categoriasIA = JSON.parse(jsonMatch[0]);
+      document.getElementById('progressBarC').style.width = '50%';
+
+      log('logCat', 'info', `✅ Claude criou ${Object.keys(categoriasIA.categorias).length} categorias!`);
+
+      // 3. Mostra preview
+      const grid = document.getElementById('catGrid');
+      grid.innerHTML = '';
+      for (const [cat, folders] of Object.entries(categoriasIA.categorias)) {
+        log('logCat', 'info', `📂 ${cat}: ${folders.length} pastas`);
+        const item = document.createElement('div');
+        item.className = 'cat-item';
+        item.innerHTML = `<div class="cat-name">📂 ${cat}</div><div class="cat-folders">${folders.join('<br/>')}</div>`;
+        grid.appendChild(item);
+      }
+      document.getElementById('catPreview').style.display = 'block';
+      document.getElementById('btnApplyCategories').disabled = false;
+      setStatus('statusC', 'done', 'Pronto para aplicar!');
+
+    } catch(e) {
+      log('logCat', 'error', 'Erro: ' + e.message);
+      setStatus('statusC', 'error', 'Erro');
     }
+    document.getElementById('btnAnalyze').disabled = false;
+  }
 
-    document.getElementById('btnRun').disabled = false;
+  async function aplicarCategorias() {
+    if (!categoriasIA) return;
+    const folderId = document.getElementById('folderIdCat').value.trim();
+    document.getElementById('btnApplyCategories').disabled = true;
+    setStatus('statusC', 'running', 'Criando pastas...');
+    log('logCat', 'info', '🚀 Aplicando organização...');
+
+    try {
+      const total = Object.values(categoriasIA.categorias).flat().length;
+      let feito = 0;
+      document.getElementById('progressBarC').style.width = '50%';
+
+      for (const [cat, folders] of Object.entries(categoriasIA.categorias)) {
+        // Cria subpasta da categoria
+        log('logCat', 'info', `📁 Criando pasta: ${cat}`);
+        const criarResp = await fetch('https://www.googleapis.com/drive/v3/files', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: cat, mimeType: 'application/vnd.google-apps.folder', parents: [folderId] })
+        });
+        const catFolder = await criarResp.json();
+
+        // Move cada pasta para dentro
+        for (const nomeP of folders) {
+          const pasta = pastasCache.find(p => p.name === nomeP);
+          if (!pasta) continue;
+
+          await fetch(`https://www.googleapis.com/drive/v3/files/${pasta.id}?addParents=${catFolder.id}&removeParents=${folderId}`, {
+            method: 'PATCH',
+            headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          });
+
+          log('logCat', 'cat', nomeP, cat);
+          feito++;
+          document.getElementById('progressBarC').style.width = `${50 + (feito/total)*50}%`;
+          await new Promise(r => setTimeout(r, 150));
+        }
+      }
+
+      setStatus('statusC', 'done', 'Organizado!');
+      log('logCat', 'info', `✅ ${feito} pastas organizadas em ${Object.keys(categoriasIA.categorias).length} categorias!`);
+      document.getElementById('catPreview').style.display = 'none';
+    } catch(e) {
+      log('logCat', 'error', 'Erro: ' + e.message);
+      setStatus('statusC', 'error', 'Erro');
+      document.getElementById('btnApplyCategories').disabled = false;
+    }
   }
 </script>
 </body>
