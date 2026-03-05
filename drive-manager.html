@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Drive Manager</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#060606;--surface:#0f0f0f;--border:#1a1a1a;--green:#00e676;
+      --green2:rgba(0,230,118,.15);--red:#ff4444;--text:#e0e0e0;--muted:#555;
+    }
+    body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh}
+
+    /* NOISE */
+    body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:9999}
+
+    .app{max-width:900px;margin:0 auto;padding:48px 24px}
+
+    /* HEADER */
+    header{margin-bottom:48px;animation:fadeUp .6s ease both}
+    .tag{display:inline-block;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--green);border:1px solid var(--green);padding:5px 14px;border-radius:100px;margin-bottom:20px;box-shadow:0 0 10px rgba(0,230,118,.25)}
+    h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,7vw,64px);line-height:.95;color:#fff;margin-bottom:12px}
+    h1 span{color:var(--green);text-shadow:0 0 24px rgba(0,230,118,.4)}
+    header p{color:var(--muted);font-size:14px}
+
+    /* CONFIG CARD */
+    .config-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;margin-bottom:24px;animation:fadeUp .6s .1s ease both}
+    .config-card label{display:block;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+    .config-card input{width:100%;background:#000;border:1px solid var(--border);border-radius:8px;padding:12px 16px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;outline:none;transition:border-color .2s}
+    .config-card input:focus{border-color:var(--green)}
+    .config-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+    @media(max-width:600px){.config-row{grid-template-columns:1fr}}
+
+    /* OPÇÕES */
+    .options{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px}
+    .opt{display:flex;align-items:center;gap:8px;background:#000;border:1px solid var(--border);border-radius:8px;padding:10px 16px;cursor:pointer;transition:border-color .2s,background .2s;font-size:13px;user-select:none}
+    .opt input[type=checkbox]{accent-color:var(--green);width:15px;height:15px}
+    .opt:hover{border-color:#333}
+    .opt.active{border-color:var(--green);background:var(--green2)}
+
+    /* BOTÕES */
+    .btn-row{display:flex;gap:12px;flex-wrap:wrap}
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:13px 28px;border-radius:10px;font-weight:700;font-size:13px;letter-spacing:.5px;text-transform:uppercase;border:none;cursor:pointer;transition:all .2s}
+    .btn-primary{background:var(--green);color:#000;box-shadow:0 0 20px rgba(0,230,118,.3)}
+    .btn-primary:hover{box-shadow:0 0 32px rgba(0,230,118,.5);transform:translateY(-1px)}
+    .btn-secondary{background:transparent;color:var(--text);border:1px solid var(--border)}
+    .btn-secondary:hover{border-color:#333;background:#111}
+    .btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+
+    /* LOG */
+    .log-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;animation:fadeUp .6s .2s ease both}
+    .log-header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--border)}
+    .log-header span{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+    .log-count{font-size:11px;color:var(--green);font-family:'DM Mono',monospace}
+    .log-body{padding:20px 24px;max-height:420px;overflow-y:auto;font-family:'DM Mono',monospace;font-size:12px;line-height:1.8}
+    .log-body::-webkit-scrollbar{width:4px}
+    .log-body::-webkit-scrollbar-track{background:transparent}
+    .log-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+    .log-empty{color:var(--muted);text-align:center;padding:40px 0}
+
+    .log-line{display:flex;gap:12px;align-items:flex-start;padding:3px 0;animation:slideIn .2s ease both}
+    .log-arrow{color:var(--green);flex-shrink:0}
+    .log-old{color:var(--muted);text-decoration:line-through}
+    .log-new{color:#fff}
+    .log-skip{color:#333}
+    .log-error{color:var(--red)}
+    .log-info{color:var(--green)}
+
+    /* PROGRESS */
+    .progress-wrap{padding:0 24px 20px;display:none}
+    .progress-bar-bg{background:#1a1a1a;border-radius:100px;height:3px;overflow:hidden}
+    .progress-bar{height:100%;background:var(--green);border-radius:100px;transition:width .3s ease;box-shadow:0 0 8px rgba(0,230,118,.5)}
+
+    /* STATUS */
+    .status-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:4px 12px;border-radius:100px;font-weight:600;letter-spacing:.5px}
+    .status-idle{background:#1a1a1a;color:var(--muted)}
+    .status-running{background:rgba(0,230,118,.1);color:var(--green);border:1px solid rgba(0,230,118,.2)}
+    .status-done{background:rgba(0,230,118,.15);color:var(--green)}
+    .status-error{background:rgba(255,68,68,.1);color:var(--red)}
+    .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+    .dot.pulse{animation:pulse 1s infinite}
+
+    @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+    /* AUTH SECTION */
+    .auth-section{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px;text-align:center;margin-bottom:24px;animation:fadeUp .6s ease both}
+    .auth-section h2{font-family:'Bebas Neue',sans-serif;font-size:28px;color:#fff;margin-bottom:8px}
+    .auth-section p{color:var(--muted);font-size:13px;margin-bottom:24px;line-height:1.6}
+    .auth-steps{display:flex;flex-direction:column;gap:10px;text-align:left;margin-bottom:24px}
+    .auth-step{display:flex;gap:12px;align-items:flex-start;font-size:13px;color:#aaa}
+    .step-num{width:22px;height:22px;border-radius:50%;background:var(--green);color:#000;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+    .api-key-input{width:100%;background:#000;border:1px solid var(--border);border-radius:8px;padding:12px 16px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;outline:none;margin-bottom:16px;transition:border-color .2s}
+    .api-key-input:focus{border-color:var(--green)}
+    .key-note{font-size:11px;color:var(--muted);margin-top:-8px;margin-bottom:20px}
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="tag">Google Drive Manager</div>
+    <h1>GERENCIAR<br/><span>PASTAS</span></h1>
+    <p>Renomeie, traduza e organize suas pastas do Drive sem abrir o terminal.</p>
+  </header>
+
+  <!-- CONFIG -->
+  <div class="config-card">
+    <div class="config-row">
+      <div>
+        <label>ID da Pasta do Drive</label>
+        <input type="text" id="folderId" value="1FUNpybsoDanYURXOkR_y-ZcnDyRVk3I0" placeholder="Cole o ID da pasta aqui"/>
+      </div>
+      <div>
+        <label>Chave da API do Google</label>
+        <input type="password" id="apiKey" placeholder="AIza..."/>
+      </div>
+    </div>
+    <div>
+      <label>Client ID OAuth 2.0</label>
+      <input type="text" id="clientId" placeholder="252746324509-xxxx.apps.googleusercontent.com" style="margin-bottom:20px"/>
+    </div>
+
+    <label>Operações</label>
+    <div class="options">
+      <label class="opt active" id="opt-maiusculo">
+        <input type="checkbox" checked onchange="toggleOpt(this,'opt-maiusculo')"/> Tudo maiúsculo
+      </label>
+      <label class="opt active" id="opt-limpar">
+        <input type="checkbox" checked onchange="toggleOpt(this,'opt-limpar')"/> Remover _ - + ~ @
+      </label>
+      <label class="opt active" id="opt-traduzir">
+        <input type="checkbox" checked onchange="toggleOpt(this,'opt-traduzir')"/> Traduzir para português
+      </label>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btnAuth" onclick="iniciarAuth()">
+        <span>🔑</span> Conectar ao Google
+      </button>
+      <button class="btn btn-secondary" id="btnRun" onclick="executar()" disabled>
+        <span>▶</span> Renomear pastas
+      </button>
+      <button class="btn btn-secondary" onclick="limparLog()">Limpar log</button>
+    </div>
+  </div>
+
+  <!-- LOG -->
+  <div class="log-card">
+    <div class="log-header">
+      <span>Log de execução</span>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span class="log-count" id="logCount">0 pastas</span>
+        <span class="status-badge status-idle" id="statusBadge"><span class="dot"></span> Aguardando</span>
+      </div>
+    </div>
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-bar-bg"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+    </div>
+    <div class="log-body" id="logBody">
+      <div class="log-empty">Conecte ao Google e clique em "Renomear pastas" para começar.</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Google APIs -->
+<script src="https://apis.google.com/js/api.js"></script>
+<script src="https://accounts.google.com/gsi/client"></script>
+<script>
+  let accessToken = null;
+  let totalPastas = 0;
+  let processadas = 0;
+
+  function toggleOpt(cb, id) {
+    document.getElementById(id).classList.toggle('active', cb.checked);
+  }
+
+  function setStatus(tipo, texto) {
+    const el = document.getElementById('statusBadge');
+    el.className = `status-badge status-${tipo}`;
+    const dot = tipo === 'running' ? '<span class="dot pulse"></span>' : '<span class="dot"></span>';
+    el.innerHTML = `${dot} ${texto}`;
+  }
+
+  function log(tipo, texto, novo) {
+    const body = document.getElementById('logBody');
+    const empty = body.querySelector('.log-empty');
+    if (empty) empty.remove();
+
+    const line = document.createElement('div');
+    line.className = 'log-line';
+
+    if (tipo === 'rename') {
+      line.innerHTML = `<span class="log-arrow">→</span><span class="log-old">${texto}</span><span class="log-arrow">→</span><span class="log-new">${novo}</span>`;
+    } else if (tipo === 'skip') {
+      line.innerHTML = `<span class="log-skip">— ${texto} (sem mudança)</span>`;
+    } else if (tipo === 'error') {
+      line.innerHTML = `<span class="log-error">✗ ${texto}</span>`;
+    } else {
+      line.innerHTML = `<span class="log-info">${texto}</span>`;
+    }
+
+    body.appendChild(line);
+    body.scrollTop = body.scrollHeight;
+  }
+
+  function limparLog() {
+    document.getElementById('logBody').innerHTML = '<div class="log-empty">Log limpo.</div>';
+    document.getElementById('logCount').textContent = '0 pastas';
+    setStatus('idle', 'Aguardando');
+  }
+
+  function iniciarAuth() {
+    const clientId = document.getElementById('clientId').value.trim();
+    if (!clientId) { alert('Preencha o Client ID OAuth!'); return; }
+
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: 'https://www.googleapis.com/auth/drive',
+      callback: (resp) => {
+        if (resp.access_token) {
+          accessToken = resp.access_token;
+          document.getElementById('btnAuth').innerHTML = '<span>✅</span> Conectado';
+          document.getElementById('btnAuth').style.background = '#00c853';
+          document.getElementById('btnRun').disabled = false;
+          log('info', '✅ Autenticado com sucesso! Clique em "Renomear pastas".');
+          setStatus('done', 'Conectado');
+        }
+      }
+    });
+    client.requestAccessToken();
+  }
+
+  function limparNome(nome) {
+    const limpar = document.querySelector('#opt-limpar input').checked;
+    const maiusculo = document.querySelector('#opt-maiusculo input').checked;
+
+    if (limpar) {
+      nome = nome.replace(/[_+´~\[\]–—@()]/g, ' ');
+      nome = nome.replace(/-/g, ' ');
+      nome = nome.replace(/\b[0-9a-f]{6,}\b/gi, '');
+      nome = nome.replace(/\b(stls?|files?|model|remix|3mf|v\d+)\b/gi, '');
+      nome = nome.replace(/\s+/g, ' ').trim();
+    }
+    if (maiusculo) nome = nome.toUpperCase();
+    return nome;
+  }
+
+  async function traduzirTexto(texto) {
+    const traduzir = document.querySelector('#opt-traduzir input').checked;
+    if (!traduzir) return texto;
+    try {
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=pt&dt=t&q=${encodeURIComponent(texto.toLowerCase())}`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      const traduzido = data[0].map(x => x[0]).join('');
+      return traduzido.toUpperCase();
+    } catch (e) {
+      return texto;
+    }
+  }
+
+  async function executar() {
+    if (!accessToken) { alert('Conecte ao Google primeiro!'); return; }
+    const folderId = document.getElementById('folderId').value.trim();
+    if (!folderId) { alert('Preencha o ID da pasta!'); return; }
+
+    document.getElementById('btnRun').disabled = true;
+    document.getElementById('progressWrap').style.display = 'block';
+    setStatus('running', 'Buscando pastas...');
+    log('info', `🔍 Buscando pastas em: ${folderId}`);
+
+    try {
+      const resp = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+mimeType='application/vnd.google-apps.folder'+and+trashed=false&fields=files(id,name)&pageSize=500`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      const data = await resp.json();
+      const pastas = data.files || [];
+      totalPastas = pastas.length;
+      processadas = 0;
+
+      document.getElementById('logCount').textContent = `${totalPastas} pastas`;
+      log('info', `📁 ${totalPastas} pastas encontradas. Iniciando...`);
+      setStatus('running', `Processando...`);
+
+      for (const pasta of pastas) {
+        const nomeOriginal = pasta.name;
+        const nomeLimpo = limparNome(nomeOriginal);
+        const nomeFinal = await traduzirTexto(nomeLimpo);
+
+        await fetch(
+          `https://www.googleapis.com/drive/v3/files/${pasta.id}`,
+          {
+            method: 'PATCH',
+            headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: nomeFinal })
+          }
+        );
+
+        if (nomeOriginal !== nomeFinal) {
+          log('rename', nomeOriginal, nomeFinal);
+        } else {
+          log('skip', nomeOriginal);
+        }
+
+        processadas++;
+        document.getElementById('progressBar').style.width = `${(processadas/totalPastas)*100}%`;
+        await new Promise(r => setTimeout(r, 200));
+      }
+
+      setStatus('done', 'Concluído!');
+      log('info', `✅ ${processadas} pastas processadas com sucesso!`);
+
+    } catch (e) {
+      log('error', 'Erro: ' + e.message);
+      setStatus('error', 'Erro');
+    }
+
+    document.getElementById('btnRun').disabled = false;
+  }
+</script>
+</body>
+</html>
