@@ -86,6 +86,18 @@
     @keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
+    /* CREDENTIALS VAULT */
+    .vault-card{background:#080808;border:1px solid #1a1a1a;border-radius:14px;padding:22px 28px;margin-bottom:24px;animation:fadeUp .6s ease both}
+    .vault-title{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
+    .vault-item{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#000;border:1px solid #1a1a1a;border-radius:8px;padding:10px 14px;margin-bottom:10px}
+    .vault-item:last-child{margin-bottom:0}
+    .vault-info{flex:1;min-width:0}
+    .vault-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+    .vault-value{font-family:'DM Mono',monospace;font-size:12px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .copy-btn{flex-shrink:0;background:transparent;border:1px solid #222;border-radius:6px;color:var(--muted);font-size:11px;padding:6px 12px;cursor:pointer;transition:all .2s;white-space:nowrap}
+    .copy-btn:hover{border-color:var(--green);color:var(--green);background:rgba(0,230,118,.05)}
+    .copy-btn.copied{border-color:var(--green);color:var(--green);background:rgba(0,230,118,.1)}
+
     /* AUTH SECTION */
     .auth-section{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px;text-align:center;margin-bottom:24px;animation:fadeUp .6s ease both}
     .auth-section h2{font-family:'Bebas Neue',sans-serif;font-size:28px;color:#fff;margin-bottom:8px}
@@ -107,6 +119,25 @@
     <p>Renomeie, traduza e organize suas pastas do Drive sem abrir o terminal.</p>
   </header>
 
+  <!-- VAULT -->
+  <div class="vault-card">
+    <div class="vault-title">🔐 Minhas Credenciais</div>
+    <div class="vault-item">
+      <div class="vault-info">
+        <div class="vault-label">API Key</div>
+        <div class="vault-value">AIzaSyCNT9rMkDXHYmgZtSFA11rHv_i1EihsJmg</div>
+      </div>
+      <button class="copy-btn" onclick="copiarVault(this,'AIzaSyCNT9rMkDXHYmgZtSFA11rHv_i1EihsJmg')">Copiar</button>
+    </div>
+    <div class="vault-item">
+      <div class="vault-info">
+        <div class="vault-label">Client ID</div>
+        <div class="vault-value">252746324509-52i8p6me8uop6lqsvibc910o63um5q44.apps.googleusercontent.com</div>
+      </div>
+      <button class="copy-btn" onclick="copiarVault(this,'252746324509-52i8p6me8uop6lqsvibc910o63um5q44.apps.googleusercontent.com')">Copiar</button>
+    </div>
+  </div>
+
   <!-- CONFIG -->
   <div class="config-card">
     <div class="config-row">
@@ -116,12 +147,12 @@
       </div>
       <div>
         <label>Chave da API do Google</label>
-        <input type="text" id="apiKey" value="AIzaSyCNT9rMkDXHYmgZtSFA11rHv_i1EihsJmg" placeholder="AIza..."/>
+        <input type="text" id="apiKey" placeholder="AIza..."/>
       </div>
     </div>
     <div>
       <label>Client ID OAuth 2.0</label>
-      <input type="text" id="clientId" value="252746324509-52i8p6me8uop6lqsvibc910o63um5q44.apps.googleusercontent.com" placeholder="252746324509-xxxx.apps.googleusercontent.com" style="margin-bottom:20px"/>
+      <input type="text" id="clientId" placeholder="252746324509-xxxx.apps.googleusercontent.com" style="margin-bottom:20px"/>
     </div>
 
     <label>Operações</label>
@@ -177,6 +208,14 @@
 
   function toggleOpt(cb, id) {
     document.getElementById(id).classList.toggle('active', cb.checked);
+  }
+
+  function copiarVault(btn, texto) {
+    navigator.clipboard.writeText(texto).then(() => {
+      btn.textContent = '✓ Copiado';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copiar'; btn.classList.remove('copied'); }, 2000);
+    });
   }
 
   function setStatus(tipo, texto) {
