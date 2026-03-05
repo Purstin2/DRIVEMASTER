@@ -7,10 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    :root{
-      --bg:#060606;--surface:#0f0f0f;--border:#1a1a1a;--green:#00e676;
-      --green2:rgba(0,230,118,.15);--red:#ff4444;--text:#e0e0e0;--muted:#555;
-    }
+    :root{--bg:#060606;--surface:#0f0f0f;--border:#1a1a1a;--green:#00e676;--green2:rgba(0,230,118,.15);--red:#ff4444;--text:#e0e0e0;--muted:#555;}
     body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh}
     body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:9999}
     .app{max-width:960px;margin:0 auto;padding:48px 24px}
@@ -19,16 +16,10 @@
     h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,7vw,64px);line-height:.95;color:#fff;margin-bottom:12px}
     h1 span{color:var(--green);text-shadow:0 0 24px rgba(0,230,118,.4)}
     header p{color:var(--muted);font-size:14px}
-
-    /* TABS */
     .tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px;animation:fadeUp .6s .05s ease both}
-    .tab{flex:1;padding:12px;text-align:center;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;border-radius:8px;cursor:pointer;transition:all .2s;color:var(--muted)}
+    .tab{flex:1;padding:12px;text-align:center;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;border-radius:8px;cursor:pointer;transition:all .2s;color:var(--muted)}
     .tab.active{background:var(--green);color:#000}
-
-    .panel{display:none}
-    .panel.active{display:block}
-
-    /* CARDS */
+    .panel{display:none}.panel.active{display:block}
     .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;margin-bottom:20px;animation:fadeUp .6s .1s ease both}
     .card label{display:block;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
     .card input,.card textarea{width:100%;background:#000;border:1px solid var(--border);border-radius:8px;padding:12px 16px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;outline:none;transition:border-color .2s;margin-bottom:16px}
@@ -36,13 +27,11 @@
     .card textarea{resize:vertical;min-height:80px}
     .row2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
     @media(max-width:600px){.row2{grid-template-columns:1fr}}
-
     .options{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px}
     .opt{display:flex;align-items:center;gap:8px;background:#000;border:1px solid var(--border);border-radius:8px;padding:10px 16px;cursor:pointer;transition:border-color .2s,background .2s;font-size:13px;user-select:none}
     .opt input[type=checkbox]{accent-color:var(--green);width:15px;height:15px}
     .opt:hover{border-color:#333}
     .opt.active{border-color:var(--green);background:var(--green2)}
-
     .btn-row{display:flex;gap:12px;flex-wrap:wrap}
     .btn{display:inline-flex;align-items:center;gap:8px;padding:13px 28px;border-radius:10px;font-weight:700;font-size:13px;letter-spacing:.5px;text-transform:uppercase;border:none;cursor:pointer;transition:all .2s}
     .btn-primary{background:var(--green);color:#000;box-shadow:0 0 20px rgba(0,230,118,.3)}
@@ -50,10 +39,8 @@
     .btn-secondary{background:transparent;color:var(--text);border:1px solid var(--border)}
     .btn-secondary:hover{border-color:#333;background:#111}
     .btn-danger{background:transparent;color:var(--red);border:1px solid rgba(255,68,68,.3)}
-    .btn-danger:hover{background:rgba(255,68,68,.08)}
+    .btn-danger:hover{background:rgba(255,68,68,.1);border-color:var(--red)}
     .btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shadow:none!important}
-
-    /* LOG */
     .log-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;animation:fadeUp .6s .2s ease both}
     .log-header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--border)}
     .log-header span{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
@@ -70,11 +57,10 @@
     .log-error{color:var(--red)}
     .log-info{color:var(--green)}
     .log-cat{color:#64b5f6}
-
+    .log-warn{color:#ffb300}
     .progress-wrap{padding:0 24px 16px;display:none}
     .progress-bar-bg{background:#1a1a1a;border-radius:100px;height:3px;overflow:hidden}
     .progress-bar{height:100%;background:var(--green);border-radius:100px;transition:width .3s ease;box-shadow:0 0 8px rgba(0,230,118,.5)}
-
     .status-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:4px 12px;border-radius:100px;font-weight:600;letter-spacing:.5px}
     .status-idle{background:#1a1a1a;color:var(--muted)}
     .status-running{background:rgba(0,230,118,.1);color:var(--green);border:1px solid rgba(0,230,118,.2)}
@@ -82,18 +68,23 @@
     .status-error{background:rgba(255,68,68,.1);color:var(--red)}
     .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
     .dot.pulse{animation:pulse 1s infinite}
-
-    /* PREVIEW CATEGORIAS */
     .cat-preview{margin-top:16px;display:none}
     .cat-preview h3{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
     .cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
     .cat-item{background:#000;border:1px solid var(--border);border-radius:8px;padding:12px}
     .cat-item .cat-name{color:var(--green);font-size:12px;font-weight:600;margin-bottom:6px}
     .cat-item .cat-folders{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;line-height:1.6}
-
     .info-box{background:rgba(0,230,118,.05);border:1px solid rgba(0,230,118,.15);border-radius:10px;padding:16px;margin-bottom:20px;font-size:13px;color:#aaa;line-height:1.6}
     .info-box strong{color:var(--green)}
-
+    .warn-box{background:rgba(255,180,0,.05);border:1px solid rgba(255,180,0,.2);border-radius:10px;padding:16px;margin-bottom:20px;font-size:13px;color:#aaa;line-height:1.6}
+    .warn-box strong{color:#ffb300}
+    .empty-list{margin-top:20px;display:none}
+    .empty-list h3{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+    .empty-summary{font-size:13px;color:var(--muted);margin-bottom:12px}
+    .empty-summary strong{color:var(--red)}
+    .empty-item{display:flex;align-items:center;justify-content:space-between;background:#000;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:6px;font-family:'DM Mono',monospace;font-size:12px}
+    .empty-item .path{color:#888;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .empty-item .check{accent-color:var(--red);width:14px;height:14px;cursor:pointer;flex-shrink:0;margin-left:12px}
     @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
     @keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
@@ -101,17 +92,16 @@
 </head>
 <body>
 <div class="app">
-
   <header>
     <div class="tag">Google Drive Manager</div>
     <h1>GERENCIAR<br/><span>PASTAS</span></h1>
-    <p>Renomeie, numere, traduza e categorize suas pastas com IA — tudo sem abrir o terminal.</p>
+    <p>Renomeie recursivamente, categorize com IA e limpe pastas vazias — sem abrir o terminal.</p>
   </header>
 
-  <!-- TABS -->
   <div class="tabs">
     <div class="tab active" onclick="setTab('renomear')">Renomear</div>
-    <div class="tab" onclick="setTab('categorizar')">Categorizar com IA</div>
+    <div class="tab" onclick="setTab('categorizar')">Categorizar IA</div>
+    <div class="tab" onclick="setTab('limpar')">🗑 Limpar Vazias</div>
   </div>
 
   <!-- PANEL: RENOMEAR -->
@@ -127,30 +117,20 @@
           <input type="text" id="clientId" placeholder="252746324509-xxxx.apps.googleusercontent.com"/>
         </div>
       </div>
-
       <label>Operações</label>
       <div class="options">
-        <label class="opt active" id="opt-maiusculo">
-          <input type="checkbox" checked onchange="toggleOpt(this,'opt-maiusculo')"/> Tudo maiúsculo
-        </label>
-        <label class="opt active" id="opt-limpar">
-          <input type="checkbox" checked onchange="toggleOpt(this,'opt-limpar')"/> Remover _ - + ~ @
-        </label>
-        <label class="opt active" id="opt-traduzir">
-          <input type="checkbox" checked onchange="toggleOpt(this,'opt-traduzir')"/> Traduzir para português
-        </label>
-        <label class="opt" id="opt-numerar">
-          <input type="checkbox" onchange="toggleOpt(this,'opt-numerar')"/> Numerar pastas (1. 2. 3...)
-        </label>
+        <label class="opt active" id="opt-maiusculo"><input type="checkbox" checked onchange="toggleOpt(this,'opt-maiusculo')"/> Tudo maiúsculo</label>
+        <label class="opt active" id="opt-limpar"><input type="checkbox" checked onchange="toggleOpt(this,'opt-limpar')"/> Remover _ - + ~ @</label>
+        <label class="opt active" id="opt-traduzir"><input type="checkbox" checked onchange="toggleOpt(this,'opt-traduzir')"/> Traduzir para português</label>
+        <label class="opt" id="opt-numerar"><input type="checkbox" onchange="toggleOpt(this,'opt-numerar')"/> Numerar pastas (1. 2. 3...)</label>
+        <label class="opt active" id="opt-recursivo"><input type="checkbox" checked onchange="toggleOpt(this,'opt-recursivo')"/> Entrar em subpastas (recursivo)</label>
       </div>
-
       <div class="btn-row">
         <button class="btn btn-primary" id="btnAuth" onclick="iniciarAuth()">🔑 Conectar ao Google</button>
         <button class="btn btn-secondary" id="btnRun" onclick="executarRenomear()" disabled>▶ Renomear pastas</button>
         <button class="btn btn-secondary" onclick="limparLog('logRenomear')">Limpar log</button>
       </div>
     </div>
-
     <div class="log-card">
       <div class="log-header">
         <span>Log de execução</span>
@@ -162,19 +142,14 @@
       <div class="progress-wrap" id="progressWrapR">
         <div class="progress-bar-bg"><div class="progress-bar" id="progressBarR" style="width:0%"></div></div>
       </div>
-      <div class="log-body" id="logRenomear">
-        <div class="log-empty">Conecte ao Google e clique em "Renomear pastas".</div>
-      </div>
+      <div class="log-body" id="logRenomear"><div class="log-empty">Conecte ao Google e clique em "Renomear pastas".</div></div>
     </div>
   </div>
 
   <!-- PANEL: CATEGORIZAR -->
   <div class="panel" id="panel-categorizar">
     <div class="card">
-      <div class="info-box">
-        <strong>Como funciona:</strong> O site lê todas as pastas, manda os nomes para o Claude analisar, e o Claude decide automaticamente quais categorias criar e onde cada pasta se encaixa. Depois cria as subpastas e move tudo.
-      </div>
-
+      <div class="info-box"><strong>Como funciona:</strong> O site lê todas as pastas, manda os nomes para o Claude analisar, e o Claude decide automaticamente quais categorias criar e onde cada pasta se encaixa. Depois cria as subpastas e move tudo.</div>
       <div class="row2">
         <div>
           <label>ID da Pasta do Drive</label>
@@ -185,22 +160,18 @@
           <input type="password" id="anthropicKey" placeholder="sk-ant-..."/>
         </div>
       </div>
-
       <label>Instrução para a IA (opcional)</label>
-      <textarea id="aiPrompt" placeholder="Ex: agrupe por personagem ou franquia. Crie categorias em português.">Analise os nomes das pastas e agrupe em categorias lógicas. Crie nomes de categoria em português e maiúsculo. Cada pasta deve ir para exatamente uma categoria.</textarea>
-
+      <textarea id="aiPrompt">Analise os nomes das pastas e agrupe em categorias lógicas. Crie nomes de categoria em português e maiúsculo. Cada pasta deve ir para exatamente uma categoria.</textarea>
       <div class="btn-row">
         <button class="btn btn-primary" id="btnAnalyze" onclick="analisarComIA()">🤖 Analisar com IA</button>
         <button class="btn btn-secondary" id="btnApplyCategories" onclick="aplicarCategorias()" disabled>✅ Aplicar organização</button>
         <button class="btn btn-secondary" onclick="limparLog('logCat')">Limpar log</button>
       </div>
-
       <div class="cat-preview" id="catPreview">
         <h3>Prévia da organização</h3>
         <div class="cat-grid" id="catGrid"></div>
       </div>
     </div>
-
     <div class="log-card">
       <div class="log-header">
         <span>Log de execução</span>
@@ -212,12 +183,49 @@
       <div class="progress-wrap" id="progressWrapC">
         <div class="progress-bar-bg"><div class="progress-bar" id="progressBarC" style="width:0%"></div></div>
       </div>
-      <div class="log-body" id="logCat">
-        <div class="log-empty">Cole sua chave da Anthropic e clique em "Analisar com IA".</div>
-      </div>
+      <div class="log-body" id="logCat"><div class="log-empty">Cole sua chave da Anthropic e clique em "Analisar com IA".</div></div>
     </div>
   </div>
 
+  <!-- PANEL: LIMPAR VAZIAS -->
+  <div class="panel" id="panel-limpar">
+    <div class="card">
+      <div class="warn-box">
+        <strong>⚠️ Como funciona:</strong> O site varre <strong>todas as subpastas recursivamente</strong>, identifica as que estão completamente vazias (sem arquivos nem subpastas) e mostra a lista para você confirmar antes de apagar qualquer coisa.
+      </div>
+      <div>
+        <label>ID da Pasta Raiz do Drive</label>
+        <input type="text" id="folderIdLimpar" placeholder="Cole o ID da pasta raiz aqui"/>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btnScan" onclick="escanearVazias()">🔍 Escanear pastas vazias</button>
+        <button class="btn btn-danger" id="btnDelete" onclick="apagarSelecionadas()" disabled>🗑 Apagar selecionadas</button>
+        <button class="btn btn-secondary" onclick="limparLog('logLimpar')">Limpar log</button>
+      </div>
+      <div class="empty-list" id="emptyList">
+        <h3>Pastas vazias encontradas</h3>
+        <p class="empty-summary" id="emptySummary"></p>
+        <div style="display:flex;gap:10px;margin-bottom:12px">
+          <button class="btn btn-secondary" style="padding:8px 16px;font-size:11px" onclick="selecionarTodas(true)">Selecionar todas</button>
+          <button class="btn btn-secondary" style="padding:8px 16px;font-size:11px" onclick="selecionarTodas(false)">Desmarcar todas</button>
+        </div>
+        <div id="emptyItems"></div>
+      </div>
+    </div>
+    <div class="log-card">
+      <div class="log-header">
+        <span>Log de execução</span>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="log-count" id="logCountL">0 pastas</span>
+          <span class="status-badge status-idle" id="statusL"><span class="dot"></span> Aguardando</span>
+        </div>
+      </div>
+      <div class="progress-wrap" id="progressWrapL">
+        <div class="progress-bar-bg"><div class="progress-bar" id="progressBarL" style="width:0%"></div></div>
+      </div>
+      <div class="log-body" id="logLimpar"><div class="log-empty">Conecte ao Google na aba "Renomear" e cole o ID da pasta raiz.</div></div>
+    </div>
+  </div>
 </div>
 
 <script src="https://accounts.google.com/gsi/client"></script>
@@ -225,17 +233,16 @@
   let accessToken = null;
   let categoriasIA = null;
   let pastasCache = [];
+  let pastasVazias = [];
 
-  // TABS
   function setTab(tab) {
-    document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['renomear','categorizar'][i] === tab));
+    const tabs = ['renomear','categorizar','limpar'];
+    document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', tabs[i] === tab));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-' + tab).classList.add('active');
   }
 
-  function toggleOpt(cb, id) {
-    document.getElementById(id).classList.toggle('active', cb.checked);
-  }
+  function toggleOpt(cb, id) { document.getElementById(id).classList.toggle('active', cb.checked); }
 
   function setStatus(id, tipo, texto) {
     const el = document.getElementById(id);
@@ -250,24 +257,18 @@
     if (empty) empty.remove();
     const line = document.createElement('div');
     line.className = 'log-line';
-    if (tipo === 'rename') {
-      line.innerHTML = `<span class="log-arrow">→</span><span class="log-old">${texto}</span><span class="log-arrow">→</span><span class="log-new">${novo}</span>`;
-    } else if (tipo === 'cat') {
-      line.innerHTML = `<span class="log-cat">📁 ${texto}</span><span class="log-arrow">→</span><span class="log-new">${novo}</span>`;
-    } else if (tipo === 'skip') {
-      line.innerHTML = `<span class="log-skip">— ${texto}</span>`;
-    } else if (tipo === 'error') {
-      line.innerHTML = `<span class="log-error">✗ ${texto}</span>`;
-    } else {
-      line.innerHTML = `<span class="log-info">${texto}</span>`;
-    }
+    if (tipo === 'rename') line.innerHTML = `<span class="log-arrow">→</span><span class="log-old">${texto}</span><span class="log-arrow">→</span><span class="log-new">${novo}</span>`;
+    else if (tipo === 'cat') line.innerHTML = `<span class="log-cat">📁 ${texto}</span><span class="log-arrow">→</span><span class="log-new">${novo}</span>`;
+    else if (tipo === 'skip') line.innerHTML = `<span class="log-skip">— ${texto}</span>`;
+    else if (tipo === 'error') line.innerHTML = `<span class="log-error">✗ ${texto}</span>`;
+    else if (tipo === 'warn') line.innerHTML = `<span class="log-warn">⚠ ${texto}</span>`;
+    else if (tipo === 'delete') line.innerHTML = `<span class="log-error">🗑 ${texto}</span>`;
+    else line.innerHTML = `<span class="log-info">${texto}</span>`;
     body.appendChild(line);
     body.scrollTop = body.scrollHeight;
   }
 
-  function limparLog(id) {
-    document.getElementById(id).innerHTML = '<div class="log-empty">Log limpo.</div>';
-  }
+  function limparLog(id) { document.getElementById(id).innerHTML = '<div class="log-empty">Log limpo.</div>'; }
 
   // AUTH
   function iniciarAuth() {
@@ -282,7 +283,7 @@
           document.getElementById('btnAuth').innerHTML = '✅ Conectado';
           document.getElementById('btnAuth').style.background = '#00c853';
           document.getElementById('btnRun').disabled = false;
-          log('logRenomear', 'info', '✅ Autenticado! Clique em "Renomear pastas".');
+          log('logRenomear', 'info', '✅ Autenticado! Agora você pode usar todas as abas.');
           setStatus('statusR', 'done', 'Conectado');
         }
       }
@@ -290,13 +291,35 @@
     client.requestAccessToken();
   }
 
+  // DRIVE HELPERS
+  async function listarSubpastas(parentId) {
+    let todas = [], pageToken = null;
+    do {
+      let url = `https://www.googleapis.com/drive/v3/files?q='${parentId}'+in+parents+and+mimeType='application/vnd.google-apps.folder'+and+trashed=false&fields=files(id,name),nextPageToken&pageSize=500`;
+      if (pageToken) url += `&pageToken=${pageToken}`;
+      const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+      const data = await resp.json();
+      todas = todas.concat(data.files || []);
+      pageToken = data.nextPageToken || null;
+    } while (pageToken);
+    return todas;
+  }
+
+  async function contarConteudo(folderId) {
+    const resp = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+trashed=false&fields=files(id)&pageSize=1`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    const data = await resp.json();
+    return (data.files || []).length;
+  }
+
   // RENAME
   function limparNome(nome) {
     const limpar = document.querySelector('#opt-limpar input').checked;
     const maiusculo = document.querySelector('#opt-maiusculo input').checked;
     if (limpar) {
-      nome = nome.replace(/[_+´~\[\]–—@()]/g, ' ');
-      nome = nome.replace(/-/g, ' ');
+      nome = nome.replace(/[_+´~\[\]–—@()]/g, ' ').replace(/-/g, ' ');
       nome = nome.replace(/\b[0-9a-f]{6,}\b/gi, '');
       nome = nome.replace(/\b(stls?|files?|model|remix|3mf|v\d+)\b/gi, '');
       nome = nome.replace(/\s+/g, ' ').trim();
@@ -315,49 +338,53 @@
     } catch (e) { return texto; }
   }
 
+  async function renomearRecursivo(folderId, profundidade, contRef, numerarRaiz) {
+    const pastas = await listarSubpastas(folderId);
+    const recursivo = document.querySelector('#opt-recursivo input').checked;
+    const indent = '  '.repeat(profundidade);
+
+    for (let i = 0; i < pastas.length; i++) {
+      const pasta = pastas[i];
+      const nomeOriginal = pasta.name;
+      let nomeFinal = await traduzirTexto(limparNome(nomeOriginal));
+      if (numerarRaiz && profundidade === 0) nomeFinal = `${i + 1}. ${nomeFinal}`;
+
+      await fetch(`https://www.googleapis.com/drive/v3/files/${pasta.id}`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: nomeFinal })
+      });
+
+      if (nomeOriginal !== nomeFinal) log('logRenomear', 'rename', indent + nomeOriginal, nomeFinal);
+      else log('logRenomear', 'skip', indent + nomeOriginal);
+
+      contRef.count++;
+      document.getElementById('logCountR').textContent = `${contRef.count} processadas`;
+      await new Promise(r => setTimeout(r, 200));
+
+      if (recursivo) await renomearRecursivo(pasta.id, profundidade + 1, contRef, false);
+    }
+  }
+
   async function executarRenomear() {
     if (!accessToken) { alert('Conecte ao Google primeiro!'); return; }
     const folderId = document.getElementById('folderId').value.trim();
     if (!folderId) { alert('Preencha o ID da pasta!'); return; }
     const numerar = document.querySelector('#opt-numerar input').checked;
+    const recursivo = document.querySelector('#opt-recursivo input').checked;
 
     document.getElementById('btnRun').disabled = true;
     document.getElementById('progressWrapR').style.display = 'block';
-    setStatus('statusR', 'running', 'Buscando...');
+    document.getElementById('progressBarR').style.width = '5%';
+    setStatus('statusR', 'running', 'Processando...');
+    log('logRenomear', 'info', `🔍 Iniciando${recursivo ? ' (recursivo — todas as subpastas)' : ''}...`);
 
     try {
-      const resp = await fetch(
-        `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+mimeType='application/vnd.google-apps.folder'+and+trashed=false&fields=files(id,name)&pageSize=500&orderBy=name`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
-      const data = await resp.json();
-      const pastas = data.files || [];
-      document.getElementById('logCountR').textContent = `${pastas.length} pastas`;
-      log('logRenomear', 'info', `📁 ${pastas.length} pastas encontradas.`);
-      setStatus('statusR', 'running', 'Processando...');
-
-      for (let i = 0; i < pastas.length; i++) {
-        const pasta = pastas[i];
-        const nomeOriginal = pasta.name;
-        let nomeLimpo = limparNome(nomeOriginal);
-        let nomeFinal = await traduzirTexto(nomeLimpo);
-        if (numerar) nomeFinal = `${i + 1}. ${nomeFinal}`;
-
-        await fetch(`https://www.googleapis.com/drive/v3/files/${pasta.id}`, {
-          method: 'PATCH',
-          headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: nomeFinal })
-        });
-
-        if (nomeOriginal !== nomeFinal) log('logRenomear', 'rename', nomeOriginal, nomeFinal);
-        else log('logRenomear', 'skip', nomeOriginal);
-
-        document.getElementById('progressBarR').style.width = `${((i+1)/pastas.length)*100}%`;
-        await new Promise(r => setTimeout(r, 200));
-      }
-
+      const contRef = { count: 0 };
+      await renomearRecursivo(folderId, 0, contRef, numerar);
+      document.getElementById('progressBarR').style.width = '100%';
       setStatus('statusR', 'done', 'Concluído!');
-      log('logRenomear', 'info', `✅ ${pastas.length} pastas processadas!`);
+      log('logRenomear', 'info', `✅ ${contRef.count} pastas processadas!`);
     } catch(e) {
       log('logRenomear', 'error', e.message);
       setStatus('statusR', 'error', 'Erro');
@@ -365,19 +392,14 @@
     document.getElementById('btnRun').disabled = false;
   }
 
-  // CATEGORIZAR COM IA
+  // CATEGORIZAR
   async function analisarComIA() {
     const folderId = document.getElementById('folderIdCat').value.trim();
     const apiKey = document.getElementById('anthropicKey').value.trim();
     const prompt = document.getElementById('aiPrompt').value.trim();
-
     if (!folderId) { alert('Preencha o ID da pasta!'); return; }
     if (!apiKey) { alert('Preencha a chave da API Anthropic!'); return; }
-    if (!accessToken) {
-      // Tenta auth com o clientId do painel renomear
-      alert('Conecte ao Google primeiro na aba "Renomear"!');
-      return;
-    }
+    if (!accessToken) { alert('Conecte ao Google primeiro na aba "Renomear"!'); return; }
 
     document.getElementById('btnAnalyze').disabled = true;
     document.getElementById('progressWrapC').style.display = 'block';
@@ -385,56 +407,29 @@
     log('logCat', 'info', '🔍 Buscando pastas...');
 
     try {
-      // 1. Busca pastas
-      const resp = await fetch(
-        `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+mimeType='application/vnd.google-apps.folder'+and+trashed=false&fields=files(id,name)&pageSize=500`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
-      const data = await resp.json();
-      pastasCache = data.files || [];
-
-      if (pastasCache.length === 0) {
-        log('logCat', 'error', 'Nenhuma pasta encontrada!');
-        document.getElementById('btnAnalyze').disabled = false;
-        return;
-      }
-
+      pastasCache = await listarSubpastas(folderId);
+      if (pastasCache.length === 0) { log('logCat', 'error', 'Nenhuma pasta encontrada!'); document.getElementById('btnAnalyze').disabled = false; return; }
       document.getElementById('logCountC').textContent = `${pastasCache.length} pastas`;
       log('logCat', 'info', `📁 ${pastasCache.length} pastas encontradas. Enviando para o Claude...`);
       setStatus('statusC', 'running', 'Analisando com IA...');
 
-      // 2. Manda para Claude
       const nomes = pastasCache.map(p => p.name).join('\n');
-      const mensagem = `${prompt}\n\nLista de pastas:\n${nomes}\n\nResponda APENAS com um JSON válido no formato:\n{"categorias": {"NOME DA CATEGORIA": ["pasta1", "pasta2"], "OUTRA CATEGORIA": ["pasta3"]}}`;
+      const mensagem = `${prompt}\n\nLista de pastas:\n${nomes}\n\nResponda APENAS com um JSON válido no formato:\n{"categorias": {"NOME DA CATEGORIA": ["pasta1", "pasta2"]}}`;
 
       const aiResp = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 4000,
-          messages: [{ role: 'user', content: mensagem }]
-        })
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, messages: [{ role: 'user', content: mensagem }] })
       });
 
       const aiData = await aiResp.json();
       if (aiData.error) throw new Error(aiData.error.message);
-
-      const texto = aiData.content[0].text;
-      const jsonMatch = texto.match(/\{[\s\S]*\}/);
+      const jsonMatch = aiData.content[0].text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error('IA não retornou JSON válido');
-
       categoriasIA = JSON.parse(jsonMatch[0]);
       document.getElementById('progressBarC').style.width = '50%';
-
       log('logCat', 'info', `✅ Claude criou ${Object.keys(categoriasIA.categorias).length} categorias!`);
 
-      // 3. Mostra preview
       const grid = document.getElementById('catGrid');
       grid.innerHTML = '';
       for (const [cat, folders] of Object.entries(categoriasIA.categorias)) {
@@ -447,7 +442,6 @@
       document.getElementById('catPreview').style.display = 'block';
       document.getElementById('btnApplyCategories').disabled = false;
       setStatus('statusC', 'done', 'Pronto para aplicar!');
-
     } catch(e) {
       log('logCat', 'error', 'Erro: ' + e.message);
       setStatus('statusC', 'error', 'Erro');
@@ -461,48 +455,139 @@
     document.getElementById('btnApplyCategories').disabled = true;
     setStatus('statusC', 'running', 'Criando pastas...');
     log('logCat', 'info', '🚀 Aplicando organização...');
-
     try {
       const total = Object.values(categoriasIA.categorias).flat().length;
       let feito = 0;
-      document.getElementById('progressBarC').style.width = '50%';
-
       for (const [cat, folders] of Object.entries(categoriasIA.categorias)) {
-        // Cria subpasta da categoria
-        log('logCat', 'info', `📁 Criando pasta: ${cat}`);
+        log('logCat', 'info', `📁 Criando: ${cat}`);
         const criarResp = await fetch('https://www.googleapis.com/drive/v3/files', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: cat, mimeType: 'application/vnd.google-apps.folder', parents: [folderId] })
         });
         const catFolder = await criarResp.json();
-
-        // Move cada pasta para dentro
         for (const nomeP of folders) {
           const pasta = pastasCache.find(p => p.name === nomeP);
           if (!pasta) continue;
-
           await fetch(`https://www.googleapis.com/drive/v3/files/${pasta.id}?addParents=${catFolder.id}&removeParents=${folderId}`, {
-            method: 'PATCH',
-            headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({})
+            method: 'PATCH', headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({})
           });
-
           log('logCat', 'cat', nomeP, cat);
           feito++;
           document.getElementById('progressBarC').style.width = `${50 + (feito/total)*50}%`;
           await new Promise(r => setTimeout(r, 150));
         }
       }
-
       setStatus('statusC', 'done', 'Organizado!');
-      log('logCat', 'info', `✅ ${feito} pastas organizadas em ${Object.keys(categoriasIA.categorias).length} categorias!`);
+      log('logCat', 'info', `✅ ${feito} pastas organizadas!`);
       document.getElementById('catPreview').style.display = 'none';
     } catch(e) {
       log('logCat', 'error', 'Erro: ' + e.message);
       setStatus('statusC', 'error', 'Erro');
       document.getElementById('btnApplyCategories').disabled = false;
     }
+  }
+
+  // LIMPAR VAZIAS
+  async function escanearRecursivo(folderId, caminhoAtual, resultado, contRef) {
+    const subpastas = await listarSubpastas(folderId);
+    for (const pasta of subpastas) {
+      const caminho = caminhoAtual ? `${caminhoAtual} / ${pasta.name}` : pasta.name;
+      contRef.total++;
+      log('logLimpar', 'info', `📂 ${caminho}`);
+      document.getElementById('logCountL').textContent = `${contRef.total} escaneadas`;
+
+      // Primeiro entra nas filhas (bottom-up)
+      await escanearRecursivo(pasta.id, caminho, resultado, contRef);
+
+      // Depois verifica se ficou vazia
+      const qtd = await contarConteudo(pasta.id);
+      if (qtd === 0) {
+        resultado.push({ id: pasta.id, name: pasta.name, path: caminho });
+        log('logLimpar', 'warn', `VAZIA: ${caminho}`);
+      }
+      await new Promise(r => setTimeout(r, 100));
+    }
+  }
+
+  async function escanearVazias() {
+    if (!accessToken) { alert('Conecte ao Google primeiro na aba "Renomear"!'); return; }
+    const folderId = document.getElementById('folderIdLimpar').value.trim();
+    if (!folderId) { alert('Preencha o ID da pasta raiz!'); return; }
+
+    document.getElementById('btnScan').disabled = true;
+    document.getElementById('btnDelete').disabled = true;
+    document.getElementById('emptyList').style.display = 'none';
+    document.getElementById('progressWrapL').style.display = 'block';
+    document.getElementById('progressBarL').style.width = '5%';
+    setStatus('statusL', 'running', 'Escaneando...');
+    log('logLimpar', 'info', '🔍 Iniciando varredura recursiva...');
+    pastasVazias = [];
+
+    try {
+      const contRef = { total: 0 };
+      await escanearRecursivo(folderId, '', pastasVazias, contRef);
+      document.getElementById('progressBarL').style.width = '100%';
+
+      if (pastasVazias.length === 0) {
+        setStatus('statusL', 'done', 'Nenhuma vazia!');
+        log('logLimpar', 'info', `✅ Varredura concluída — nenhuma pasta vazia encontrada!`);
+      } else {
+        setStatus('statusL', 'done', `${pastasVazias.length} vazias`);
+        log('logLimpar', 'warn', `${pastasVazias.length} pastas vazias encontradas.`);
+        document.getElementById('emptySummary').innerHTML = `Encontradas <strong>${pastasVazias.length} pastas vazias</strong>. Marque as que deseja apagar:`;
+        const container = document.getElementById('emptyItems');
+        container.innerHTML = '';
+        pastasVazias.forEach((p, i) => {
+          const item = document.createElement('div');
+          item.className = 'empty-item';
+          item.innerHTML = `<span class="path" title="${p.path}">📁 ${p.path}</span><input type="checkbox" class="check" checked data-index="${i}"/>`;
+          container.appendChild(item);
+        });
+        document.getElementById('emptyList').style.display = 'block';
+        document.getElementById('btnDelete').disabled = false;
+      }
+    } catch(e) {
+      log('logLimpar', 'error', 'Erro: ' + e.message);
+      setStatus('statusL', 'error', 'Erro');
+    }
+    document.getElementById('btnScan').disabled = false;
+  }
+
+  function selecionarTodas(valor) {
+    document.querySelectorAll('#emptyItems .check').forEach(cb => cb.checked = valor);
+  }
+
+  async function apagarSelecionadas() {
+    const checks = document.querySelectorAll('#emptyItems .check');
+    const selecionadas = [];
+    checks.forEach(cb => { if (cb.checked) selecionadas.push(pastasVazias[parseInt(cb.dataset.index)]); });
+    if (selecionadas.length === 0) { alert('Nenhuma pasta selecionada!'); return; }
+    if (!confirm(`Apagar ${selecionadas.length} pastas vazias? Esta ação não pode ser desfeita.`)) return;
+
+    document.getElementById('btnDelete').disabled = true;
+    document.getElementById('btnScan').disabled = true;
+    setStatus('statusL', 'running', 'Apagando...');
+    log('logLimpar', 'info', `🗑 Apagando ${selecionadas.length} pastas...`);
+
+    let apagadas = 0;
+    for (const pasta of selecionadas) {
+      try {
+        await fetch(`https://www.googleapis.com/drive/v3/files/${pasta.id}`, {
+          method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        log('logLimpar', 'delete', pasta.path);
+        apagadas++;
+      } catch(e) {
+        log('logLimpar', 'error', `Erro ao apagar ${pasta.name}: ${e.message}`);
+      }
+      document.getElementById('progressBarL').style.width = `${(apagadas/selecionadas.length)*100}%`;
+      await new Promise(r => setTimeout(r, 200));
+    }
+    setStatus('statusL', 'done', `${apagadas} apagadas!`);
+    log('logLimpar', 'info', `✅ ${apagadas} pastas apagadas com sucesso!`);
+    document.getElementById('emptyList').style.display = 'none';
+    document.getElementById('btnScan').disabled = false;
   }
 </script>
 </body>
