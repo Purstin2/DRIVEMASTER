@@ -570,6 +570,19 @@
     return data.content[0].text;
   }
 
+  // Coleta TODAS as pastas recursivamente (qualquer profundidade)
+  async function coletarTodasPastas(parentId, caminho, profundidade, resultado, contRef) {
+    const subpastas = await listarSubpastas(parentId);
+    for (const pasta of subpastas) {
+      const caminhoCompleto = caminho ? `${caminho} / ${pasta.name}` : pasta.name;
+      resultado.push({ pasta, caminho: caminhoCompleto, profundidade, parentId });
+      contRef.total++;
+      if (contRef.onUpdate) contRef.onUpdate(contRef.total, pasta.name);
+      await sleep(80);
+      await coletarTodasPastas(pasta.id, caminhoCompleto, profundidade + 1, resultado, contRef);
+    }
+  }
+
   async function iaInteligenteAnalisar() {
     if (!accessToken) { alert('Conecte ao Google primeiro na aba "Renomear"!'); return; }
     const folderId = document.getElementById('folderIdAI').value.trim();
@@ -586,74 +599,116 @@
     document.getElementById('progressWrapAI').style.display = 'block';
     document.getElementById('progressBarAI').style.width = '3%';
     document.getElementById('aiPreview').style.display = 'none';
-    setStatus('statusAI', 'running', 'Lendo pastas...');
-    log('logAI', 'info', '🔍 Lendo estrutura de pastas...');
+    setStatus('statusAI', 'running', 'Lendo toda a estrutura...');
+    log('logAI', 'info', '🔍 Varrendo TODAS as pastas e subpastas recursivamente...');
     aiRenomearPlan = [];
 
     try {
-      // 1. Lista todas as pastas
-      const pastas = await listarSubpastas(folderId);
-      if (!pastas.length) { log('logAI', 'error', 'Nenhuma pasta encontrada!'); document.getElementById('btnAIAnalyze').disabled = false; return; }
-      document.getElementById('logCountAI').textContent = `${pastas.length} pastas`;
-      log('logAI', 'info', `📁 ${pastas.length} pastas encontradas. Lendo arquivos...`);
+      // 1. Coleta TODAS as pastas em todos os níveis
+      const todasPastas = [];
+      const contRef = {
+        total: 0,
+        onUpdate: (n, nome) => {
+          document.getElementById('logCountAI').textContent = `${n} pastas`;
+          log('logAI', 'purple', `📂 ${nome}`);
+          document.getElementById('progressBarAI').style.width = `${Math.min(3 + n * 0.5, 25)}%`;
+        }
+      };
+      await coletarTodasPastas(folderId, '', 0, todasPastas, contRef);
 
-      // 2. Para cada pasta, busca os arquivos dentro
+      if (!todasPastas.length) {
+        log('logAI', 'error', 'Nenhuma pasta encontrada!');
+        document.getElementById('btnAIAnalyze').disabled = false;
+        return;
+      }
+      log('logAI', 'info', `✅ ${todasPastas.length} pastas coletadas. Lendo arquivos de cada pasta...`);
+      setStatus('statusAI', 'running', 'Lendo arquivos...');
+
+      // 2. Para cada pasta, busca arquivos diretos
       const dadosPastas = [];
-      for (let i = 0; i < pastas.length; i++) {
-        const pasta = pastas[i];
+      for (let i = 0; i < todasPastas.length; i++) {
+        const { pasta, caminho, profundidade, parentId } = todasPastas[i];
         const arquivos = await listarArquivos(pasta.id);
-        dadosPastas.push({ pasta, arquivos });
-        document.getElementById('progressBarAI').style.width = `${5 + (i/pastas.length)*30}%`;
-        log('logAI', 'purple', `📂 ${pasta.name} — ${arquivos.length} arquivo(s)`);
-        await sleep(100);
+        dadosPastas.push({ pasta, arquivos, caminho, profundidade, parentId });
+        document.getElementById('progressBarAI').style.width = `${25 + (i / todasPastas.length) * 25}%`;
+        await sleep(80);
       }
 
-      log('logAI', 'info', `✅ Leitura concluída. Enviando para Claude analisar ${pastas.length} pastas...`);
+      log('logAI', 'info', `✅ Leitura completa. Enviando ${todasPastas.length} pastas para o Claude analisar...`);
       setStatus('statusAI', 'running', 'Claude analisando...');
 
-      // 3. Monta o prompt para o Claude analisar TUDO de uma vez
-      const maiusculoInstr = maiusculo ? ' Use MAIÚSCULAS em todos os nomes.' : '';
-      const systemPrompt = `Você é um especialista em organização de arquivos 3D (STL). Analise os nomes de pastas e arquivos e identifique o que cada um é de verdade — personagem, franquia, série, jogo, filme, etc. 
-      
-REGRAS IMPORTANTES:
-- Nomeie as pastas com o nome ESPECÍFICO do personagem/franquia/série/tema — NUNCA use categorias genéricas como "ANIMAIS", "HERÓIS", "PERSONAGENS"
-- Se a pasta tem arquivos do Ben 10 → o nome deve ser "BEN 10", não "PERSONAGENS ANIMADOS"  
-- Se tem arquivos do Batman → "BATMAN", não "SUPER-HERÓIS DC"
-- Se tem Pikachu e Charizard → "POKEMON", pois é uma franquia coesa
-- Para arquivos: remova códigos, hashes, extensões redundantes e lixo do nome. Mantenha o nome descritivo do objeto${maiusculoInstr}
-- Se o nome já está correto, retorne o mesmo nome
-- Responda APENAS com JSON válido, sem texto extra`;
+      // 3. System prompt com regra EXPLÍCITA sobre nomes de franquias
+      const maiusculoInstr = maiusculo ? ' SEMPRE use MAIÚSCULAS.' : '';
+      const systemPrompt = `Você é um especialista em organização de arquivos de impressão 3D (STL). Analisa pastas e arquivos para identificar o conteúdo real de cada uma.
 
-      const listagem = dadosPastas.map(({ pasta, arquivos }) => {
-        const listaArq = arquivos.slice(0, 30).map(a => `    - ${a.name}`).join('\n');
-        const extra = arquivos.length > 30 ? `\n    ... e mais ${arquivos.length - 30} arquivos` : '';
-        return `Pasta: "${pasta.name}"\nArquivos:\n${listaArq || '    (vazia)'}${extra}`;
-      }).join('\n\n');
+REGRAS ABSOLUTAS — NUNCA quebre estas regras:
 
-      const promptIA = `Analise cada pasta abaixo e retorne o JSON com os novos nomes.
-      
+1. NUNCA TRADUZA nomes de franquias, personagens, filmes ou séries para português.
+   - "Transformers" permanece "TRANSFORMERS" — NUNCA "TRANSFORMADORES"
+   - "Batman" permanece "BATMAN" — NUNCA "HOMEM-MORCEGO"
+   - "Spider-Man" permanece "SPIDER-MAN" — NUNCA "HOMEM-ARANHA"
+   - "Dragon Ball" permanece "DRAGON BALL" — nunca "BOLA DE DRAGÃO"
+   - Se o nome original estiver em inglês e for um nome próprio de franquia/personagem, MANTENHA em inglês
+
+2. CORRIJA nomes que JÁ FORAM traduzidos erroneamente:
+   - "TRANSFORMADORES" → "TRANSFORMERS"
+   - "HOMEM-MORCEGO" → "BATMAN"  
+   - "HOMEM DE FERRO" → "IRON MAN"
+   - Se você reconhece que um nome português é tradução literal de uma franquia, corrija para o nome original
+
+3. Nomeie com PRECISÃO — nunca use categorias genéricas:
+   - Pasta com arquivos do Ben 10 → "BEN 10", NUNCA "PERSONAGENS ANIMADOS"
+   - Pasta com Batman → "BATMAN", NUNCA "SUPER-HERÓIS"
+   - Pasta com Pikachu/Charizard → "POKEMON"
+
+4. Para ARQUIVOS: remova lixo (hashes, códigos aleatórios, underscores, extensões no meio do nome). Mantenha o nome descritivo do objeto.${maiusculoInstr}
+
+5. Se o nome já está correto, retorne EXATAMENTE o mesmo nome.
+
+Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
+
+      // 4. Processa em lotes de 25 pastas (evita limite de tokens)
+      const LOTE = 25;
+      const resultadoFinal = [];
+
+      for (let inicio = 0; inicio < dadosPastas.length; inicio += LOTE) {
+        const lote = dadosPastas.slice(inicio, inicio + LOTE);
+        const numLote = Math.floor(inicio / LOTE) + 1;
+        const totalLotes = Math.ceil(dadosPastas.length / LOTE);
+        log('logAI', 'info', `🤖 Processando lote ${numLote}/${totalLotes} (${lote.length} pastas)...`);
+
+        const listagem = lote.map(({ pasta, arquivos, caminho }) => {
+          const listaArq = arquivos.slice(0, 20).map(a => `    - ${a.name}`).join('\n');
+          const extra = arquivos.length > 20 ? `\n    ... +${arquivos.length - 20} arquivos` : '';
+          return `Pasta: "${pasta.name}"\nCaminho: ${caminho || '(raiz)'}\nArquivos:\n${listaArq || '    (pasta vazia)'}${extra}`;
+        }).join('\n\n---\n\n');
+
+        const promptIA = `Analise as pastas abaixo e retorne o JSON com os novos nomes corretos.
+
 ${listagem}
 
-Responda APENAS com JSON neste formato exato:
+Responda APENAS com este JSON:
 {
   "pastas": [
     {
-      "nomeOriginal": "nome atual da pasta",
-      "novoNome": "NOME ESPECÍFICO CORRETO",
+      "nomeOriginal": "nome exato atual da pasta",
+      "novoNome": "NOME CORRETO",
       "arquivos": [
-        {"nomeOriginal": "arquivo_original.stl", "novoNome": "NOME LIMPO"}
+        {"nomeOriginal": "arquivo.stl", "novoNome": "NOVO NOME.stl"}
       ]
     }
   ]
 }`;
 
-      const resposta = await callClaude(apiKey, promptIA, systemPrompt);
-      document.getElementById('progressBarAI').style.width = '70%';
+        const resposta = await callClaude(apiKey, promptIA, systemPrompt);
+        const jsonMatch = resposta.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error(`Lote ${numLote}: Claude não retornou JSON válido`);
+        const resultado = JSON.parse(jsonMatch[0]);
+        resultadoFinal.push(...(resultado.pastas || []));
 
-      // 4. Parse da resposta
-      const jsonMatch = resposta.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error('Claude não retornou JSON válido. Tente novamente.');
-      const resultado = JSON.parse(jsonMatch[0]);
+        document.getElementById('progressBarAI').style.width = `${50 + ((inicio + LOTE) / dadosPastas.length) * 40}%`;
+        await sleep(500); // pausa entre chamadas à API
+      }
 
       // 5. Monta o plano de renomeação
       aiRenomearPlan = [];
@@ -661,14 +716,16 @@ Responda APENAS com JSON neste formato exato:
       grid.innerHTML = '';
       let totalMudancas = 0;
 
-      for (const item of resultado.pastas) {
+      // Agrupa por profundidade para mostrar hierarquia no preview
+      const porProfundidade = {};
+      for (const item of resultadoFinal) {
         const pastaObj = dadosPastas.find(d => d.pasta.name === item.nomeOriginal);
         if (!pastaObj) continue;
 
         const novoPastaNome = renomearPastas ? (item.novoNome || item.nomeOriginal) : item.nomeOriginal;
         const pastaMudou = novoPastaNome !== item.nomeOriginal;
+        const prof = pastaObj.profundidade;
 
-        // Mapeia arquivos
         const arquivosPlano = [];
         for (const arqItem of (item.arquivos || [])) {
           const arqObj = pastaObj.arquivos.find(a => a.name === arqItem.nomeOriginal);
@@ -679,24 +736,29 @@ Responda APENAS com JSON neste formato exato:
         }
 
         if (pastaMudou) totalMudancas++;
-        aiRenomearPlan.push({ pasta: pastaObj.pasta, novoNomePasta: novoPastaNome, arquivos: arquivosPlano });
+        aiRenomearPlan.push({ pasta: pastaObj.pasta, novoNomePasta: novoPastaNome, arquivos: arquivosPlano, profundidade: prof, caminho: pastaObj.caminho });
 
-        // Renderiza no preview
+        // Preview com indentação por profundidade
+        const indent = prof * 20;
         const block = document.createElement('div');
         block.className = 'ai-folder-block';
+        block.style.marginLeft = `${indent}px`;
+        block.style.marginBottom = '8px';
         const headerColor = pastaMudou ? '#2a1a4a' : '#0a0a0a';
+        const profBadge = prof > 0 ? `<span style="color:#555;font-size:10px;margin-right:6px">L${prof}</span>` : '';
         block.innerHTML = `
           <div class="ai-folder-header" style="background:${headerColor}">
+            ${profBadge}
             <span class="ai-folder-old">📁 ${esc(item.nomeOriginal)}</span>
             <span class="ai-folder-arrow">${pastaMudou ? '→' : '='}</span>
             <span class="ai-folder-new">${esc(novoPastaNome)}</span>
           </div>
           <div class="ai-files">
-            ${arquivosPlano.slice(0,10).map(a => a.novoNome !== a.nome
+            ${arquivosPlano.slice(0, 8).map(a => a.novoNome !== a.nome
               ? `<div class="ai-file-row"><span class="ai-file-old">${esc(a.nome)}</span><span style="color:#555;flex-shrink:0">→</span><span class="ai-file-new">${esc(a.novoNome)}</span></div>`
               : `<div class="ai-file-row"><span class="ai-file-skip">— ${esc(a.nome)}</span></div>`
             ).join('')}
-            ${arquivosPlano.length > 10 ? `<div style="color:#333;font-size:11px;padding:4px 0">... e mais ${arquivosPlano.length - 10} arquivos</div>` : ''}
+            ${arquivosPlano.length > 8 ? `<div style="color:#333;font-size:11px;padding:4px 0">... e mais ${arquivosPlano.length - 8} arquivos</div>` : ''}
           </div>`;
         grid.appendChild(block);
       }
@@ -705,7 +767,8 @@ Responda APENAS com JSON neste formato exato:
       document.getElementById('aiPreview').style.display = 'block';
       document.getElementById('btnAIApply').disabled = false;
       setStatus('statusAI', 'done', `${totalMudancas} mudanças`);
-      log('logAI', 'info', `✅ Análise concluída! ${totalMudancas} renomeações planejadas. Confira a prévia e aplique.`);
+      log('logAI', 'info', `✅ Análise concluída! ${aiRenomearPlan.length} pastas analisadas, ${totalMudancas} renomeações planejadas.`);
+      log('logAI', 'info', `👆 Confira a prévia acima e clique em "Aplicar renomeações".`);
 
     } catch(e) {
       log('logAI', 'error', 'Erro: ' + e.message);
@@ -722,32 +785,36 @@ Responda APENAS com JSON neste formato exato:
     log('logAI', 'info', '🚀 Aplicando renomeações...');
 
     let totalFeito = 0;
-    const totalItens = aiRenomearPlan.reduce((s, p) => s + 1 + p.arquivos.filter(a => a.novoNome !== a.nome).length, 0);
+    const totalItens = aiRenomearPlan.reduce((s, p) => {
+      const pastaMudou = p.novoNomePasta !== p.pasta.name ? 1 : 0;
+      const arquivosMudam = p.arquivos.filter(a => a.novoNome !== a.nome).length;
+      return s + pastaMudou + arquivosMudam;
+    }, 0);
 
     for (const item of aiRenomearPlan) {
-      // Renomeia pasta
       if (item.novoNomePasta !== item.pasta.name) {
         try {
           await renomearItem(item.pasta.id, item.novoNomePasta);
           log('logAI', 'rename', '📁 ' + item.pasta.name, item.novoNomePasta);
+          totalFeito++;
         } catch(e) { log('logAI', 'error', `Pasta ${item.pasta.name}: ${e.message}`); }
-        totalFeito++;
       }
 
-      // Renomeia arquivos
       for (const arq of item.arquivos) {
         if (arq.novoNome !== arq.nome) {
           try {
             await renomearItem(arq.id, arq.novoNome);
             log('logAI', 'rename', arq.nome, arq.novoNome);
+            totalFeito++;
           } catch(e) { log('logAI', 'error', `${arq.nome}: ${e.message}`); }
-          totalFeito++;
           await sleep(150);
         }
       }
 
-      document.getElementById('progressBarAI').style.width = `${(totalFeito / totalItens) * 100}%`;
-      document.getElementById('logCountAI').textContent = `${totalFeito} renomeados`;
+      if (totalItens > 0) {
+        document.getElementById('progressBarAI').style.width = `${(totalFeito / totalItens) * 100}%`;
+        document.getElementById('logCountAI').textContent = `${totalFeito} renomeados`;
+      }
     }
 
     setStatus('statusAI', 'done', 'Concluído!');
