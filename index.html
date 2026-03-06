@@ -7,18 +7,19 @@
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    :root{--bg:#060606;--surface:#0f0f0f;--border:#1a1a1a;--green:#00e676;--green2:rgba(0,230,118,.15);--red:#ff4444;--text:#e0e0e0;--muted:#555;}
+    :root{--bg:#060606;--surface:#0f0f0f;--border:#1a1a1a;--green:#00e676;--green2:rgba(0,230,118,.15);--red:#ff4444;--purple:#a78bfa;--text:#e0e0e0;--muted:#555;}
     body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh}
     body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:9999}
-    .app{max-width:960px;margin:0 auto;padding:48px 24px}
+    .app{max-width:1000px;margin:0 auto;padding:48px 24px}
     header{margin-bottom:48px;animation:fadeUp .6s ease both}
     .tag{display:inline-block;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--green);border:1px solid var(--green);padding:5px 14px;border-radius:100px;margin-bottom:20px;box-shadow:0 0 10px rgba(0,230,118,.25)}
     h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,7vw,64px);line-height:.95;color:#fff;margin-bottom:12px}
     h1 span{color:var(--green);text-shadow:0 0 24px rgba(0,230,118,.4)}
     header p{color:var(--muted);font-size:14px}
-    .tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px;animation:fadeUp .6s .05s ease both}
-    .tab{flex:1;padding:12px;text-align:center;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;border-radius:8px;cursor:pointer;transition:all .2s;color:var(--muted)}
+    .tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px;animation:fadeUp .6s .05s ease both;flex-wrap:wrap}
+    .tab{flex:1;min-width:100px;padding:12px 8px;text-align:center;font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;border-radius:8px;cursor:pointer;transition:all .2s;color:var(--muted)}
     .tab.active{background:var(--green);color:#000}
+    .tab.ai-tab.active{background:var(--purple);color:#fff}
     .panel{display:none}.panel.active{display:block}
     .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;margin-bottom:20px;animation:fadeUp .6s .1s ease both}
     .card label{display:block;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
@@ -36,6 +37,8 @@
     .btn{display:inline-flex;align-items:center;gap:8px;padding:13px 28px;border-radius:10px;font-weight:700;font-size:13px;letter-spacing:.5px;text-transform:uppercase;border:none;cursor:pointer;transition:all .2s}
     .btn-primary{background:var(--green);color:#000;box-shadow:0 0 20px rgba(0,230,118,.3)}
     .btn-primary:hover{box-shadow:0 0 32px rgba(0,230,118,.5);transform:translateY(-1px)}
+    .btn-purple{background:var(--purple);color:#fff;box-shadow:0 0 20px rgba(167,139,250,.3)}
+    .btn-purple:hover{box-shadow:0 0 32px rgba(167,139,250,.5);transform:translateY(-1px)}
     .btn-secondary{background:transparent;color:var(--text);border:1px solid var(--border)}
     .btn-secondary:hover{border-color:#333;background:#111}
     .btn-danger{background:transparent;color:var(--red);border:1px solid rgba(255,68,68,.3)}
@@ -45,22 +48,24 @@
     .log-header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--border)}
     .log-header span{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
     .log-count{font-size:11px;color:var(--green);font-family:'DM Mono',monospace}
-    .log-body{padding:20px 24px;max-height:420px;overflow-y:auto;font-family:'DM Mono',monospace;font-size:12px;line-height:1.8}
+    .log-body{padding:20px 24px;max-height:480px;overflow-y:auto;font-family:'DM Mono',monospace;font-size:12px;line-height:1.8}
     .log-body::-webkit-scrollbar{width:4px}
     .log-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
     .log-empty{color:var(--muted);text-align:center;padding:40px 0}
     .log-line{display:flex;gap:12px;align-items:flex-start;padding:3px 0;animation:slideIn .2s ease both}
     .log-arrow{color:var(--green);flex-shrink:0}
-    .log-old{color:var(--muted);text-decoration:line-through}
+    .log-old{color:var(--muted);text-decoration:line-through;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .log-new{color:#fff}
     .log-skip{color:#333}
     .log-error{color:var(--red)}
     .log-info{color:var(--green)}
     .log-cat{color:#64b5f6}
     .log-warn{color:#ffb300}
+    .log-purple{color:var(--purple)}
     .progress-wrap{padding:0 24px 16px;display:none}
     .progress-bar-bg{background:#1a1a1a;border-radius:100px;height:3px;overflow:hidden}
     .progress-bar{height:100%;background:var(--green);border-radius:100px;transition:width .3s ease;box-shadow:0 0 8px rgba(0,230,118,.5)}
+    .progress-bar.purple{background:var(--purple);box-shadow:0 0 8px rgba(167,139,250,.5)}
     .status-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:4px 12px;border-radius:100px;font-weight:600;letter-spacing:.5px}
     .status-idle{background:#1a1a1a;color:var(--muted)}
     .status-running{background:rgba(0,230,118,.1);color:var(--green);border:1px solid rgba(0,230,118,.2)}
@@ -76,8 +81,24 @@
     .cat-item .cat-folders{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;line-height:1.6}
     .info-box{background:rgba(0,230,118,.05);border:1px solid rgba(0,230,118,.15);border-radius:10px;padding:16px;margin-bottom:20px;font-size:13px;color:#aaa;line-height:1.6}
     .info-box strong{color:var(--green)}
+    .info-box.purple{background:rgba(167,139,250,.05);border-color:rgba(167,139,250,.2)}
+    .info-box.purple strong{color:var(--purple)}
     .warn-box{background:rgba(255,180,0,.05);border:1px solid rgba(255,180,0,.2);border-radius:10px;padding:16px;margin-bottom:20px;font-size:13px;color:#aaa;line-height:1.6}
     .warn-box strong{color:#ffb300}
+    /* Preview de renomeação inteligente */
+    .ai-preview{margin-top:20px;display:none}
+    .ai-preview h3{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+    .ai-folder-block{background:#000;border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden}
+    .ai-folder-header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);background:#0a0a0a}
+    .ai-folder-old{color:var(--muted);text-decoration:line-through;font-size:12px;font-family:'DM Mono',monospace}
+    .ai-folder-arrow{color:var(--purple);font-size:14px}
+    .ai-folder-new{color:var(--purple);font-size:13px;font-weight:700;font-family:'DM Mono',monospace}
+    .ai-files{padding:10px 16px}
+    .ai-file-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-family:'DM Mono',monospace;font-size:11px}
+    .ai-file-old{color:#444;text-decoration:line-through;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .ai-file-new{color:#aaa;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .ai-file-skip{color:#2a2a2a;flex:1}
+    /* Limpar vazias */
     .empty-list{margin-top:20px;display:none}
     .empty-list h3{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
     .empty-summary{font-size:13px;color:var(--muted);margin-bottom:12px}
@@ -95,12 +116,13 @@
   <header>
     <div class="tag">Google Drive Manager</div>
     <h1>GERENCIAR<br/><span>PASTAS</span></h1>
-    <p>Renomeie recursivamente, categorize com IA e limpe pastas vazias — sem abrir o terminal.</p>
+    <p>Renomeie, categorize com IA inteligente e limpe pastas vazias — sem abrir o terminal.</p>
   </header>
 
   <div class="tabs">
     <div class="tab active" onclick="setTab('renomear')">Renomear</div>
     <div class="tab" onclick="setTab('categorizar')">Categorizar IA</div>
+    <div class="tab ai-tab" onclick="setTab('ai')">🧠 IA Inteligente</div>
     <div class="tab" onclick="setTab('limpar')">🗑 Limpar Vazias</div>
   </div>
 
@@ -160,7 +182,7 @@
           <input type="password" id="anthropicKey" placeholder="sk-ant-..."/>
         </div>
       </div>
-      <label>Instrução para a IA (opcional)</label>
+      <label>Instrução para a IA</label>
       <textarea id="aiPrompt">Analise os nomes das pastas e agrupe em categorias lógicas. Crie nomes de categoria em português e maiúsculo. Cada pasta deve ir para exatamente uma categoria.</textarea>
       <div class="btn-row">
         <button class="btn btn-primary" id="btnAnalyze" onclick="analisarComIA()">🤖 Analisar com IA</button>
@@ -187,11 +209,60 @@
     </div>
   </div>
 
+  <!-- PANEL: IA INTELIGENTE -->
+  <div class="panel" id="panel-ai">
+    <div class="card">
+      <div class="info-box purple">
+        <strong>🧠 Como funciona:</strong> O Claude <strong>entra em cada pasta</strong>, lê os nomes de todos os arquivos dentro, descobre o que é aquilo de verdade (personagem, franquia, série) e sugere:<br/><br/>
+        ✦ <strong>Novo nome para a pasta</strong> — específico e contextual (ex: <em>BEN 10</em> ao invés de <em>PERSONAGENS</em>)<br/>
+        ✦ <strong>Novo nome para cada arquivo</strong> — limpo, sem códigos, sem ruído<br/><br/>
+        Você vê a prévia completa antes de aplicar qualquer mudança.
+      </div>
+      <div class="row2">
+        <div>
+          <label>ID da Pasta Raiz do Drive</label>
+          <input type="text" id="folderIdAI" placeholder="Cole o ID da pasta raiz aqui"/>
+        </div>
+        <div>
+          <label>Chave da API Anthropic (Claude)</label>
+          <input type="password" id="anthropicKeyAI" placeholder="sk-ant-..."/>
+        </div>
+      </div>
+      <div class="options" style="margin-bottom:16px">
+        <label class="opt active" id="opt-ai-pastas"><input type="checkbox" checked onchange="toggleOpt(this,'opt-ai-pastas')"/> Renomear pastas</label>
+        <label class="opt active" id="opt-ai-arquivos"><input type="checkbox" checked onchange="toggleOpt(this,'opt-ai-arquivos')"/> Renomear arquivos</label>
+        <label class="opt active" id="opt-ai-maiusculo"><input type="checkbox" checked onchange="toggleOpt(this,'opt-ai-maiusculo')"/> Nomes em maiúsculo</label>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-purple" id="btnAIAnalyze" onclick="iaInteligenteAnalisar()">🧠 Analisar com IA</button>
+        <button class="btn btn-secondary" id="btnAIApply" onclick="iaInteligenteAplicar()" disabled>✅ Aplicar renomeações</button>
+        <button class="btn btn-secondary" onclick="limparLog('logAI')">Limpar log</button>
+      </div>
+      <div class="ai-preview" id="aiPreview">
+        <h3>Prévia das renomeações</h3>
+        <div id="aiPreviewGrid"></div>
+      </div>
+    </div>
+    <div class="log-card">
+      <div class="log-header">
+        <span>Log de execução</span>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="log-count" id="logCountAI">0 pastas</span>
+          <span class="status-badge status-idle" id="statusAI"><span class="dot"></span> Aguardando</span>
+        </div>
+      </div>
+      <div class="progress-wrap" id="progressWrapAI">
+        <div class="progress-bar-bg"><div class="progress-bar purple" id="progressBarAI" style="width:0%"></div></div>
+      </div>
+      <div class="log-body" id="logAI"><div class="log-empty">Cole o ID da pasta e sua chave Anthropic, depois clique em "Analisar com IA".</div></div>
+    </div>
+  </div>
+
   <!-- PANEL: LIMPAR VAZIAS -->
   <div class="panel" id="panel-limpar">
     <div class="card">
       <div class="warn-box">
-        <strong>⚠️ Como funciona:</strong> O site varre <strong>todas as subpastas recursivamente</strong>, identifica as que estão completamente vazias (sem arquivos nem subpastas) e mostra a lista para você confirmar antes de apagar qualquer coisa.
+        <strong>⚠️ Como funciona:</strong> O site varre <strong>todas as subpastas recursivamente</strong>, identifica as que estão completamente vazias e mostra a lista para você confirmar antes de apagar qualquer coisa.
       </div>
       <div>
         <label>ID da Pasta Raiz do Drive</label>
@@ -234,9 +305,11 @@
   let categoriasIA = null;
   let pastasCache = [];
   let pastasVazias = [];
+  let aiRenomearPlan = []; // [{pasta:{id,nome}, novoNomePasta, arquivos:[{id,nome,novoNome}]}]
 
+  // ─── TABS ──────────────────────────────────────────
   function setTab(tab) {
-    const tabs = ['renomear','categorizar','limpar'];
+    const tabs = ['renomear','categorizar','ai','limpar'];
     document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', tabs[i] === tab));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-' + tab).classList.add('active');
@@ -257,20 +330,22 @@
     if (empty) empty.remove();
     const line = document.createElement('div');
     line.className = 'log-line';
-    if (tipo === 'rename') line.innerHTML = `<span class="log-arrow">→</span><span class="log-old">${texto}</span><span class="log-arrow">→</span><span class="log-new">${novo}</span>`;
-    else if (tipo === 'cat') line.innerHTML = `<span class="log-cat">📁 ${texto}</span><span class="log-arrow">→</span><span class="log-new">${novo}</span>`;
-    else if (tipo === 'skip') line.innerHTML = `<span class="log-skip">— ${texto}</span>`;
-    else if (tipo === 'error') line.innerHTML = `<span class="log-error">✗ ${texto}</span>`;
-    else if (tipo === 'warn') line.innerHTML = `<span class="log-warn">⚠ ${texto}</span>`;
-    else if (tipo === 'delete') line.innerHTML = `<span class="log-error">🗑 ${texto}</span>`;
-    else line.innerHTML = `<span class="log-info">${texto}</span>`;
+    if (tipo === 'rename') line.innerHTML = `<span class="log-arrow">→</span><span class="log-old">${esc(texto)}</span><span class="log-arrow">→</span><span class="log-new">${esc(novo)}</span>`;
+    else if (tipo === 'cat') line.innerHTML = `<span class="log-cat">📁 ${esc(texto)}</span><span class="log-arrow">→</span><span class="log-new">${esc(novo)}</span>`;
+    else if (tipo === 'skip') line.innerHTML = `<span class="log-skip">— ${esc(texto)}</span>`;
+    else if (tipo === 'error') line.innerHTML = `<span class="log-error">✗ ${esc(texto)}</span>`;
+    else if (tipo === 'warn') line.innerHTML = `<span class="log-warn">⚠ ${esc(texto)}</span>`;
+    else if (tipo === 'delete') line.innerHTML = `<span class="log-error">🗑 ${esc(texto)}</span>`;
+    else if (tipo === 'purple') line.innerHTML = `<span class="log-purple">${esc(texto)}</span>`;
+    else line.innerHTML = `<span class="log-info">${esc(texto)}</span>`;
     body.appendChild(line);
     body.scrollTop = body.scrollHeight;
   }
 
+  function esc(t) { return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function limparLog(id) { document.getElementById(id).innerHTML = '<div class="log-empty">Log limpo.</div>'; }
 
-  // AUTH
+  // ─── AUTH ───────────────────────────────────────────
   function iniciarAuth() {
     const clientId = document.getElementById('clientId').value.trim();
     if (!clientId) { alert('Preencha o Client ID OAuth!'); return; }
@@ -283,7 +358,7 @@
           document.getElementById('btnAuth').innerHTML = '✅ Conectado';
           document.getElementById('btnAuth').style.background = '#00c853';
           document.getElementById('btnRun').disabled = false;
-          log('logRenomear', 'info', '✅ Autenticado! Agora você pode usar todas as abas.');
+          log('logRenomear', 'info', '✅ Autenticado! Agora use qualquer aba.');
           setStatus('statusR', 'done', 'Conectado');
         }
       }
@@ -291,30 +366,50 @@
     client.requestAccessToken();
   }
 
-  // DRIVE HELPERS
+  // ─── DRIVE HELPERS ───────────────────────────────────
+  async function driveGet(url) {
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+    return r.json();
+  }
+
   async function listarSubpastas(parentId) {
     let todas = [], pageToken = null;
     do {
-      let url = `https://www.googleapis.com/drive/v3/files?q='${parentId}'+in+parents+and+mimeType='application/vnd.google-apps.folder'+and+trashed=false&fields=files(id,name),nextPageToken&pageSize=500`;
+      let url = `https://www.googleapis.com/drive/v3/files?q='${parentId}'+in+parents+and+mimeType='application/vnd.google-apps.folder'+and+trashed=false&fields=files(id,name),nextPageToken&pageSize=500&orderBy=name`;
       if (pageToken) url += `&pageToken=${pageToken}`;
-      const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-      const data = await resp.json();
+      const data = await driveGet(url);
       todas = todas.concat(data.files || []);
       pageToken = data.nextPageToken || null;
     } while (pageToken);
     return todas;
   }
 
+  async function listarArquivos(parentId) {
+    let todos = [], pageToken = null;
+    do {
+      let url = `https://www.googleapis.com/drive/v3/files?q='${parentId}'+in+parents+and+mimeType!='application/vnd.google-apps.folder'+and+trashed=false&fields=files(id,name),nextPageToken&pageSize=500&orderBy=name`;
+      if (pageToken) url += `&pageToken=${pageToken}`;
+      const data = await driveGet(url);
+      todos = todos.concat(data.files || []);
+      pageToken = data.nextPageToken || null;
+    } while (pageToken);
+    return todos;
+  }
+
+  async function renomearItem(id, novoNome) {
+    await fetch(`https://www.googleapis.com/drive/v3/files/${id}`, {
+      method: 'PATCH',
+      headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: novoNome })
+    });
+  }
+
   async function contarConteudo(folderId) {
-    const resp = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+trashed=false&fields=files(id)&pageSize=1`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
-    );
-    const data = await resp.json();
+    const data = await driveGet(`https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+trashed=false&fields=files(id)&pageSize=1`);
     return (data.files || []).length;
   }
 
-  // RENAME
+  // ─── RENAME SIMPLES ─────────────────────────────────
   function limparNome(nome) {
     const limpar = document.querySelector('#opt-limpar input').checked;
     const maiusculo = document.querySelector('#opt-maiusculo input').checked;
@@ -332,36 +427,26 @@
     if (!document.querySelector('#opt-traduzir input').checked) return texto;
     try {
       const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=pt&dt=t&q=${encodeURIComponent(texto.toLowerCase())}`;
-      const resp = await fetch(url);
-      const data = await resp.json();
+      const data = await (await fetch(url)).json();
       return data[0].map(x => x[0]).join('').toUpperCase();
-    } catch (e) { return texto; }
+    } catch { return texto; }
   }
 
   async function renomearRecursivo(folderId, profundidade, contRef, numerarRaiz) {
     const pastas = await listarSubpastas(folderId);
     const recursivo = document.querySelector('#opt-recursivo input').checked;
     const indent = '  '.repeat(profundidade);
-
     for (let i = 0; i < pastas.length; i++) {
       const pasta = pastas[i];
       const nomeOriginal = pasta.name;
       let nomeFinal = await traduzirTexto(limparNome(nomeOriginal));
       if (numerarRaiz && profundidade === 0) nomeFinal = `${i + 1}. ${nomeFinal}`;
-
-      await fetch(`https://www.googleapis.com/drive/v3/files/${pasta.id}`, {
-        method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: nomeFinal })
-      });
-
+      await renomearItem(pasta.id, nomeFinal);
       if (nomeOriginal !== nomeFinal) log('logRenomear', 'rename', indent + nomeOriginal, nomeFinal);
       else log('logRenomear', 'skip', indent + nomeOriginal);
-
       contRef.count++;
       document.getElementById('logCountR').textContent = `${contRef.count} processadas`;
-      await new Promise(r => setTimeout(r, 200));
-
+      await sleep(200);
       if (recursivo) await renomearRecursivo(pasta.id, profundidade + 1, contRef, false);
     }
   }
@@ -370,29 +455,22 @@
     if (!accessToken) { alert('Conecte ao Google primeiro!'); return; }
     const folderId = document.getElementById('folderId').value.trim();
     if (!folderId) { alert('Preencha o ID da pasta!'); return; }
-    const numerar = document.querySelector('#opt-numerar input').checked;
-    const recursivo = document.querySelector('#opt-recursivo input').checked;
-
     document.getElementById('btnRun').disabled = true;
     document.getElementById('progressWrapR').style.display = 'block';
     document.getElementById('progressBarR').style.width = '5%';
     setStatus('statusR', 'running', 'Processando...');
-    log('logRenomear', 'info', `🔍 Iniciando${recursivo ? ' (recursivo — todas as subpastas)' : ''}...`);
-
+    log('logRenomear', 'info', `🔍 Iniciando${document.querySelector('#opt-recursivo input').checked ? ' (recursivo)' : ''}...`);
     try {
       const contRef = { count: 0 };
-      await renomearRecursivo(folderId, 0, contRef, numerar);
+      await renomearRecursivo(folderId, 0, contRef, document.querySelector('#opt-numerar input').checked);
       document.getElementById('progressBarR').style.width = '100%';
       setStatus('statusR', 'done', 'Concluído!');
       log('logRenomear', 'info', `✅ ${contRef.count} pastas processadas!`);
-    } catch(e) {
-      log('logRenomear', 'error', e.message);
-      setStatus('statusR', 'error', 'Erro');
-    }
+    } catch(e) { log('logRenomear', 'error', e.message); setStatus('statusR', 'error', 'Erro'); }
     document.getElementById('btnRun').disabled = false;
   }
 
-  // CATEGORIZAR
+  // ─── CATEGORIZAR COM IA ──────────────────────────────
   async function analisarComIA() {
     const folderId = document.getElementById('folderIdCat').value.trim();
     const apiKey = document.getElementById('anthropicKey').value.trim();
@@ -400,52 +478,37 @@
     if (!folderId) { alert('Preencha o ID da pasta!'); return; }
     if (!apiKey) { alert('Preencha a chave da API Anthropic!'); return; }
     if (!accessToken) { alert('Conecte ao Google primeiro na aba "Renomear"!'); return; }
-
     document.getElementById('btnAnalyze').disabled = true;
     document.getElementById('progressWrapC').style.display = 'block';
     setStatus('statusC', 'running', 'Buscando pastas...');
     log('logCat', 'info', '🔍 Buscando pastas...');
-
     try {
       pastasCache = await listarSubpastas(folderId);
-      if (pastasCache.length === 0) { log('logCat', 'error', 'Nenhuma pasta encontrada!'); document.getElementById('btnAnalyze').disabled = false; return; }
+      if (!pastasCache.length) { log('logCat', 'error', 'Nenhuma pasta encontrada!'); document.getElementById('btnAnalyze').disabled = false; return; }
       document.getElementById('logCountC').textContent = `${pastasCache.length} pastas`;
-      log('logCat', 'info', `📁 ${pastasCache.length} pastas encontradas. Enviando para o Claude...`);
-      setStatus('statusC', 'running', 'Analisando com IA...');
-
+      log('logCat', 'info', `📁 ${pastasCache.length} pastas. Enviando para Claude...`);
+      setStatus('statusC', 'running', 'Analisando...');
       const nomes = pastasCache.map(p => p.name).join('\n');
-      const mensagem = `${prompt}\n\nLista de pastas:\n${nomes}\n\nResponda APENAS com um JSON válido no formato:\n{"categorias": {"NOME DA CATEGORIA": ["pasta1", "pasta2"]}}`;
-
-      const aiResp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, messages: [{ role: 'user', content: mensagem }] })
-      });
-
-      const aiData = await aiResp.json();
-      if (aiData.error) throw new Error(aiData.error.message);
-      const jsonMatch = aiData.content[0].text.match(/\{[\s\S]*\}/);
+      const msg = `${prompt}\n\nLista de pastas:\n${nomes}\n\nResponda APENAS com JSON válido:\n{"categorias": {"NOME DA CATEGORIA": ["pasta1", "pasta2"]}}`;
+      const aiData = await callClaude(apiKey, msg);
+      const jsonMatch = aiData.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error('IA não retornou JSON válido');
       categoriasIA = JSON.parse(jsonMatch[0]);
       document.getElementById('progressBarC').style.width = '50%';
-      log('logCat', 'info', `✅ Claude criou ${Object.keys(categoriasIA.categorias).length} categorias!`);
-
+      log('logCat', 'info', `✅ ${Object.keys(categoriasIA.categorias).length} categorias criadas!`);
       const grid = document.getElementById('catGrid');
       grid.innerHTML = '';
       for (const [cat, folders] of Object.entries(categoriasIA.categorias)) {
         log('logCat', 'info', `📂 ${cat}: ${folders.length} pastas`);
         const item = document.createElement('div');
         item.className = 'cat-item';
-        item.innerHTML = `<div class="cat-name">📂 ${cat}</div><div class="cat-folders">${folders.join('<br/>')}</div>`;
+        item.innerHTML = `<div class="cat-name">📂 ${esc(cat)}</div><div class="cat-folders">${folders.map(esc).join('<br/>')}</div>`;
         grid.appendChild(item);
       }
       document.getElementById('catPreview').style.display = 'block';
       document.getElementById('btnApplyCategories').disabled = false;
       setStatus('statusC', 'done', 'Pronto para aplicar!');
-    } catch(e) {
-      log('logCat', 'error', 'Erro: ' + e.message);
-      setStatus('statusC', 'error', 'Erro');
-    }
+    } catch(e) { log('logCat', 'error', 'Erro: ' + e.message); setStatus('statusC', 'error', 'Erro'); }
     document.getElementById('btnAnalyze').disabled = false;
   }
 
@@ -475,20 +538,225 @@
           log('logCat', 'cat', nomeP, cat);
           feito++;
           document.getElementById('progressBarC').style.width = `${50 + (feito/total)*50}%`;
-          await new Promise(r => setTimeout(r, 150));
+          await sleep(150);
         }
       }
       setStatus('statusC', 'done', 'Organizado!');
       log('logCat', 'info', `✅ ${feito} pastas organizadas!`);
       document.getElementById('catPreview').style.display = 'none';
-    } catch(e) {
-      log('logCat', 'error', 'Erro: ' + e.message);
-      setStatus('statusC', 'error', 'Erro');
-      document.getElementById('btnApplyCategories').disabled = false;
-    }
+    } catch(e) { log('logCat', 'error', 'Erro: ' + e.message); setStatus('statusC', 'error', 'Erro'); document.getElementById('btnApplyCategories').disabled = false; }
   }
 
-  // LIMPAR VAZIAS
+  // ─── IA INTELIGENTE ──────────────────────────────────
+  async function callClaude(apiKey, userMsg, systemMsg) {
+    const body = {
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4000,
+      messages: [{ role: 'user', content: userMsg }]
+    };
+    if (systemMsg) body.system = systemMsg;
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify(body)
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error.message);
+    return data.content[0].text;
+  }
+
+  async function iaInteligenteAnalisar() {
+    if (!accessToken) { alert('Conecte ao Google primeiro na aba "Renomear"!'); return; }
+    const folderId = document.getElementById('folderIdAI').value.trim();
+    const apiKey = document.getElementById('anthropicKeyAI').value.trim();
+    if (!folderId) { alert('Preencha o ID da pasta!'); return; }
+    if (!apiKey) { alert('Preencha a chave da API Anthropic!'); return; }
+
+    const renomearPastas = document.querySelector('#opt-ai-pastas input').checked;
+    const renomearArquivos = document.querySelector('#opt-ai-arquivos input').checked;
+    const maiusculo = document.querySelector('#opt-ai-maiusculo input').checked;
+
+    document.getElementById('btnAIAnalyze').disabled = true;
+    document.getElementById('btnAIApply').disabled = true;
+    document.getElementById('progressWrapAI').style.display = 'block';
+    document.getElementById('progressBarAI').style.width = '3%';
+    document.getElementById('aiPreview').style.display = 'none';
+    setStatus('statusAI', 'running', 'Lendo pastas...');
+    log('logAI', 'info', '🔍 Lendo estrutura de pastas...');
+    aiRenomearPlan = [];
+
+    try {
+      // 1. Lista todas as pastas
+      const pastas = await listarSubpastas(folderId);
+      if (!pastas.length) { log('logAI', 'error', 'Nenhuma pasta encontrada!'); document.getElementById('btnAIAnalyze').disabled = false; return; }
+      document.getElementById('logCountAI').textContent = `${pastas.length} pastas`;
+      log('logAI', 'info', `📁 ${pastas.length} pastas encontradas. Lendo arquivos...`);
+
+      // 2. Para cada pasta, busca os arquivos dentro
+      const dadosPastas = [];
+      for (let i = 0; i < pastas.length; i++) {
+        const pasta = pastas[i];
+        const arquivos = await listarArquivos(pasta.id);
+        dadosPastas.push({ pasta, arquivos });
+        document.getElementById('progressBarAI').style.width = `${5 + (i/pastas.length)*30}%`;
+        log('logAI', 'purple', `📂 ${pasta.name} — ${arquivos.length} arquivo(s)`);
+        await sleep(100);
+      }
+
+      log('logAI', 'info', `✅ Leitura concluída. Enviando para Claude analisar ${pastas.length} pastas...`);
+      setStatus('statusAI', 'running', 'Claude analisando...');
+
+      // 3. Monta o prompt para o Claude analisar TUDO de uma vez
+      const maiusculoInstr = maiusculo ? ' Use MAIÚSCULAS em todos os nomes.' : '';
+      const systemPrompt = `Você é um especialista em organização de arquivos 3D (STL). Analise os nomes de pastas e arquivos e identifique o que cada um é de verdade — personagem, franquia, série, jogo, filme, etc. 
+      
+REGRAS IMPORTANTES:
+- Nomeie as pastas com o nome ESPECÍFICO do personagem/franquia/série/tema — NUNCA use categorias genéricas como "ANIMAIS", "HERÓIS", "PERSONAGENS"
+- Se a pasta tem arquivos do Ben 10 → o nome deve ser "BEN 10", não "PERSONAGENS ANIMADOS"  
+- Se tem arquivos do Batman → "BATMAN", não "SUPER-HERÓIS DC"
+- Se tem Pikachu e Charizard → "POKEMON", pois é uma franquia coesa
+- Para arquivos: remova códigos, hashes, extensões redundantes e lixo do nome. Mantenha o nome descritivo do objeto${maiusculoInstr}
+- Se o nome já está correto, retorne o mesmo nome
+- Responda APENAS com JSON válido, sem texto extra`;
+
+      const listagem = dadosPastas.map(({ pasta, arquivos }) => {
+        const listaArq = arquivos.slice(0, 30).map(a => `    - ${a.name}`).join('\n');
+        const extra = arquivos.length > 30 ? `\n    ... e mais ${arquivos.length - 30} arquivos` : '';
+        return `Pasta: "${pasta.name}"\nArquivos:\n${listaArq || '    (vazia)'}${extra}`;
+      }).join('\n\n');
+
+      const promptIA = `Analise cada pasta abaixo e retorne o JSON com os novos nomes.
+      
+${listagem}
+
+Responda APENAS com JSON neste formato exato:
+{
+  "pastas": [
+    {
+      "nomeOriginal": "nome atual da pasta",
+      "novoNome": "NOME ESPECÍFICO CORRETO",
+      "arquivos": [
+        {"nomeOriginal": "arquivo_original.stl", "novoNome": "NOME LIMPO"}
+      ]
+    }
+  ]
+}`;
+
+      const resposta = await callClaude(apiKey, promptIA, systemPrompt);
+      document.getElementById('progressBarAI').style.width = '70%';
+
+      // 4. Parse da resposta
+      const jsonMatch = resposta.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('Claude não retornou JSON válido. Tente novamente.');
+      const resultado = JSON.parse(jsonMatch[0]);
+
+      // 5. Monta o plano de renomeação
+      aiRenomearPlan = [];
+      const grid = document.getElementById('aiPreviewGrid');
+      grid.innerHTML = '';
+      let totalMudancas = 0;
+
+      for (const item of resultado.pastas) {
+        const pastaObj = dadosPastas.find(d => d.pasta.name === item.nomeOriginal);
+        if (!pastaObj) continue;
+
+        const novoPastaNome = renomearPastas ? (item.novoNome || item.nomeOriginal) : item.nomeOriginal;
+        const pastaMudou = novoPastaNome !== item.nomeOriginal;
+
+        // Mapeia arquivos
+        const arquivosPlano = [];
+        for (const arqItem of (item.arquivos || [])) {
+          const arqObj = pastaObj.arquivos.find(a => a.name === arqItem.nomeOriginal);
+          if (!arqObj) continue;
+          const novoArqNome = renomearArquivos ? (arqItem.novoNome || arqItem.nomeOriginal) : arqItem.nomeOriginal;
+          arquivosPlano.push({ id: arqObj.id, nome: arqObj.name, novoNome: novoArqNome });
+          if (novoArqNome !== arqObj.name) totalMudancas++;
+        }
+
+        if (pastaMudou) totalMudancas++;
+        aiRenomearPlan.push({ pasta: pastaObj.pasta, novoNomePasta: novoPastaNome, arquivos: arquivosPlano });
+
+        // Renderiza no preview
+        const block = document.createElement('div');
+        block.className = 'ai-folder-block';
+        const headerColor = pastaMudou ? '#2a1a4a' : '#0a0a0a';
+        block.innerHTML = `
+          <div class="ai-folder-header" style="background:${headerColor}">
+            <span class="ai-folder-old">📁 ${esc(item.nomeOriginal)}</span>
+            <span class="ai-folder-arrow">${pastaMudou ? '→' : '='}</span>
+            <span class="ai-folder-new">${esc(novoPastaNome)}</span>
+          </div>
+          <div class="ai-files">
+            ${arquivosPlano.slice(0,10).map(a => a.novoNome !== a.nome
+              ? `<div class="ai-file-row"><span class="ai-file-old">${esc(a.nome)}</span><span style="color:#555;flex-shrink:0">→</span><span class="ai-file-new">${esc(a.novoNome)}</span></div>`
+              : `<div class="ai-file-row"><span class="ai-file-skip">— ${esc(a.nome)}</span></div>`
+            ).join('')}
+            ${arquivosPlano.length > 10 ? `<div style="color:#333;font-size:11px;padding:4px 0">... e mais ${arquivosPlano.length - 10} arquivos</div>` : ''}
+          </div>`;
+        grid.appendChild(block);
+      }
+
+      document.getElementById('progressBarAI').style.width = '100%';
+      document.getElementById('aiPreview').style.display = 'block';
+      document.getElementById('btnAIApply').disabled = false;
+      setStatus('statusAI', 'done', `${totalMudancas} mudanças`);
+      log('logAI', 'info', `✅ Análise concluída! ${totalMudancas} renomeações planejadas. Confira a prévia e aplique.`);
+
+    } catch(e) {
+      log('logAI', 'error', 'Erro: ' + e.message);
+      setStatus('statusAI', 'error', 'Erro');
+    }
+    document.getElementById('btnAIAnalyze').disabled = false;
+  }
+
+  async function iaInteligenteAplicar() {
+    if (!aiRenomearPlan.length) return;
+    document.getElementById('btnAIApply').disabled = true;
+    document.getElementById('btnAIAnalyze').disabled = true;
+    setStatus('statusAI', 'running', 'Aplicando...');
+    log('logAI', 'info', '🚀 Aplicando renomeações...');
+
+    let totalFeito = 0;
+    const totalItens = aiRenomearPlan.reduce((s, p) => s + 1 + p.arquivos.filter(a => a.novoNome !== a.nome).length, 0);
+
+    for (const item of aiRenomearPlan) {
+      // Renomeia pasta
+      if (item.novoNomePasta !== item.pasta.name) {
+        try {
+          await renomearItem(item.pasta.id, item.novoNomePasta);
+          log('logAI', 'rename', '📁 ' + item.pasta.name, item.novoNomePasta);
+        } catch(e) { log('logAI', 'error', `Pasta ${item.pasta.name}: ${e.message}`); }
+        totalFeito++;
+      }
+
+      // Renomeia arquivos
+      for (const arq of item.arquivos) {
+        if (arq.novoNome !== arq.nome) {
+          try {
+            await renomearItem(arq.id, arq.novoNome);
+            log('logAI', 'rename', arq.nome, arq.novoNome);
+          } catch(e) { log('logAI', 'error', `${arq.nome}: ${e.message}`); }
+          totalFeito++;
+          await sleep(150);
+        }
+      }
+
+      document.getElementById('progressBarAI').style.width = `${(totalFeito / totalItens) * 100}%`;
+      document.getElementById('logCountAI').textContent = `${totalFeito} renomeados`;
+    }
+
+    setStatus('statusAI', 'done', 'Concluído!');
+    log('logAI', 'info', `✅ ${totalFeito} itens renomeados com sucesso!`);
+    document.getElementById('aiPreview').style.display = 'none';
+    document.getElementById('btnAIAnalyze').disabled = false;
+  }
+
+  // ─── LIMPAR VAZIAS ───────────────────────────────────
   async function escanearRecursivo(folderId, caminhoAtual, resultado, contRef) {
     const subpastas = await listarSubpastas(folderId);
     for (const pasta of subpastas) {
@@ -496,17 +764,10 @@
       contRef.total++;
       log('logLimpar', 'info', `📂 ${caminho}`);
       document.getElementById('logCountL').textContent = `${contRef.total} escaneadas`;
-
-      // Primeiro entra nas filhas (bottom-up)
       await escanearRecursivo(pasta.id, caminho, resultado, contRef);
-
-      // Depois verifica se ficou vazia
       const qtd = await contarConteudo(pasta.id);
-      if (qtd === 0) {
-        resultado.push({ id: pasta.id, name: pasta.name, path: caminho });
-        log('logLimpar', 'warn', `VAZIA: ${caminho}`);
-      }
-      await new Promise(r => setTimeout(r, 100));
+      if (qtd === 0) { resultado.push({ id: pasta.id, name: pasta.name, path: caminho }); log('logLimpar', 'warn', `VAZIA: ${caminho}`); }
+      await sleep(100);
     }
   }
 
@@ -514,7 +775,6 @@
     if (!accessToken) { alert('Conecte ao Google primeiro na aba "Renomear"!'); return; }
     const folderId = document.getElementById('folderIdLimpar').value.trim();
     if (!folderId) { alert('Preencha o ID da pasta raiz!'); return; }
-
     document.getElementById('btnScan').disabled = true;
     document.getElementById('btnDelete').disabled = true;
     document.getElementById('emptyList').style.display = 'none';
@@ -523,15 +783,13 @@
     setStatus('statusL', 'running', 'Escaneando...');
     log('logLimpar', 'info', '🔍 Iniciando varredura recursiva...');
     pastasVazias = [];
-
     try {
       const contRef = { total: 0 };
       await escanearRecursivo(folderId, '', pastasVazias, contRef);
       document.getElementById('progressBarL').style.width = '100%';
-
-      if (pastasVazias.length === 0) {
+      if (!pastasVazias.length) {
         setStatus('statusL', 'done', 'Nenhuma vazia!');
-        log('logLimpar', 'info', `✅ Varredura concluída — nenhuma pasta vazia encontrada!`);
+        log('logLimpar', 'info', '✅ Varredura concluída — nenhuma pasta vazia encontrada!');
       } else {
         setStatus('statusL', 'done', `${pastasVazias.length} vazias`);
         log('logLimpar', 'warn', `${pastasVazias.length} pastas vazias encontradas.`);
@@ -541,54 +799,43 @@
         pastasVazias.forEach((p, i) => {
           const item = document.createElement('div');
           item.className = 'empty-item';
-          item.innerHTML = `<span class="path" title="${p.path}">📁 ${p.path}</span><input type="checkbox" class="check" checked data-index="${i}"/>`;
+          item.innerHTML = `<span class="path" title="${esc(p.path)}">📁 ${esc(p.path)}</span><input type="checkbox" class="check" checked data-index="${i}"/>`;
           container.appendChild(item);
         });
         document.getElementById('emptyList').style.display = 'block';
         document.getElementById('btnDelete').disabled = false;
       }
-    } catch(e) {
-      log('logLimpar', 'error', 'Erro: ' + e.message);
-      setStatus('statusL', 'error', 'Erro');
-    }
+    } catch(e) { log('logLimpar', 'error', 'Erro: ' + e.message); setStatus('statusL', 'error', 'Erro'); }
     document.getElementById('btnScan').disabled = false;
   }
 
-  function selecionarTodas(valor) {
-    document.querySelectorAll('#emptyItems .check').forEach(cb => cb.checked = valor);
-  }
+  function selecionarTodas(valor) { document.querySelectorAll('#emptyItems .check').forEach(cb => cb.checked = valor); }
 
   async function apagarSelecionadas() {
-    const checks = document.querySelectorAll('#emptyItems .check');
-    const selecionadas = [];
-    checks.forEach(cb => { if (cb.checked) selecionadas.push(pastasVazias[parseInt(cb.dataset.index)]); });
-    if (selecionadas.length === 0) { alert('Nenhuma pasta selecionada!'); return; }
+    const selecionadas = [...document.querySelectorAll('#emptyItems .check')].filter(cb => cb.checked).map(cb => pastasVazias[parseInt(cb.dataset.index)]);
+    if (!selecionadas.length) { alert('Nenhuma pasta selecionada!'); return; }
     if (!confirm(`Apagar ${selecionadas.length} pastas vazias? Esta ação não pode ser desfeita.`)) return;
-
     document.getElementById('btnDelete').disabled = true;
     document.getElementById('btnScan').disabled = true;
     setStatus('statusL', 'running', 'Apagando...');
     log('logLimpar', 'info', `🗑 Apagando ${selecionadas.length} pastas...`);
-
     let apagadas = 0;
     for (const pasta of selecionadas) {
       try {
-        await fetch(`https://www.googleapis.com/drive/v3/files/${pasta.id}`, {
-          method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` }
-        });
+        await fetch(`https://www.googleapis.com/drive/v3/files/${pasta.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } });
         log('logLimpar', 'delete', pasta.path);
         apagadas++;
-      } catch(e) {
-        log('logLimpar', 'error', `Erro ao apagar ${pasta.name}: ${e.message}`);
-      }
+      } catch(e) { log('logLimpar', 'error', `Erro ao apagar ${pasta.name}: ${e.message}`); }
       document.getElementById('progressBarL').style.width = `${(apagadas/selecionadas.length)*100}%`;
-      await new Promise(r => setTimeout(r, 200));
+      await sleep(200);
     }
     setStatus('statusL', 'done', `${apagadas} apagadas!`);
     log('logLimpar', 'info', `✅ ${apagadas} pastas apagadas com sucesso!`);
     document.getElementById('emptyList').style.display = 'none';
     document.getElementById('btnScan').disabled = false;
   }
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 </script>
 </body>
 </html>
