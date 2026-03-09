@@ -106,6 +106,7 @@
     .empty-item{display:flex;align-items:center;justify-content:space-between;background:#000;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:6px;font-family:'DM Mono',monospace;font-size:12px}
     .empty-item .path{color:#888;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .empty-item .check{accent-color:var(--red);width:14px;height:14px;cursor:pointer;flex-shrink:0;margin-left:12px}
+    .tab.preview-tab.active{background:#ffa700;color:#000}
     @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
     @keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
@@ -124,6 +125,7 @@
     <div class="tab" onclick="setTab('categorizar')">Categorizar IA</div>
     <div class="tab ai-tab" onclick="setTab('ai')">🧠 IA Inteligente</div>
     <div class="tab" onclick="setTab('limpar')">🗑 Limpar Vazias</div>
+    <div class="tab preview-tab" onclick="setTab('preview')">🖼 Previews STL</div>
   </div>
 
   <!-- PANEL: RENOMEAR -->
@@ -297,6 +299,54 @@
       <div class="log-body" id="logLimpar"><div class="log-empty">Conecte ao Google na aba "Renomear" e cole o ID da pasta raiz.</div></div>
     </div>
   </div>
+
+  <!-- PANEL: PREVIEWS STL -->
+  <div class="panel" id="panel-preview">
+    <div class="card">
+      <div class="info-box" style="background:rgba(255,167,0,.05);border-color:rgba(255,167,0,.2)">
+        <strong style="color:#ffa700">🖼 Como funciona:</strong> O app varre a pasta escolhida, encontra todos os arquivos <strong>.stl</strong> que <em>não têm</em> uma imagem de preview ao lado, carrega cada um no navegador usando Three.js, renderiza em 3D e sobe o <strong>.png</strong> de volta pro Google Drive na mesma pasta.
+      </div>
+      <div class="row2">
+        <div>
+          <label>ID da Pasta Raiz do Drive</label>
+          <input type="text" id="folderIdPreview" placeholder="Cole o ID da pasta aqui"/>
+        </div>
+        <div>
+          <label>Tamanho do preview (px)</label>
+          <input type="text" id="previewSize" value="512" placeholder="512"/>
+        </div>
+      </div>
+      <div class="options" style="margin-bottom:16px">
+        <label class="opt active" id="opt-pv-recursivo"><input type="checkbox" checked onchange="toggleOpt(this,'opt-pv-recursivo')"/> Entrar em subpastas</label>
+        <label class="opt active" id="opt-pv-pular"><input type="checkbox" checked onchange="toggleOpt(this,'opt-pv-pular')"/> Pular se já tem preview</label>
+        <label class="opt" id="opt-pv-sobrescrever"><input type="checkbox" onchange="toggleOpt(this,'opt-pv-sobrescrever')"/> Sobrescrever previews existentes</label>
+      </div>
+      <!-- Canvas oculto para renderização -->
+      <canvas id="stlCanvas" style="display:none"></canvas>
+      <div class="btn-row">
+        <button class="btn" style="background:#ffa700;color:#000;box-shadow:0 0 20px rgba(255,167,0,.3);font-weight:700;font-size:13px;letter-spacing:.5px;text-transform:uppercase;padding:13px 28px;border-radius:10px;border:none;cursor:pointer" id="btnPreview" onclick="gerarPreviews()">🖼 Gerar Previews</button>
+        <button class="btn btn-secondary" onclick="limparLog('logPreview')">Limpar log</button>
+      </div>
+      <!-- Grade de preview ao vivo -->
+      <div id="previewGrade" style="display:none;margin-top:24px">
+        <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Previews gerados</div>
+        <div id="previewGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px"></div>
+      </div>
+    </div>
+    <div class="log-card">
+      <div class="log-header">
+        <span>Log de execução</span>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="log-count" id="logCountPV">0 arquivos</span>
+          <span class="status-badge status-idle" id="statusPV"><span class="dot"></span> Aguardando</span>
+        </div>
+      </div>
+      <div class="progress-wrap" id="progressWrapPV">
+        <div class="progress-bar-bg"><div class="progress-bar" id="progressBarPV" style="width:0%;background:#ffa700;box-shadow:0 0 8px rgba(255,167,0,.5)"></div></div>
+      </div>
+      <div class="log-body" id="logPreview"><div class="log-empty">Conecte ao Google na aba "Renomear" e cole o ID da pasta.</div></div>
+    </div>
+  </div>
 </div>
 
 <script src="https://accounts.google.com/gsi/client"></script>
@@ -309,7 +359,7 @@
 
   // ─── TABS ──────────────────────────────────────────
   function setTab(tab) {
-    const tabs = ['renomear','categorizar','ai','limpar'];
+    const tabs = ['renomear','categorizar','ai','limpar','preview'];
     document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', tabs[i] === tab));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-' + tab).classList.add('active');
@@ -667,8 +717,8 @@ REGRAS ABSOLUTAS — NUNCA quebre estas regras:
 
 Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
 
-      // 4. Processa em lotes de 25 pastas (evita limite de tokens)
-      const LOTE = 25;
+      // 4. Processa em lotes de 15 pastas (mais seguro para JSON complexo)
+      const LOTE = 15;
       const resultadoFinal = [];
 
       for (let inicio = 0; inicio < dadosPastas.length; inicio += LOTE) {
@@ -677,21 +727,27 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
         const totalLotes = Math.ceil(dadosPastas.length / LOTE);
         log('logAI', 'info', `🤖 Processando lote ${numLote}/${totalLotes} (${lote.length} pastas)...`);
 
-        const listagem = lote.map(({ pasta, arquivos, caminho }) => {
-          const listaArq = arquivos.slice(0, 20).map(a => `    - ${a.name}`).join('\n');
-          const extra = arquivos.length > 20 ? `\n    ... +${arquivos.length - 20} arquivos` : '';
-          return `Pasta: "${pasta.name}"\nCaminho: ${caminho || '(raiz)'}\nArquivos:\n${listaArq || '    (pasta vazia)'}${extra}`;
+        const listagem = lote.map(({ pasta, arquivos, caminho }, idx) => {
+          // Usa índice numérico como chave para evitar caracteres especiais quebrando o JSON
+          const listaArq = arquivos.slice(0, 15).map(a => `    - ${a.name.replace(/[\x00-\x1f\\]/g, ' ')}`).join('\n');
+          const extra = arquivos.length > 15 ? `\n    ... +${arquivos.length - 15} arquivos` : '';
+          return `Pasta #${inicio + idx} (nome: ${pasta.name.replace(/[\x00-\x1f]/g, ' ')})\nArquivos:\n${listaArq || '    (pasta vazia)'}${extra}`;
         }).join('\n\n---\n\n');
 
-        const promptIA = `Analise as pastas abaixo e retorne o JSON com os novos nomes corretos.
+        const promptIA = `Analise as pastas abaixo e retorne o JSON.
 
 ${listagem}
 
-Responda APENAS com este JSON:
+ATENÇÃO: O JSON deve ser 100% válido. Siga estas regras ao gerar strings JSON:
+- Escape aspas duplas dentro de strings: use \\"
+- Não use caracteres de controle
+- Mantenha os nomeOriginal EXATAMENTE iguais aos nomes mostrados acima (incluindo caracteres especiais)
+
+Responda APENAS com este JSON (sem texto antes ou depois, sem markdown):
 {
   "pastas": [
     {
-      "nomeOriginal": "nome exato atual da pasta",
+      "nomeOriginal": "nome exato da pasta",
       "novoNome": "NOME CORRETO",
       "arquivos": [
         {"nomeOriginal": "arquivo.stl", "novoNome": "NOVO NOME.stl"}
@@ -701,9 +757,49 @@ Responda APENAS com este JSON:
 }`;
 
         const resposta = await callClaude(apiKey, promptIA, systemPrompt);
-        const jsonMatch = resposta.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error(`Lote ${numLote}: Claude não retornou JSON válido`);
-        const resultado = JSON.parse(jsonMatch[0]);
+
+        // Parser robusto — tenta de várias formas antes de desistir
+        let resultado = null;
+        const tentativas = [
+          // 1. Parse direto
+          () => JSON.parse(resposta),
+          // 2. Extrai bloco JSON
+          () => JSON.parse(resposta.match(/\{[\s\S]*\}/)?.[0]),
+          // 3. Remove blocos markdown
+          () => JSON.parse(resposta.replace(/```json|```/g, '').trim()),
+          // 4. Corrige aspas simples usadas como aspas duplas
+          () => JSON.parse(resposta.match(/\{[\s\S]*\}/)?.[0].replace(/'/g, '"')),
+          // 5. Tenta truncar no último objeto completo válido
+          () => {
+            const raw = resposta.match(/\{[\s\S]*\}/)?.[0] || '';
+            // Conta chaves para achar onde o JSON quebra e tenta reparar
+            const linhas = raw.split('\n');
+            let construido = '';
+            let profundidade = 0;
+            let ultimoValido = '';
+            for (const linha of linhas) {
+              construido += linha + '\n';
+              profundidade += (linha.match(/\{/g)||[]).length - (linha.match(/\}/g)||[]).length;
+              try {
+                JSON.parse(construido + (profundidade > 0 ? ']}}'.repeat(profundidade) : ''));
+                ultimoValido = construido + (profundidade > 0 ? ']}}'.repeat(profundidade) : '');
+              } catch(e) { /* continua */ }
+            }
+            if (!ultimoValido) throw new Error('não foi possível reparar');
+            return JSON.parse(ultimoValido);
+          }
+        ];
+
+        for (const tentativa of tentativas) {
+          try { resultado = tentativa(); if (resultado) break; } catch(e) { /* tenta próxima */ }
+        }
+
+        if (!resultado) {
+          log('logAI', 'warn', `⚠ Lote ${numLote}: JSON inválido, pulando este lote. Tente reduzir o número de pastas.`);
+          await sleep(1000);
+          continue;
+        }
+
         resultadoFinal.push(...(resultado.pastas || []));
 
         document.getElementById('progressBarAI').style.width = `${50 + ((inicio + LOTE) / dadosPastas.length) * 40}%`;
@@ -903,6 +999,267 @@ Responda APENAS com este JSON:
   }
 
   function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-</script>
+
+  // ─── PREVIEWS STL ────────────────────────────────────
+  let threeLoaded = false;
+  let THREE_LIB = null;
+
+  async function carregarThree() {
+    if (threeLoaded) return;
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+      s.onload = () => { THREE_LIB = window.THREE; threeLoaded = true; resolve(); };
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  function parsearSTL(buffer) {
+    // Tenta binário primeiro (mais comum), depois ASCII
+    const isBinary = (() => {
+      const uint8 = new Uint8Array(buffer);
+      const numTri = new DataView(buffer).getUint32(80, true);
+      return buffer.byteLength === 84 + numTri * 50;
+    })();
+
+    const positions = [];
+    const normals = [];
+
+    if (isBinary) {
+      const view = new DataView(buffer);
+      const numTri = view.getUint32(80, true);
+      let offset = 84;
+      for (let i = 0; i < numTri; i++) {
+        const nx = view.getFloat32(offset, true);
+        const ny = view.getFloat32(offset+4, true);
+        const nz = view.getFloat32(offset+8, true);
+        offset += 12;
+        for (let v = 0; v < 3; v++) {
+          positions.push(view.getFloat32(offset,true), view.getFloat32(offset+4,true), view.getFloat32(offset+8,true));
+          normals.push(nx, ny, nz);
+          offset += 12;
+        }
+        offset += 2; // attr byte count
+      }
+    } else {
+      const text = new TextDecoder().decode(buffer);
+      const lines = text.split('\n');
+      let nx=0,ny=0,nz=0;
+      for (const line of lines) {
+        const t = line.trim();
+        if (t.startsWith('facet normal')) {
+          const p = t.split(/\s+/);
+          nx=parseFloat(p[2]); ny=parseFloat(p[3]); nz=parseFloat(p[4]);
+        } else if (t.startsWith('vertex')) {
+          const p = t.split(/\s+/);
+          positions.push(parseFloat(p[1]),parseFloat(p[2]),parseFloat(p[3]));
+          normals.push(nx,ny,nz);
+        }
+      }
+    }
+    return { positions: new Float32Array(positions), normals: new Float32Array(normals) };
+  }
+
+  function renderizarSTL(buffer, tamanho) {
+    const T = THREE_LIB;
+    const canvas = document.getElementById('stlCanvas');
+    canvas.width = tamanho;
+    canvas.height = tamanho;
+
+    const renderer = new T.WebGLRenderer({ canvas, antialias: true, alpha: false });
+    renderer.setSize(tamanho, tamanho);
+    renderer.setPixelRatio(1);
+    renderer.setClearColor(0x1a1a2e, 1);
+    renderer.shadowMap.enabled = true;
+
+    const scene = new T.Scene();
+    const camera = new T.PerspectiveCamera(45, 1, 0.01, 10000);
+
+    // Parse STL
+    const { positions, normals } = parsearSTL(buffer);
+    const geo = new T.BufferGeometry();
+    geo.setAttribute('position', new T.BufferAttribute(positions, 3));
+    geo.setAttribute('normal', new T.BufferAttribute(normals, 3));
+    geo.computeVertexNormals();
+
+    const mat = new T.MeshPhongMaterial({
+      color: 0x00e676,
+      specular: 0x224422,
+      shininess: 60,
+      side: T.DoubleSide
+    });
+    const mesh = new T.Mesh(geo, mat);
+    scene.add(mesh);
+
+    // Centraliza e enquadra
+    geo.computeBoundingBox();
+    const box = geo.boundingBox;
+    const center = new T.Vector3();
+    box.getCenter(center);
+    mesh.position.sub(center);
+
+    const size = new T.Vector3();
+    box.getSize(size);
+    const maxDim = Math.max(size.x, size.y, size.z);
+    camera.position.set(maxDim * 0.8, maxDim * 0.6, maxDim * 1.4);
+    camera.lookAt(0, 0, 0);
+
+    // Iluminação
+    scene.add(new T.AmbientLight(0xffffff, 0.4));
+    const luz1 = new T.DirectionalLight(0xffffff, 0.8);
+    luz1.position.set(maxDim, maxDim*2, maxDim);
+    scene.add(luz1);
+    const luz2 = new T.DirectionalLight(0x88aaff, 0.4);
+    luz2.position.set(-maxDim, -maxDim, maxDim);
+    scene.add(luz2);
+
+    renderer.render(scene, camera);
+
+    return new Promise(resolve => {
+      canvas.toBlob(blob => {
+        renderer.dispose();
+        geo.dispose();
+        mat.dispose();
+        resolve(blob);
+      }, 'image/png');
+    });
+  }
+
+  async function listarSTLsRecursivo(parentId, recursivo, resultado, contRef) {
+    // Arquivos STL nesta pasta
+    let pageToken = null;
+    do {
+      let url = `https://www.googleapis.com/drive/v3/files?q='${parentId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType),nextPageToken&pageSize=500&orderBy=name`;
+      if (pageToken) url += `&pageToken=${pageToken}`;
+      const data = await driveGet(url);
+      const arquivos = data.files || [];
+      const imagens = new Set(arquivos.filter(f => /\.(png|jpg|jpeg|webp)$/i.test(f.name)).map(f => f.name.replace(/\.[^.]+$/, '').toLowerCase()));
+      for (const f of arquivos) {
+        if (/\.stl$/i.test(f.name)) {
+          const baseName = f.name.replace(/\.stl$/i, '').toLowerCase();
+          const temPreview = imagens.has(baseName);
+          resultado.push({ id: f.id, name: f.name, parentId, temPreview });
+          contRef.total++;
+          if (contRef.onUpdate) contRef.onUpdate(contRef.total);
+        }
+        if (recursivo && f.mimeType === 'application/vnd.google-apps.folder') {
+          await listarSTLsRecursivo(f.id, recursivo, resultado, contRef);
+        }
+      }
+      pageToken = data.nextPageToken || null;
+    } while (pageToken);
+  }
+
+  async function gerarPreviews() {
+    if (!accessToken) { alert('Conecte ao Google primeiro na aba "Renomear"!'); return; }
+    const folderId = document.getElementById('folderIdPreview').value.trim();
+    if (!folderId) { alert('Preencha o ID da pasta!'); return; }
+
+    const pularExistentes = document.querySelector('#opt-pv-pular input').checked;
+    const sobrescrever = document.querySelector('#opt-pv-sobrescrever input').checked;
+    const recursivo = document.querySelector('#opt-pv-recursivo input').checked;
+    const tamanho = parseInt(document.getElementById('previewSize').value) || 512;
+
+    document.getElementById('btnPreview').disabled = true;
+    document.getElementById('progressWrapPV').style.display = 'block';
+    document.getElementById('progressBarPV').style.width = '3%';
+    document.getElementById('previewGrade').style.display = 'none';
+    document.getElementById('previewGrid').innerHTML = '';
+    setStatus('statusPV', 'running', 'Carregando Three.js...');
+    log('logPreview', 'info', '⏳ Carregando renderizador 3D...');
+
+    try {
+      await carregarThree();
+      log('logPreview', 'info', '✅ Three.js carregado! Buscando arquivos STL...');
+      setStatus('statusPV', 'running', 'Buscando STLs...');
+
+      const stls = [];
+      const contRef = { total: 0, onUpdate: (n) => {
+        document.getElementById('logCountPV').textContent = `${n} STLs`;
+        document.getElementById('progressBarPV').style.width = `${Math.min(3 + n * 0.3, 20)}%`;
+      }};
+      await listarSTLsRecursivo(folderId, recursivo, stls, contRef);
+
+      if (!stls.length) {
+        log('logPreview', 'warn', 'Nenhum arquivo .stl encontrado!');
+        setStatus('statusPV', 'done', 'Nenhum STL');
+        document.getElementById('btnPreview').disabled = false;
+        return;
+      }
+
+      const paraProcessar = pularExistentes && !sobrescrever
+        ? stls.filter(s => !s.temPreview)
+        : stls;
+
+      log('logPreview', 'info', `📦 ${stls.length} STLs encontrados. ${stls.length - paraProcessar.length} já têm preview. Gerando ${paraProcessar.length} previews...`);
+      document.getElementById('previewGrade').style.display = 'block';
+
+      let feito = 0;
+      let erros = 0;
+      for (const stl of paraProcessar) {
+        setStatus('statusPV', 'running', `${feito+1}/${paraProcessar.length}`);
+        log('logPreview', 'info', `🔄 Renderizando: ${stl.name}`);
+
+        try {
+          // Download do STL
+          const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${stl.id}?alt=media`, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+          });
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const buffer = await resp.arrayBuffer();
+
+          // Renderiza
+          const blob = await renderizarSTL(buffer, tamanho);
+
+          // Faz upload do PNG para o Drive
+          const nomePNG = stl.name.replace(/\.stl$/i, '') + '.png';
+          const metadata = JSON.stringify({ name: nomePNG, parents: [stl.parentId] });
+          const form = new FormData();
+          form.append('metadata', new Blob([metadata], { type: 'application/json' }));
+          form.append('file', blob, nomePNG);
+
+          const uploadResp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${accessToken}` },
+            body: form
+          });
+          const uploadData = await uploadResp.json();
+
+          if (uploadData.id) {
+            log('logPreview', 'rename', stl.name, nomePNG + ' ✅');
+            feito++;
+
+            // Mostra miniatura no grid
+            const url = URL.createObjectURL(blob);
+            const cell = document.createElement('div');
+            cell.style.cssText = 'background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px;overflow:hidden;text-align:center';
+            cell.innerHTML = `
+              <img src="${url}" style="width:100%;aspect-ratio:1;object-fit:cover;display:block"/>
+              <div style="padding:6px 8px;font-size:10px;color:#555;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(stl.name)}">${esc(stl.name.replace(/\.stl$/i,''))}</div>`;
+            document.getElementById('previewGrid').appendChild(cell);
+          } else {
+            throw new Error('Upload falhou: ' + JSON.stringify(uploadData));
+          }
+        } catch(e) {
+          log('logPreview', 'error', `${stl.name}: ${e.message}`);
+          erros++;
+        }
+
+        const progresso = 20 + (feito + erros) / paraProcessar.length * 80;
+        document.getElementById('progressBarPV').style.width = `${progresso}%`;
+        document.getElementById('logCountPV').textContent = `${feito} gerados`;
+        await sleep(200);
+      }
+
+      setStatus('statusPV', 'done', `${feito} gerados!`);
+      log('logPreview', 'info', `✅ ${feito} previews gerados! ${erros > 0 ? erros + ' erros.' : ''}`);
+
+    } catch(e) {
+      log('logPreview', 'error', 'Erro: ' + e.message);
+      setStatus('statusPV', 'error', 'Erro');
+    }
+    document.getElementById('btnPreview').disabled = false;
+  }
 </body>
 </html>
