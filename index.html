@@ -126,6 +126,7 @@
     <div class="tab ai-tab" onclick="setTab('ai')">🧠 IA Inteligente</div>
     <div class="tab" onclick="setTab('limpar')">🗑 Limpar Vazias</div>
     <div class="tab preview-tab" onclick="setTab('preview')">🖼 Previews STL</div>
+    <div class="tab" style="" onclick="setTab('catalogo')">📸 Catálogo</div>
   </div>
 
   <!-- PANEL: RENOMEAR -->
@@ -347,19 +348,95 @@
       <div class="log-body" id="logPreview"><div class="log-empty">Conecte ao Google na aba "Renomear" e cole o ID da pasta.</div></div>
     </div>
   </div>
+  <!-- PANEL: CATÁLOGO -->
+  <div class="panel" id="panel-catalogo">
+    <div class="card">
+      <div class="info-box" style="background:rgba(236,72,153,.05);border-color:rgba(236,72,153,.25)">
+        <strong style="color:#f472b6">📸 Como funciona:</strong> O app entra em cada subpasta, coleta todas as imagens (JPG, PNG, GIF, WEBP), monta uma grade de miniaturas e salva um <strong>CATALOGO.jpg</strong> na pasta principal. As imagens originais <strong>não são movidas nem apagadas</strong>.
+      </div>
+      <div class="row2">
+        <div>
+          <label>ID da Pasta Principal do Drive</label>
+          <input type="text" id="folderIdCatalog" placeholder="Cole o ID da pasta aqui"/>
+        </div>
+        <div>
+          <label>Nome do arquivo de saída</label>
+          <input type="text" id="catalogName" value="CATALOGO" placeholder="CATALOGO"/>
+        </div>
+      </div>
+      <div class="row2">
+        <div>
+          <label>Colunas na grade</label>
+          <input type="text" id="catalogCols" value="5" placeholder="5"/>
+        </div>
+        <div>
+          <label>Tamanho de cada miniatura (px)</label>
+          <input type="text" id="catalogThumb" value="300" placeholder="300"/>
+        </div>
+      </div>
+      <div class="options" style="margin-bottom:16px">
+        <label class="opt active" id="opt-cat-recursivo"><input type="checkbox" checked onchange="toggleOpt(this,'opt-cat-recursivo')"/> Entrar em subpastas</label>
+        <label class="opt active" id="opt-cat-titulo"><input type="checkbox" checked onchange="toggleOpt(this,'opt-cat-titulo')"/> Mostrar nome da pasta em cada bloco</label>
+      </div>
+      <canvas id="catalogCanvas" style="display:none"></canvas>
+      <div class="btn-row">
+        <button class="btn" style="background:#f472b6;color:#000;box-shadow:0 0 20px rgba(244,114,182,.3);font-weight:700;font-size:13px;letter-spacing:.5px;text-transform:uppercase;padding:13px 28px;border-radius:10px;border:none;cursor:pointer" id="btnCatalog" onclick="gerarCatalogo()">📸 Gerar Catálogo</button>
+        <button class="btn btn-secondary" onclick="limparLog('logCatalog')">Limpar log</button>
+      </div>
+      <div id="catalogPreviewWrap" style="display:none;margin-top:24px">
+        <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Prévia do catálogo</div>
+        <img id="catalogPreviewImg" style="max-width:100%;border-radius:10px;border:1px solid var(--border)"/>
+      </div>
+    </div>
+    <div class="log-card">
+      <div class="log-header">
+        <span>Log de execução</span>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="log-count" id="logCountCat">0 imagens</span>
+          <span class="status-badge status-idle" id="statusCat"><span class="dot"></span> Aguardando</span>
+        </div>
+      </div>
+      <div class="progress-wrap" id="progressWrapCat">
+        <div class="progress-bar-bg"><div class="progress-bar" id="progressBarCat" style="width:0%;background:#f472b6;box-shadow:0 0 8px rgba(244,114,182,.5)"></div></div>
+      </div>
+      <div class="log-body" id="logCatalog"><div class="log-empty">Conecte ao Google na aba "Renomear" e cole o ID da pasta.</div></div>
+    </div>
+  </div>
 </div>
-
 <script src="https://accounts.google.com/gsi/client"></script>
 <script>
   let accessToken = null;
   let categoriasIA = null;
   let pastasCache = [];
   let pastasVazias = [];
-  let aiRenomearPlan = []; // [{pasta:{id,nome}, novoNomePasta, arquivos:[{id,nome,novoNome}]}]
+  let aiRenomearPlan = [];
+
+  // ─── PERSISTÊNCIA LOCAL ────────────────────────────────────────────
+  const FIELDS_TO_SAVE = ['clientId','anthropicKey','anthropicKeyAI'];
+  function saveFields() {
+    FIELDS_TO_SAVE.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) localStorage.setItem('dm_' + id, el.value);
+    });
+  }
+  function loadFields() {
+    FIELDS_TO_SAVE.forEach(id => {
+      const val = localStorage.getItem('dm_' + id);
+      const el = document.getElementById(id);
+      if (val && el) el.value = val;
+    });
+  }
+  document.addEventListener('DOMContentLoaded', () => {
+    loadFields();
+    FIELDS_TO_SAVE.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', saveFields);
+    });
+  }); // [{pasta:{id,nome}, novoNomePasta, arquivos:[{id,nome,novoNome}]}]
 
   // ─── TABS ──────────────────────────────────────────
   function setTab(tab) {
-    const tabs = ['renomear','categorizar','ai','limpar','preview'];
+    const tabs = ['renomear','categorizar','ai','limpar','preview','catalogo'];
     document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', tabs[i] === tab));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-' + tab).classList.add('active');
@@ -1260,6 +1337,187 @@ Responda APENAS com este JSON (sem texto antes ou depois, sem markdown):
       setStatus('statusPV', 'error', 'Erro');
     }
     document.getElementById('btnPreview').disabled = false;
+  }
+
+  // ─── CATÁLOGO ──────────────────────────────────────────────────────
+  async function listarImagensCatalogo(folderId, folderName, recursivo, resultado) {
+    const IMAGE_TYPES = ['image/jpeg','image/png','image/gif','image/webp','image/bmp'];
+    let pageToken = null;
+    const subpastas = [];
+    do {
+      let url = `https://www.googleapis.com/drive/v3/files?pageSize=200&fields=nextPageToken,files(id,name,mimeType)&q='${folderId}'+in+parents+and+trashed=false`;
+      if (pageToken) url += `&pageToken=${pageToken}`;
+      const r = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+      const d = await r.json();
+      for (const f of (d.files || [])) {
+        if (IMAGE_TYPES.includes(f.mimeType)) {
+          resultado.push({ id: f.id, name: f.name, folderName });
+        } else if (recursivo && f.mimeType === 'application/vnd.google-apps.folder') {
+          subpastas.push({ id: f.id, name: f.name });
+        }
+      }
+      pageToken = d.nextPageToken || null;
+    } while (pageToken);
+    if (recursivo) {
+      for (const sub of subpastas) {
+        await listarImagensCatalogo(sub.id, sub.name, true, resultado);
+      }
+    }
+  }
+
+  async function gerarCatalogo() {
+    if (!accessToken) { alert('Conecte ao Google primeiro na aba "Renomear"!'); return; }
+    const folderId = document.getElementById('folderIdCatalog').value.trim();
+    if (!folderId) { alert('Preencha o ID da pasta!'); return; }
+    const cols = parseInt(document.getElementById('catalogCols').value) || 5;
+    const thumbSize = parseInt(document.getElementById('catalogThumb').value) || 300;
+    const nomeArquivo = (document.getElementById('catalogName').value.trim() || 'CATALOGO') + '.jpg';
+    const recursivo = document.querySelector('#opt-cat-recursivo input').checked;
+    const mostrarTitulo = document.querySelector('#opt-cat-titulo input').checked;
+
+    document.getElementById('btnCatalog').disabled = true;
+    document.getElementById('progressWrapCat').style.display = 'block';
+    document.getElementById('progressBarCat').style.width = '3%';
+    document.getElementById('catalogPreviewWrap').style.display = 'none';
+    setStatus('statusCat', 'running', 'Buscando imagens...');
+    log('logCatalog', 'info', '🔍 Varrendo subpastas em busca de imagens...');
+
+    try {
+      const imagens = [];
+      await listarImagensCatalogo(folderId, '(raiz)', recursivo, imagens);
+
+      if (!imagens.length) {
+        log('logCatalog', 'warn', 'Nenhuma imagem encontrada nas subpastas!');
+        setStatus('statusCat', 'done', 'Sem imagens');
+        document.getElementById('btnCatalog').disabled = false;
+        return;
+      }
+
+      log('logCatalog', 'info', `📦 ${imagens.length} imagens encontradas. Baixando...`);
+      document.getElementById('logCountCat').textContent = `${imagens.length} imagens`;
+      document.getElementById('progressBarCat').style.width = '10%';
+
+      const bitmaps = [];
+      for (let i = 0; i < imagens.length; i++) {
+        const img = imagens[i];
+        setStatus('statusCat', 'running', `Baixando ${i+1}/${imagens.length}`);
+        try {
+          const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${img.id}?alt=media`, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+          });
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const blob = await resp.blob();
+          const bitmap = await createImageBitmap(blob);
+          bitmaps.push({ bitmap, folderName: img.folderName, name: img.name });
+          log('logCatalog', 'info', `✓ ${img.name} (${img.folderName})`);
+        } catch(e) {
+          log('logCatalog', 'warn', `Pulando ${img.name}: ${e.message}`);
+        }
+        document.getElementById('progressBarCat').style.width = `${10 + (i+1)/imagens.length * 55}%`;
+        await sleep(30);
+      }
+
+      if (!bitmaps.length) {
+        log('logCatalog', 'error', 'Nenhuma imagem pôde ser carregada!');
+        setStatus('statusCat', 'error', 'Erro');
+        document.getElementById('btnCatalog').disabled = false;
+        return;
+      }
+
+      log('logCatalog', 'info', `🎨 Montando grade: ${cols} colunas × ${thumbSize}px...`);
+
+      const TITLE_H = mostrarTitulo ? 30 : 0;
+      const PAD = 8;
+      const cellW = thumbSize;
+      const cellH = thumbSize + TITLE_H;
+      const rows = Math.ceil(bitmaps.length / cols);
+      const canvasW = cols * (cellW + PAD) + PAD;
+      const canvasH = rows * (cellH + PAD) + PAD;
+
+      const canvas = document.getElementById('catalogCanvas');
+      canvas.width = canvasW;
+      canvas.height = canvasH;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fillRect(0, 0, canvasW, canvasH);
+
+      for (let i = 0; i < bitmaps.length; i++) {
+        const { bitmap, folderName, name } = bitmaps[i];
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const x = PAD + col * (cellW + PAD);
+        const y = PAD + row * (cellH + PAD);
+
+        // Fundo bloco
+        ctx.fillStyle = '#141414';
+        if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, y, cellW, cellH, 6); ctx.fill(); }
+        else { ctx.fillRect(x, y, cellW, cellH); }
+
+        // Imagem com crop centrado
+        const scale = Math.max(cellW / bitmap.width, thumbSize / bitmap.height);
+        const sw = cellW / scale;
+        const sh = thumbSize / scale;
+        const sx = (bitmap.width - sw) / 2;
+        const sy = (bitmap.height - sh) / 2;
+        ctx.save();
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(x, y, cellW, thumbSize, [6,6,0,0]);
+        else ctx.rect(x, y, cellW, thumbSize);
+        ctx.clip();
+        ctx.drawImage(bitmap, sx, sy, sw, sh, x, y, cellW, thumbSize);
+        ctx.restore();
+
+        // Label
+        if (mostrarTitulo) {
+          ctx.fillStyle = '#1a1a1a';
+          ctx.fillRect(x, y + thumbSize, cellW, TITLE_H);
+          ctx.fillStyle = '#cccccc';
+          ctx.font = `500 11px sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          const titulo = folderName === '(raiz)' ? name.replace(/\.[^.]+$/,'') : folderName;
+          const maxW = cellW - 12;
+          let txt = titulo;
+          while (ctx.measureText(txt).width > maxW && txt.length > 3) txt = txt.slice(0, -1);
+          if (txt !== titulo) txt += '…';
+          ctx.fillText(txt, x + cellW / 2, y + thumbSize + TITLE_H / 2);
+        }
+      }
+
+      document.getElementById('progressBarCat').style.width = '85%';
+      log('logCatalog', 'info', '⬆️ Fazendo upload para o Drive...');
+
+      // Canvas → blob → upload
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      const byteStr = atob(dataUrl.split(',')[1]);
+      const ab = new ArrayBuffer(byteStr.length);
+      const ia = new Uint8Array(ab);
+      for (let i = 0; i < byteStr.length; i++) ia[i] = byteStr.charCodeAt(i);
+      const jpgBlob = new Blob([ab], { type: 'image/jpeg' });
+
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify({ name: nomeArquivo, parents: [folderId] })], { type: 'application/json' }));
+      form.append('file', jpgBlob, nomeArquivo);
+
+      const upResp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: form
+      });
+      const upData = await upResp.json();
+      document.getElementById('progressBarCat').style.width = '100%';
+
+      if (upData.id) {
+        log('logCatalog', 'info', `🎉 "${nomeArquivo}" salvo na pasta principal! (${bitmaps.length} imagens)`);
+        setStatus('statusCat', 'done', `${bitmaps.length} imagens!`);
+        document.getElementById('catalogPreviewImg').src = dataUrl;
+        document.getElementById('catalogPreviewWrap').style.display = 'block';
+      } else {
+        throw new Error('Upload falhou: ' + JSON.stringify(upData));
+      }
+    } catch(e) {
+      log('logCatalog', 'error', 'Erro: ' + e.message);
+      setStatus('statusCat', 'error', 'Erro');
+    }
+    document.getElementById('btnCatalog').disabled = false;
   }
 </script>
 </body>
