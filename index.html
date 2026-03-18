@@ -1586,42 +1586,54 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
 
     const thinkingEl = agenteMsgUI('thinking');
 
-    const SYSTEM = `Você é um agente autônomo de gerenciamento do Google Drive. O usuário descreve o que quer fazer em linguagem natural e você executa usando ferramentas reais que operam no Drive.
+    // System prompt compacto — menos tokens
+    const SYSTEM = `Agente Google Drive. Responda em português.
+RAIZ: ${folderId}
 
-PASTA RAIZ DO USUÁRIO: ${folderId}
+Para chamar ferramentas use EXATAMENTE este formato:
+<TOOLS>[{"op":"...","...":"..."}]</TOOLS>
 
-━━━ FERRAMENTAS DISPONÍVEIS ━━━
-Use blocos <TOOLS> com array JSON para chamar ferramentas:
+Ops disponíveis (use IDs REAIS das respostas anteriores — NUNCA invente):
+list_folders:{parentId} | list_files:{parentId} | rename:{id,name} | create_folder:{name,parentId} | move:{id,newParent,oldParent} | delete:{id} | search:{query,parentId?} | get_info:{id}
 
-<TOOLS>
-[
-  {"op": "list_folders", "parentId": "ID_DA_PASTA"},
-  {"op": "list_files", "parentId": "ID_DA_PASTA"},
-  {"op": "rename", "id": "ID_DO_ITEM", "name": "NOVO NOME"},
-  {"op": "create_folder", "name": "NOME DA PASTA", "parentId": "ID_PAI"},
-  {"op": "move", "id": "ID_ITEM", "newParent": "ID_DESTINO", "oldParent": "ID_ORIGEM"},
-  {"op": "delete", "id": "ID_DO_ITEM"},
-  {"op": "search", "query": "texto de busca", "parentId": "ID_OPCIONAL"},
-  {"op": "get_info", "id": "ID_DO_ITEM"}
-]
-</TOOLS>
+Regras: explore antes de agir. Quando terminar, responda SEM <TOOLS>. Seja conciso.`;
 
-━━━ PROCESSO OBRIGATÓRIO ━━━
-1. SEMPRE explore a estrutura (list_folders / list_files) antes de fazer qualquer mudança
-2. Use os IDs REAIS retornados pelas ferramentas — NUNCA invente IDs
-3. Explique brevemente o que está fazendo em cada etapa
-4. Para tarefas complexas, divida em múltiplas rodadas de ferramentas
-5. Quando TERMINAR, escreva apenas texto de confirmação — SEM <TOOLS>
+    // Comprime histórico p/ evitar acúmulo de tokens
+    function comprimirHistorico(hist) {
+      // Mantém sempre: primeira msg do usuário + últimas 6 trocas
+      if (hist.length <= 8) return hist;
+      const cabeca = hist.slice(0, 1); // msg original do usuário
+      const cauda = hist.slice(-7);    // últimas trocas recentes
+      // Resume o meio em uma mensagem compacta
+      const meioBlocos = hist.slice(1, -7);
+      const ops_feitas = meioBlocos
+        .filter(m => m.role === 'user' && m.content.startsWith('Resultados'))
+        .map(m => { try { return JSON.parse(m.content.replace('Resultados das operações:\n','')); } catch { return []; } })
+        .flat()
+        .filter(r => r.success)
+        .map(r => r.op + (r.name ? ':' + r.name : '') + (r.count !== undefined ? '(' + r.count + ')' : ''))
+        .join(', ');
+      const resumo = ops_feitas
+        ? [{ role: 'user', content: `[resumo das etapas anteriores: ${ops_feitas}]` }, { role: 'assistant', content: 'Ok, continuando.' }]
+        : [];
+      return [...cabeca, ...resumo, ...cauda];
+    }
 
-━━━ REGRAS ━━━
-- Responda SEMPRE em português do Brasil
-- Para ações destrutivas em massa (delete de muitos itens), liste o que vai apagar antes
-- Seja direto e eficiente
-- Se o usuário pedir algo que não é possível via Drive API, explique claramente`;
+    // Limita arrays grandes nos resultados p/ não explodir o contexto
+    function comprimirResultados(resultados) {
+      return resultados.map(r => {
+        if (r.items && r.items.length > 40) {
+          return { ...r, items: r.items.slice(0, 40), truncated: true, total: r.items.length };
+        }
+        return r;
+      });
+    }
 
     try {
       let iter = 0;
-      while (iter++ < 25) {
+      while (iter++ < 20) {
+        const histComprimido = comprimirHistorico(agenteHistorico);
+
         const resp = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: {
@@ -1632,9 +1644,9 @@ Use blocos <TOOLS> com array JSON para chamar ferramentas:
           },
           body: JSON.stringify({
             model: 'claude-sonnet-4-20250514',
-            max_tokens: 4096,
+            max_tokens: 1500,
             system: SYSTEM,
-            messages: agenteHistorico
+            messages: histComprimido
           })
         });
 
@@ -1646,20 +1658,15 @@ Use blocos <TOOLS> com array JSON para chamar ferramentas:
         const toolsMatch = texto.match(/<TOOLS>([\s\S]*?)<\/TOOLS>/);
 
         if (!toolsMatch) {
-          // Resposta final
           thinkingEl.remove();
           agenteMsgUI('agent', texto.replace(/<TOOLS>[\s\S]*?<\/TOOLS>/g, '').trim());
           break;
         }
 
-        // Mostra raciocínio antes do bloco de tools
         const antesTools = texto.split('<TOOLS>')[0].trim();
         const thinkText = document.getElementById('agenteThinkingText');
-        if (thinkText && antesTools) {
-          thinkText.innerHTML = esc(antesTools);
-        }
+        if (thinkText && antesTools) thinkText.innerHTML = esc(antesTools);
 
-        // Parse ferramentas
         let ops;
         try {
           ops = JSON.parse(toolsMatch[1].trim());
@@ -1668,7 +1675,6 @@ Use blocos <TOOLS> com array JSON para chamar ferramentas:
           throw new Error('JSON inválido no bloco TOOLS: ' + e.message);
         }
 
-        // Executa cada operação
         const resultados = [];
         for (const op of ops) {
           if (thinkText) {
@@ -1685,22 +1691,23 @@ Use blocos <TOOLS> com array JSON para chamar ferramentas:
             resultados.push({ op: op.op, success: false, error: e.message });
             agenteMsgUI('tool-err', `${op.op}: ${e.message}`);
           }
-          await sleep(120);
+          await sleep(150);
         }
 
-        // Retorna resultados para o Claude
-        agenteHistorico.push({ role: 'user', content: 'Resultados das operações:\n' + JSON.stringify(resultados, null, 2) });
+        // Resultados comprimidos — evita listas enormes no contexto
+        const resComprimidos = comprimirResultados(resultados);
+        agenteHistorico.push({ role: 'user', content: 'Resultados das operações:\n' + JSON.stringify(resComprimidos) });
 
-        if (thinkText) {
-          thinkText.innerHTML = '<span style="animation:blink 1.2s infinite">▋</span>';
-        }
-        // Scroll
+        if (thinkText) thinkText.innerHTML = '<span style="animation:blink 1.2s infinite">▋</span>';
         document.getElementById('agenteChat').scrollTop = document.getElementById('agenteChat').scrollHeight;
+
+        // Pausa extra p/ respeitar rate limit
+        await sleep(500);
       }
 
-      if (iter >= 25) {
+      if (iter >= 20) {
         thinkingEl.remove();
-        agenteMsgUI('agent', '⚠️ Limite de iterações atingido. A tarefa pode ser muito complexa — tente dividi-la em partes menores.');
+        agenteMsgUI('agent', '⚠️ Limite de iterações atingido. Tente dividir a tarefa em partes menores.');
       }
 
     } catch(e) {
