@@ -20,6 +20,7 @@
     .tab{flex:1;min-width:100px;padding:12px 8px;text-align:center;font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;border-radius:8px;cursor:pointer;transition:all .2s;color:var(--muted)}
     .tab.active{background:var(--green);color:#000}
     .tab.ai-tab.active{background:var(--purple);color:#fff}
+    .tab.agente-tab.active{background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff}
     .panel{display:none}.panel.active{display:block}
     .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;margin-bottom:20px;animation:fadeUp .6s .1s ease both}
     .card label{display:block;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
@@ -85,7 +86,6 @@
     .info-box.purple strong{color:var(--purple)}
     .warn-box{background:rgba(255,180,0,.05);border:1px solid rgba(255,180,0,.2);border-radius:10px;padding:16px;margin-bottom:20px;font-size:13px;color:#aaa;line-height:1.6}
     .warn-box strong{color:#ffb300}
-    /* Preview de renomeação inteligente */
     .ai-preview{margin-top:20px;display:none}
     .ai-preview h3{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
     .ai-folder-block{background:#000;border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden}
@@ -98,7 +98,6 @@
     .ai-file-old{color:#444;text-decoration:line-through;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .ai-file-new{color:#aaa;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .ai-file-skip{color:#2a2a2a;flex:1}
-    /* Limpar vazias */
     .empty-list{margin-top:20px;display:none}
     .empty-list h3{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
     .empty-summary{font-size:13px;color:var(--muted);margin-bottom:12px}
@@ -107,9 +106,39 @@
     .empty-item .path{color:#888;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .empty-item .check{accent-color:var(--red);width:14px;height:14px;cursor:pointer;flex-shrink:0;margin-left:12px}
     .tab.preview-tab.active{background:#ffa700;color:#000}
+
+    /* ─── AGENTE IA ─── */
+    .agente-chat{background:#000;border:1px solid var(--border);border-radius:12px;padding:20px;min-height:220px;max-height:450px;overflow-y:auto;margin-bottom:14px;scroll-behavior:smooth}
+    .agente-chat::-webkit-scrollbar{width:4px}
+    .agente-chat::-webkit-scrollbar-thumb{background:#1a1a1a;border-radius:2px}
+    .agente-msg{margin-bottom:14px;animation:slideIn .2s ease both}
+    .agente-bubble-user{text-align:right}
+    .agente-bubble-user span{display:inline-block;max-width:82%;background:#1a0a3a;border:1px solid rgba(167,139,250,.2);color:#c4b5fd;padding:11px 16px;border-radius:14px 14px 4px 14px;font-size:13px;text-align:left;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+    .agente-bubble-agent{display:flex;gap:10px;align-items:flex-start}
+    .agente-avatar{width:30px;height:30px;background:linear-gradient(135deg,#6d28d9,#a78bfa);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px;box-shadow:0 0 12px rgba(109,40,217,.3)}
+    .agente-bubble-text{background:#0f0f0f;border:1px solid #1a1a1a;color:#e0e0e0;padding:12px 16px;border-radius:4px 14px 14px 14px;font-size:13px;line-height:1.7;white-space:pre-wrap;word-break:break-word;max-width:85%}
+    .agente-bubble-thinking .agente-bubble-text{color:#555}
+    .agente-tool-log{color:#2a2a2a;font-size:11px;font-family:'DM Mono',monospace;padding:2px 8px;border-left:2px solid #111;margin:2px 0;animation:fadeIn .15s ease both}
+    .agente-tool-log.ok{color:#1a3a2a;border-color:#0a2a18}
+    .agente-tool-log.err{color:#3a1a1a;border-color:#2a0808}
+    .agente-input-row{display:flex;gap:10px}
+    .agente-input{flex:1;background:#000;border:1px solid var(--border);border-radius:10px;padding:13px 18px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .2s;resize:none;line-height:1.5}
+    .agente-input:focus{border-color:rgba(167,139,250,.5)}
+    .agente-input::placeholder{color:#333}
+    .agente-send{background:linear-gradient(135deg,#6d28d9,#a78bfa);color:#fff;border:none;border-radius:10px;padding:13px 22px;font-weight:700;font-size:13px;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:all .2s;box-shadow:0 0 20px rgba(109,40,217,.3);white-space:nowrap}
+    .agente-send:hover{box-shadow:0 0 32px rgba(109,40,217,.5);transform:translateY(-1px)}
+    .agente-send:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+    .agente-reset{background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:10px;padding:13px 16px;font-size:18px;cursor:pointer;transition:all .2s;line-height:1}
+    .agente-reset:hover{color:var(--text);border-color:#333}
+    .agente-examples{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+    .agente-example{background:#000;border:1px solid #1a1a1a;border-radius:8px;padding:8px 14px;font-size:12px;color:#555;cursor:pointer;transition:all .2s}
+    .agente-example:hover{border-color:rgba(167,139,250,.3);color:#a78bfa}
+
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
     @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
     @keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+    @keyframes blink{0%,100%{opacity:.6}50%{opacity:.2}}
   </style>
 </head>
 <body>
@@ -126,7 +155,8 @@
     <div class="tab ai-tab" onclick="setTab('ai')">🧠 IA Inteligente</div>
     <div class="tab" onclick="setTab('limpar')">🗑 Limpar Vazias</div>
     <div class="tab preview-tab" onclick="setTab('preview')">🖼 Previews STL</div>
-    <div class="tab" style="" onclick="setTab('catalogo')">📸 Catálogo</div>
+    <div class="tab" onclick="setTab('catalogo')">📸 Catálogo</div>
+    <div class="tab agente-tab" onclick="setTab('agente')">🤖 Agente</div>
   </div>
 
   <!-- PANEL: RENOMEAR -->
@@ -322,13 +352,11 @@
         <label class="opt active" id="opt-pv-pular"><input type="checkbox" checked onchange="toggleOpt(this,'opt-pv-pular')"/> Pular se já tem preview</label>
         <label class="opt" id="opt-pv-sobrescrever"><input type="checkbox" onchange="toggleOpt(this,'opt-pv-sobrescrever')"/> Sobrescrever previews existentes</label>
       </div>
-      <!-- Canvas oculto para renderização -->
       <canvas id="stlCanvas" style="display:none"></canvas>
       <div class="btn-row">
         <button class="btn" style="background:#ffa700;color:#000;box-shadow:0 0 20px rgba(255,167,0,.3);font-weight:700;font-size:13px;letter-spacing:.5px;text-transform:uppercase;padding:13px 28px;border-radius:10px;border:none;cursor:pointer" id="btnPreview" onclick="gerarPreviews()">🖼 Gerar Previews</button>
         <button class="btn btn-secondary" onclick="limparLog('logPreview')">Limpar log</button>
       </div>
-      <!-- Grade de preview ao vivo -->
       <div id="previewGrade" style="display:none;margin-top:24px">
         <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Previews gerados</div>
         <div id="previewGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px"></div>
@@ -348,6 +376,7 @@
       <div class="log-body" id="logPreview"><div class="log-empty">Conecte ao Google na aba "Renomear" e cole o ID da pasta.</div></div>
     </div>
   </div>
+
   <!-- PANEL: CATÁLOGO -->
   <div class="panel" id="panel-catalogo">
     <div class="card">
@@ -402,6 +431,58 @@
       <div class="log-body" id="logCatalog"><div class="log-empty">Conecte ao Google na aba "Renomear" e cole o ID da pasta.</div></div>
     </div>
   </div>
+
+  <!-- PANEL: AGENTE IA ─────────────────────────────────────── -->
+  <div class="panel" id="panel-agente">
+    <div class="card">
+      <div class="info-box" style="background:rgba(109,40,217,.06);border-color:rgba(167,139,250,.2)">
+        <strong style="color:#a78bfa">🤖 Agente IA — Modo Livre</strong><br/>
+        Fale em português o que você quer fazer com o seu Drive. A IA entende, planeja e executa sozinha.<br/><br/>
+        <span style="color:#666">Exemplos: organizar pastas por tipo de arquivo · renomear 200 arquivos seguindo um padrão · criar estrutura de categorias · mover tudo que começa com X para uma pasta · apagar duplicatas · qualquer coisa.</span>
+      </div>
+
+      <div class="row2">
+        <div>
+          <label>ID da Pasta Raiz do Drive</label>
+          <input type="text" id="folderIdAgente" placeholder="Cole o ID da pasta raiz aqui" style="margin-bottom:0"/>
+        </div>
+        <div>
+          <label>Chave da API Anthropic</label>
+          <input type="password" id="anthropicKeyAgente" placeholder="sk-ant-..." style="margin-bottom:0"/>
+        </div>
+      </div>
+
+      <div style="margin-top:20px;margin-bottom:10px">
+        <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Ideias rápidas</div>
+        <div class="agente-examples">
+          <div class="agente-example" onclick="agenteSetInput(this.textContent)">Liste todas as subpastas desta pasta</div>
+          <div class="agente-example" onclick="agenteSetInput(this.textContent)">Crie uma pasta chamada ORGANIZADOS e mova tudo pra dentro</div>
+          <div class="agente-example" onclick="agenteSetInput(this.textContent)">Renomeie todas as pastas para maiúsculo</div>
+          <div class="agente-example" onclick="agenteSetInput(this.textContent)">Quantos arquivos tem nesta pasta?</div>
+          <div class="agente-example" onclick="agenteSetInput(this.textContent)">Crie subpastas A, B, C, D e E</div>
+          <div class="agente-example" onclick="agenteSetInput(this.textContent)">Liste arquivos que tenham "copia" ou "copy" no nome</div>
+        </div>
+      </div>
+
+      <!-- Chat -->
+      <div class="agente-chat" id="agenteChat">
+        <div style="color:#2a2a2a;text-align:center;font-size:13px;padding:40px 0;font-family:'DM Mono',monospace" data-empty="1">
+          // aguardando seu comando...
+        </div>
+      </div>
+
+      <!-- Input row -->
+      <div class="agente-input-row">
+        <textarea class="agente-input" id="agenteInput" rows="2"
+          placeholder="Ex: Organize todas as pastas em categorias por tema, crie as subpastas necessárias e mova cada pasta para o lugar certo..."
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();agenteEnviar()}"></textarea>
+        <button class="agente-send" id="agenteSend" onclick="agenteEnviar()">Enviar</button>
+        <button class="agente-reset" onclick="agenteLimpar()" title="Limpar conversa">↺</button>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:#2a2a2a;font-family:'DM Mono',monospace">Enter para enviar · Shift+Enter para nova linha · A IA pode fazer múltiplas chamadas ao Drive para completar tarefas complexas</div>
+    </div>
+  </div>
+
 </div>
 <script src="https://accounts.google.com/gsi/client"></script>
 <script>
@@ -412,7 +493,7 @@
   let aiRenomearPlan = [];
 
   // ─── PERSISTÊNCIA LOCAL ────────────────────────────────────────────
-  const FIELDS_TO_SAVE = ['clientId','anthropicKey','anthropicKeyAI'];
+  const FIELDS_TO_SAVE = ['clientId','anthropicKey','anthropicKeyAI','anthropicKeyAgente'];
   function saveFields() {
     FIELDS_TO_SAVE.forEach(id => {
       const el = document.getElementById(id);
@@ -432,11 +513,11 @@
       const el = document.getElementById(id);
       if (el) el.addEventListener('input', saveFields);
     });
-  }); // [{pasta:{id,nome}, novoNomePasta, arquivos:[{id,nome,novoNome}]}]
+  });
 
   // ─── TABS ──────────────────────────────────────────
   function setTab(tab) {
-    const tabs = ['renomear','categorizar','ai','limpar','preview','catalogo'];
+    const tabs = ['renomear','categorizar','ai','limpar','preview','catalogo','agente'];
     document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', tabs[i] === tab));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-' + tab).classList.add('active');
@@ -697,7 +778,6 @@
     return data.content[0].text;
   }
 
-  // Coleta TODAS as pastas recursivamente (qualquer profundidade)
   async function coletarTodasPastas(parentId, caminho, profundidade, resultado, contRef) {
     const subpastas = await listarSubpastas(parentId);
     for (const pasta of subpastas) {
@@ -731,7 +811,6 @@
     aiRenomearPlan = [];
 
     try {
-      // 1. Coleta TODAS as pastas em todos os níveis
       const todasPastas = [];
       const contRef = {
         total: 0,
@@ -751,7 +830,6 @@
       log('logAI', 'info', `✅ ${todasPastas.length} pastas coletadas. Lendo arquivos de cada pasta...`);
       setStatus('statusAI', 'running', 'Lendo arquivos...');
 
-      // 2. Para cada pasta, busca arquivos diretos
       const dadosPastas = [];
       for (let i = 0; i < todasPastas.length; i++) {
         const { pasta, caminho, profundidade, parentId } = todasPastas[i];
@@ -764,7 +842,6 @@
       log('logAI', 'info', `✅ Leitura completa. Enviando ${todasPastas.length} pastas para o Claude analisar...`);
       setStatus('statusAI', 'running', 'Claude analisando...');
 
-      // 3. System prompt com regra EXPLÍCITA sobre nomes de franquias
       const maiusculoInstr = maiusculo ? ' SEMPRE use MAIÚSCULAS.' : '';
       const systemPrompt = `Você é um especialista em organização de arquivos de impressão 3D (STL). Analisa pastas e arquivos para identificar o conteúdo real de cada uma.
 
@@ -794,7 +871,6 @@ REGRAS ABSOLUTAS — NUNCA quebre estas regras:
 
 Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
 
-      // 4. Processa em lotes de 15 pastas (mais seguro para JSON complexo)
       const LOTE = 15;
       const resultadoFinal = [];
 
@@ -805,92 +881,43 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
         log('logAI', 'info', `🤖 Processando lote ${numLote}/${totalLotes} (${lote.length} pastas)...`);
 
         const listagem = lote.map(({ pasta, arquivos, caminho }, idx) => {
-          // Usa índice numérico como chave para evitar caracteres especiais quebrando o JSON
           const listaArq = arquivos.slice(0, 15).map(a => `    - ${a.name.replace(/[\x00-\x1f\\]/g, ' ')}`).join('\n');
           const extra = arquivos.length > 15 ? `\n    ... +${arquivos.length - 15} arquivos` : '';
           return `Pasta #${inicio + idx} (nome: ${pasta.name.replace(/[\x00-\x1f]/g, ' ')})\nArquivos:\n${listaArq || '    (pasta vazia)'}${extra}`;
         }).join('\n\n---\n\n');
 
-        const promptIA = `Analise as pastas abaixo e retorne o JSON.
-
-${listagem}
-
-ATENÇÃO: O JSON deve ser 100% válido. Siga estas regras ao gerar strings JSON:
-- Escape aspas duplas dentro de strings: use \\"
-- Não use caracteres de controle
-- Mantenha os nomeOriginal EXATAMENTE iguais aos nomes mostrados acima (incluindo caracteres especiais)
-
-Responda APENAS com este JSON (sem texto antes ou depois, sem markdown):
-{
-  "pastas": [
-    {
-      "nomeOriginal": "nome exato da pasta",
-      "novoNome": "NOME CORRETO",
-      "arquivos": [
-        {"nomeOriginal": "arquivo.stl", "novoNome": "NOVO NOME.stl"}
-      ]
-    }
-  ]
-}`;
+        const promptIA = `Analise as pastas abaixo e retorne o JSON.\n\n${listagem}\n\nResponda APENAS com este JSON:\n{"pastas":[{"nomeOriginal":"nome exato","novoNome":"NOME CORRETO","arquivos":[{"nomeOriginal":"arquivo.stl","novoNome":"NOVO NOME.stl"}]}]}`;
 
         const resposta = await callClaude(apiKey, promptIA, systemPrompt);
 
-        // Parser robusto — tenta de várias formas antes de desistir
         let resultado = null;
         const tentativas = [
-          // 1. Parse direto
           () => JSON.parse(resposta),
-          // 2. Extrai bloco JSON
           () => JSON.parse(resposta.match(/\{[\s\S]*\}/)?.[0]),
-          // 3. Remove blocos markdown
           () => JSON.parse(resposta.replace(/```json|```/g, '').trim()),
-          // 4. Corrige aspas simples usadas como aspas duplas
           () => JSON.parse(resposta.match(/\{[\s\S]*\}/)?.[0].replace(/'/g, '"')),
-          // 5. Tenta truncar no último objeto completo válido
-          () => {
-            const raw = resposta.match(/\{[\s\S]*\}/)?.[0] || '';
-            // Conta chaves para achar onde o JSON quebra e tenta reparar
-            const linhas = raw.split('\n');
-            let construido = '';
-            let profundidade = 0;
-            let ultimoValido = '';
-            for (const linha of linhas) {
-              construido += linha + '\n';
-              profundidade += (linha.match(/\{/g)||[]).length - (linha.match(/\}/g)||[]).length;
-              try {
-                JSON.parse(construido + (profundidade > 0 ? ']}}'.repeat(profundidade) : ''));
-                ultimoValido = construido + (profundidade > 0 ? ']}}'.repeat(profundidade) : '');
-              } catch(e) { /* continua */ }
-            }
-            if (!ultimoValido) throw new Error('não foi possível reparar');
-            return JSON.parse(ultimoValido);
-          }
         ];
 
         for (const tentativa of tentativas) {
-          try { resultado = tentativa(); if (resultado) break; } catch(e) { /* tenta próxima */ }
+          try { resultado = tentativa(); if (resultado) break; } catch(e) { /* continua */ }
         }
 
         if (!resultado) {
-          log('logAI', 'warn', `⚠ Lote ${numLote}: JSON inválido, pulando este lote. Tente reduzir o número de pastas.`);
+          log('logAI', 'warn', `⚠ Lote ${numLote}: JSON inválido, pulando.`);
           await sleep(1000);
           continue;
         }
 
         resultadoFinal.push(...(resultado.pastas || []));
-
         document.getElementById('progressBarAI').style.width = `${50 + ((inicio + LOTE) / dadosPastas.length) * 40}%`;
-        await sleep(500); // pausa entre chamadas à API
+        await sleep(500);
       }
 
-      // 5. Monta o plano de renomeação
       aiRenomearPlan = [];
       const grid = document.getElementById('aiPreviewGrid');
       grid.innerHTML = '';
       let totalMudancas = 0;
 
-      // Agrupa por profundidade para mostrar hierarquia no preview
-      const porProfundidade = {};
       for (const item of resultadoFinal) {
         const pastaObj = dadosPastas.find(d => d.pasta.name === item.nomeOriginal);
         if (!pastaObj) continue;
@@ -911,7 +938,6 @@ Responda APENAS com este JSON (sem texto antes ou depois, sem markdown):
         if (pastaMudou) totalMudancas++;
         aiRenomearPlan.push({ pasta: pastaObj.pasta, novoNomePasta: novoPastaNome, arquivos: arquivosPlano, profundidade: prof, caminho: pastaObj.caminho });
 
-        // Preview com indentação por profundidade
         const indent = prof * 20;
         const block = document.createElement('div');
         block.className = 'ai-folder-block';
@@ -1093,7 +1119,6 @@ Responda APENAS com este JSON (sem texto antes ou depois, sem markdown):
   }
 
   function parsearSTL(buffer) {
-    // Tenta binário primeiro (mais comum), depois ASCII
     const isBinary = (() => {
       const uint8 = new Uint8Array(buffer);
       const numTri = new DataView(buffer).getUint32(80, true);
@@ -1117,7 +1142,7 @@ Responda APENAS com este JSON (sem texto antes ou depois, sem markdown):
           normals.push(nx, ny, nz);
           offset += 12;
         }
-        offset += 2; // attr byte count
+        offset += 2;
       }
     } else {
       const text = new TextDecoder().decode(buffer);
@@ -1153,23 +1178,16 @@ Responda APENAS com este JSON (sem texto antes ou depois, sem markdown):
     const scene = new T.Scene();
     const camera = new T.PerspectiveCamera(45, 1, 0.01, 10000);
 
-    // Parse STL
     const { positions, normals } = parsearSTL(buffer);
     const geo = new T.BufferGeometry();
     geo.setAttribute('position', new T.BufferAttribute(positions, 3));
     geo.setAttribute('normal', new T.BufferAttribute(normals, 3));
     geo.computeVertexNormals();
 
-    const mat = new T.MeshPhongMaterial({
-      color: 0x00e676,
-      specular: 0x224422,
-      shininess: 60,
-      side: T.DoubleSide
-    });
+    const mat = new T.MeshPhongMaterial({ color: 0x00e676, specular: 0x224422, shininess: 60, side: T.DoubleSide });
     const mesh = new T.Mesh(geo, mat);
     scene.add(mesh);
 
-    // Centraliza e enquadra
     geo.computeBoundingBox();
     const box = geo.boundingBox;
     const center = new T.Vector3();
@@ -1182,7 +1200,6 @@ Responda APENAS com este JSON (sem texto antes ou depois, sem markdown):
     camera.position.set(maxDim * 0.8, maxDim * 0.6, maxDim * 1.4);
     camera.lookAt(0, 0, 0);
 
-    // Iluminação
     scene.add(new T.AmbientLight(0xffffff, 0.4));
     const luz1 = new T.DirectionalLight(0xffffff, 0.8);
     luz1.position.set(maxDim, maxDim*2, maxDim);
@@ -1194,17 +1211,11 @@ Responda APENAS com este JSON (sem texto antes ou depois, sem markdown):
     renderer.render(scene, camera);
 
     return new Promise(resolve => {
-      canvas.toBlob(blob => {
-        renderer.dispose();
-        geo.dispose();
-        mat.dispose();
-        resolve(blob);
-      }, 'image/png');
+      canvas.toBlob(blob => { renderer.dispose(); geo.dispose(); mat.dispose(); resolve(blob); }, 'image/png');
     });
   }
 
   async function listarSTLsRecursivo(parentId, recursivo, resultado, contRef) {
-    // Arquivos STL nesta pasta
     let pageToken = null;
     do {
       let url = `https://www.googleapis.com/drive/v3/files?q='${parentId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType),nextPageToken&pageSize=500&orderBy=name`;
@@ -1215,8 +1226,7 @@ Responda APENAS com este JSON (sem texto antes ou depois, sem markdown):
       for (const f of arquivos) {
         if (/\.stl$/i.test(f.name)) {
           const baseName = f.name.replace(/\.stl$/i, '').toLowerCase();
-          const temPreview = imagens.has(baseName);
-          resultado.push({ id: f.id, name: f.name, parentId, temPreview });
+          resultado.push({ id: f.id, name: f.name, parentId, temPreview: imagens.has(baseName) });
           contRef.total++;
           if (contRef.onUpdate) contRef.onUpdate(contRef.total);
         }
@@ -1265,11 +1275,8 @@ Responda APENAS com este JSON (sem texto antes ou depois, sem markdown):
         return;
       }
 
-      const paraProcessar = pularExistentes && !sobrescrever
-        ? stls.filter(s => !s.temPreview)
-        : stls;
-
-      log('logPreview', 'info', `📦 ${stls.length} STLs encontrados. ${stls.length - paraProcessar.length} já têm preview. Gerando ${paraProcessar.length} previews...`);
+      const paraProcessar = pularExistentes && !sobrescrever ? stls.filter(s => !s.temPreview) : stls;
+      log('logPreview', 'info', `📦 ${stls.length} STLs encontrados. Gerando ${paraProcessar.length} previews...`);
       document.getElementById('previewGrade').style.display = 'block';
 
       let feito = 0;
@@ -1277,65 +1284,35 @@ Responda APENAS com este JSON (sem texto antes ou depois, sem markdown):
       for (const stl of paraProcessar) {
         setStatus('statusPV', 'running', `${feito+1}/${paraProcessar.length}`);
         log('logPreview', 'info', `🔄 Renderizando: ${stl.name}`);
-
         try {
-          // Download do STL
-          const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${stl.id}?alt=media`, {
-            headers: { Authorization: `Bearer ${accessToken}` }
-          });
+          const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${stl.id}?alt=media`, { headers: { Authorization: `Bearer ${accessToken}` } });
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
           const buffer = await resp.arrayBuffer();
-
-          // Renderiza
           const blob = await renderizarSTL(buffer, tamanho);
-
-          // Faz upload do PNG para o Drive
           const nomePNG = stl.name.replace(/\.stl$/i, '') + '.png';
           const metadata = JSON.stringify({ name: nomePNG, parents: [stl.parentId] });
           const form = new FormData();
           form.append('metadata', new Blob([metadata], { type: 'application/json' }));
           form.append('file', blob, nomePNG);
-
-          const uploadResp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${accessToken}` },
-            body: form
-          });
+          const uploadResp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: form });
           const uploadData = await uploadResp.json();
-
           if (uploadData.id) {
             log('logPreview', 'rename', stl.name, nomePNG + ' ✅');
             feito++;
-
-            // Mostra miniatura no grid
             const url = URL.createObjectURL(blob);
             const cell = document.createElement('div');
             cell.style.cssText = 'background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px;overflow:hidden;text-align:center';
-            cell.innerHTML = `
-              <img src="${url}" style="width:100%;aspect-ratio:1;object-fit:cover;display:block"/>
-              <div style="padding:6px 8px;font-size:10px;color:#555;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(stl.name)}">${esc(stl.name.replace(/\.stl$/i,''))}</div>`;
+            cell.innerHTML = `<img src="${url}" style="width:100%;aspect-ratio:1;object-fit:cover;display:block"/><div style="padding:6px 8px;font-size:10px;color:#555;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(stl.name)}">${esc(stl.name.replace(/\.stl$/i,''))}</div>`;
             document.getElementById('previewGrid').appendChild(cell);
-          } else {
-            throw new Error('Upload falhou: ' + JSON.stringify(uploadData));
-          }
-        } catch(e) {
-          log('logPreview', 'error', `${stl.name}: ${e.message}`);
-          erros++;
-        }
-
-        const progresso = 20 + (feito + erros) / paraProcessar.length * 80;
-        document.getElementById('progressBarPV').style.width = `${progresso}%`;
+          } else { throw new Error('Upload falhou'); }
+        } catch(e) { log('logPreview', 'error', `${stl.name}: ${e.message}`); erros++; }
+        document.getElementById('progressBarPV').style.width = `${20 + (feito + erros) / paraProcessar.length * 80}%`;
         document.getElementById('logCountPV').textContent = `${feito} gerados`;
         await sleep(200);
       }
-
       setStatus('statusPV', 'done', `${feito} gerados!`);
-      log('logPreview', 'info', `✅ ${feito} previews gerados! ${erros > 0 ? erros + ' erros.' : ''}`);
-
-    } catch(e) {
-      log('logPreview', 'error', 'Erro: ' + e.message);
-      setStatus('statusPV', 'error', 'Erro');
-    }
+      log('logPreview', 'info', `✅ ${feito} previews gerados!${erros > 0 ? ' ' + erros + ' erros.' : ''}`);
+    } catch(e) { log('logPreview', 'error', 'Erro: ' + e.message); setStatus('statusPV', 'error', 'Erro'); }
     document.getElementById('btnPreview').disabled = false;
   }
 
@@ -1350,19 +1327,12 @@ Responda APENAS com este JSON (sem texto antes ou depois, sem markdown):
       const r = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
       const d = await r.json();
       for (const f of (d.files || [])) {
-        if (IMAGE_TYPES.includes(f.mimeType)) {
-          resultado.push({ id: f.id, name: f.name, folderName });
-        } else if (recursivo && f.mimeType === 'application/vnd.google-apps.folder') {
-          subpastas.push({ id: f.id, name: f.name });
-        }
+        if (IMAGE_TYPES.includes(f.mimeType)) resultado.push({ id: f.id, name: f.name, folderName });
+        else if (recursivo && f.mimeType === 'application/vnd.google-apps.folder') subpastas.push({ id: f.id, name: f.name });
       }
       pageToken = d.nextPageToken || null;
     } while (pageToken);
-    if (recursivo) {
-      for (const sub of subpastas) {
-        await listarImagensCatalogo(sub.id, sub.name, true, resultado);
-      }
-    }
+    if (recursivo) for (const sub of subpastas) await listarImagensCatalogo(sub.id, sub.name, true, resultado);
   }
 
   async function gerarCatalogo() {
@@ -1385,13 +1355,7 @@ Responda APENAS com este JSON (sem texto antes ou depois, sem markdown):
     try {
       const imagens = [];
       await listarImagensCatalogo(folderId, '(raiz)', recursivo, imagens);
-
-      if (!imagens.length) {
-        log('logCatalog', 'warn', 'Nenhuma imagem encontrada nas subpastas!');
-        setStatus('statusCat', 'done', 'Sem imagens');
-        document.getElementById('btnCatalog').disabled = false;
-        return;
-      }
+      if (!imagens.length) { log('logCatalog', 'warn', 'Nenhuma imagem encontrada!'); setStatus('statusCat', 'done', 'Sem imagens'); document.getElementById('btnCatalog').disabled = false; return; }
 
       log('logCatalog', 'info', `📦 ${imagens.length} imagens encontradas. Baixando...`);
       document.getElementById('logCountCat').textContent = `${imagens.length} imagens`;
@@ -1402,83 +1366,50 @@ Responda APENAS com este JSON (sem texto antes ou depois, sem markdown):
         const img = imagens[i];
         setStatus('statusCat', 'running', `Baixando ${i+1}/${imagens.length}`);
         try {
-          const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${img.id}?alt=media`, {
-            headers: { Authorization: `Bearer ${accessToken}` }
-          });
+          const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${img.id}?alt=media`, { headers: { Authorization: `Bearer ${accessToken}` } });
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
           const blob = await resp.blob();
           const bitmap = await createImageBitmap(blob);
           bitmaps.push({ bitmap, folderName: img.folderName, name: img.name });
-          log('logCatalog', 'info', `✓ ${img.name} (${img.folderName})`);
-        } catch(e) {
-          log('logCatalog', 'warn', `Pulando ${img.name}: ${e.message}`);
-        }
+          log('logCatalog', 'info', `✓ ${img.name}`);
+        } catch(e) { log('logCatalog', 'warn', `Pulando ${img.name}: ${e.message}`); }
         document.getElementById('progressBarCat').style.width = `${10 + (i+1)/imagens.length * 55}%`;
         await sleep(30);
       }
 
-      if (!bitmaps.length) {
-        log('logCatalog', 'error', 'Nenhuma imagem pôde ser carregada!');
-        setStatus('statusCat', 'error', 'Erro');
-        document.getElementById('btnCatalog').disabled = false;
-        return;
-      }
+      if (!bitmaps.length) { log('logCatalog', 'error', 'Nenhuma imagem pôde ser carregada!'); setStatus('statusCat', 'error', 'Erro'); document.getElementById('btnCatalog').disabled = false; return; }
 
       log('logCatalog', 'info', `🎨 Montando grade: ${cols} colunas × ${thumbSize}px...`);
-
       const TITLE_H = mostrarTitulo ? 30 : 0;
       const PAD = 8;
-      const cellW = thumbSize;
-      const cellH = thumbSize + TITLE_H;
+      const cellW = thumbSize, cellH = thumbSize + TITLE_H;
       const rows = Math.ceil(bitmaps.length / cols);
       const canvasW = cols * (cellW + PAD) + PAD;
       const canvasH = rows * (cellH + PAD) + PAD;
-
       const canvas = document.getElementById('catalogCanvas');
-      canvas.width = canvasW;
-      canvas.height = canvasH;
+      canvas.width = canvasW; canvas.height = canvasH;
       const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#0a0a0a';
-      ctx.fillRect(0, 0, canvasW, canvasH);
+      ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0, 0, canvasW, canvasH);
 
       for (let i = 0; i < bitmaps.length; i++) {
         const { bitmap, folderName, name } = bitmaps[i];
-        const col = i % cols;
-        const row = Math.floor(i / cols);
-        const x = PAD + col * (cellW + PAD);
-        const y = PAD + row * (cellH + PAD);
-
-        // Fundo bloco
+        const col = i % cols, row = Math.floor(i / cols);
+        const x = PAD + col * (cellW + PAD), y = PAD + row * (cellH + PAD);
         ctx.fillStyle = '#141414';
         if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, y, cellW, cellH, 6); ctx.fill(); }
-        else { ctx.fillRect(x, y, cellW, cellH); }
-
-        // Imagem com crop centrado
+        else ctx.fillRect(x, y, cellW, cellH);
         const scale = Math.max(cellW / bitmap.width, thumbSize / bitmap.height);
-        const sw = cellW / scale;
-        const sh = thumbSize / scale;
-        const sx = (bitmap.width - sw) / 2;
-        const sy = (bitmap.height - sh) / 2;
-        ctx.save();
-        ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(x, y, cellW, thumbSize, [6,6,0,0]);
-        else ctx.rect(x, y, cellW, thumbSize);
-        ctx.clip();
-        ctx.drawImage(bitmap, sx, sy, sw, sh, x, y, cellW, thumbSize);
-        ctx.restore();
-
-        // Label
+        const sw = cellW / scale, sh = thumbSize / scale;
+        const sx = (bitmap.width - sw) / 2, sy = (bitmap.height - sh) / 2;
+        ctx.save(); ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(x, y, cellW, thumbSize, [6,6,0,0]); else ctx.rect(x, y, cellW, thumbSize);
+        ctx.clip(); ctx.drawImage(bitmap, sx, sy, sw, sh, x, y, cellW, thumbSize); ctx.restore();
         if (mostrarTitulo) {
-          ctx.fillStyle = '#1a1a1a';
-          ctx.fillRect(x, y + thumbSize, cellW, TITLE_H);
-          ctx.fillStyle = '#cccccc';
-          ctx.font = `500 11px sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
+          ctx.fillStyle = '#1a1a1a'; ctx.fillRect(x, y + thumbSize, cellW, TITLE_H);
+          ctx.fillStyle = '#cccccc'; ctx.font = '500 11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           const titulo = folderName === '(raiz)' ? name.replace(/\.[^.]+$/,'') : folderName;
-          const maxW = cellW - 12;
           let txt = titulo;
-          while (ctx.measureText(txt).width > maxW && txt.length > 3) txt = txt.slice(0, -1);
+          while (ctx.measureText(txt).width > cellW - 12 && txt.length > 3) txt = txt.slice(0, -1);
           if (txt !== titulo) txt += '…';
           ctx.fillText(txt, x + cellW / 2, y + thumbSize + TITLE_H / 2);
         }
@@ -1486,38 +1417,301 @@ Responda APENAS com este JSON (sem texto antes ou depois, sem markdown):
 
       document.getElementById('progressBarCat').style.width = '85%';
       log('logCatalog', 'info', '⬆️ Fazendo upload para o Drive...');
-
-      // Canvas → blob → upload
       const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
       const byteStr = atob(dataUrl.split(',')[1]);
       const ab = new ArrayBuffer(byteStr.length);
       const ia = new Uint8Array(ab);
       for (let i = 0; i < byteStr.length; i++) ia[i] = byteStr.charCodeAt(i);
       const jpgBlob = new Blob([ab], { type: 'image/jpeg' });
-
       const form = new FormData();
       form.append('metadata', new Blob([JSON.stringify({ name: nomeArquivo, parents: [folderId] })], { type: 'application/json' }));
       form.append('file', jpgBlob, nomeArquivo);
-
-      const upResp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-        method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: form
-      });
+      const upResp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: form });
       const upData = await upResp.json();
       document.getElementById('progressBarCat').style.width = '100%';
-
       if (upData.id) {
-        log('logCatalog', 'info', `🎉 "${nomeArquivo}" salvo na pasta principal! (${bitmaps.length} imagens)`);
+        log('logCatalog', 'info', `🎉 "${nomeArquivo}" salvo! (${bitmaps.length} imagens)`);
         setStatus('statusCat', 'done', `${bitmaps.length} imagens!`);
         document.getElementById('catalogPreviewImg').src = dataUrl;
         document.getElementById('catalogPreviewWrap').style.display = 'block';
-      } else {
-        throw new Error('Upload falhou: ' + JSON.stringify(upData));
-      }
-    } catch(e) {
-      log('logCatalog', 'error', 'Erro: ' + e.message);
-      setStatus('statusCat', 'error', 'Erro');
-    }
+      } else { throw new Error('Upload falhou: ' + JSON.stringify(upData)); }
+    } catch(e) { log('logCatalog', 'error', 'Erro: ' + e.message); setStatus('statusCat', 'error', 'Erro'); }
     document.getElementById('btnCatalog').disabled = false;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // ─── AGENTE IA — MODO LIVRE ─────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════
+
+  let agenteHistorico = [];
+  let agenteRodando = false;
+
+  function agenteSetInput(texto) {
+    document.getElementById('agenteInput').value = texto;
+    document.getElementById('agenteInput').focus();
+  }
+
+  function agenteLimpar() {
+    agenteHistorico = [];
+    document.getElementById('agenteChat').innerHTML =
+      '<div style="color:#2a2a2a;text-align:center;font-size:13px;padding:40px 0;font-family:\'DM Mono\',monospace" data-empty="1">// aguardando seu comando...</div>';
+  }
+
+  function agenteMsgUI(role, texto) {
+    const chat = document.getElementById('agenteChat');
+    // Remove empty placeholder
+    const empty = chat.querySelector('[data-empty]');
+    if (empty) empty.remove();
+
+    const div = document.createElement('div');
+    div.className = 'agente-msg';
+
+    if (role === 'user') {
+      div.className += ' agente-bubble-user';
+      div.innerHTML = `<span>${esc(texto)}</span>`;
+
+    } else if (role === 'tool-ok') {
+      div.className = 'agente-tool-log ok';
+      div.textContent = '✓ ' + texto;
+
+    } else if (role === 'tool-err') {
+      div.className = 'agente-tool-log err';
+      div.textContent = '✗ ' + texto;
+
+    } else if (role === 'thinking') {
+      div.className += ' agente-bubble-agent agente-bubble-thinking';
+      div.innerHTML = `
+        <div class="agente-avatar">🤖</div>
+        <div class="agente-bubble-text" id="agenteThinkingText">
+          <span style="animation:blink 1.2s infinite">▋</span>
+        </div>`;
+
+    } else {
+      // agent final response — render markdown-light (bold, newlines)
+      const html = esc(texto)
+        .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#fff">$1</strong>')
+        .replace(/\n/g, '<br/>');
+      div.className += ' agente-bubble-agent';
+      div.innerHTML = `
+        <div class="agente-avatar">🤖</div>
+        <div class="agente-bubble-text">${html}</div>`;
+    }
+
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+    return div;
+  }
+
+  async function executarOpAgente(op) {
+    switch (op.op) {
+      case 'list_folders': {
+        const data = await listarSubpastas(op.parentId);
+        return { op: op.op, success: true, count: data.length, items: data.map(p => ({ id: p.id, name: p.name })) };
+      }
+      case 'list_files': {
+        const data = await listarArquivos(op.parentId);
+        return { op: op.op, success: true, count: data.length, items: data.map(f => ({ id: f.id, name: f.name })) };
+      }
+      case 'rename': {
+        await renomearItem(op.id, op.name);
+        return { op: op.op, success: true, id: op.id, newName: op.name };
+      }
+      case 'create_folder': {
+        const r = await fetch('https://www.googleapis.com/drive/v3/files', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: op.name, mimeType: 'application/vnd.google-apps.folder', parents: [op.parentId] })
+        });
+        const d = await r.json();
+        if (d.error) throw new Error(d.error.message);
+        return { op: op.op, success: true, id: d.id, name: d.name };
+      }
+      case 'move': {
+        const r = await fetch(`https://www.googleapis.com/drive/v3/files/${op.id}?addParents=${op.newParent}&removeParents=${op.oldParent}&fields=id`, {
+          method: 'PATCH',
+          headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        const d = await r.json();
+        if (d.error) throw new Error(d.error.message);
+        return { op: op.op, success: true, id: op.id };
+      }
+      case 'delete': {
+        const r = await fetch(`https://www.googleapis.com/drive/v3/files/${op.id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        if (!r.ok && r.status !== 204) throw new Error(`HTTP ${r.status}`);
+        return { op: op.op, success: true, id: op.id };
+      }
+      case 'search': {
+        let q = 'trashed=false';
+        if (op.parentId) q += ` and '${op.parentId}' in parents`;
+        if (op.query) q += ` and name contains '${op.query.replace(/'/g, "\\'")}'`;
+        const data = await driveGet(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,mimeType,parents)&pageSize=200`);
+        return {
+          op: op.op, success: true, count: (data.files || []).length,
+          items: (data.files || []).map(f => ({ id: f.id, name: f.name, type: f.mimeType.includes('folder') ? 'folder' : 'file', parents: f.parents }))
+        };
+      }
+      case 'get_info': {
+        const data = await driveGet(`https://www.googleapis.com/drive/v3/files/${op.id}?fields=id,name,mimeType,parents,size,modifiedTime`);
+        return { op: op.op, success: true, data };
+      }
+      default:
+        return { op: op.op, success: false, error: `Operação desconhecida: ${op.op}` };
+    }
+  }
+
+  async function agenteEnviar() {
+    if (agenteRodando) return;
+
+    const input = document.getElementById('agenteInput');
+    const folderId = document.getElementById('folderIdAgente').value.trim();
+    const apiKey = document.getElementById('anthropicKeyAgente').value.trim();
+    const msg = input.value.trim();
+
+    if (!msg) return;
+    if (!accessToken) { alert('Conecte ao Google primeiro na aba "Renomear"!'); return; }
+    if (!folderId) { alert('Preencha o ID da pasta raiz!'); return; }
+    if (!apiKey) { alert('Preencha a chave da API Anthropic!'); return; }
+
+    input.value = '';
+    agenteRodando = true;
+    document.getElementById('agenteSend').disabled = true;
+    input.disabled = true;
+
+    agenteMsgUI('user', msg);
+    agenteHistorico.push({ role: 'user', content: msg });
+
+    const thinkingEl = agenteMsgUI('thinking');
+
+    const SYSTEM = `Você é um agente autônomo de gerenciamento do Google Drive. O usuário descreve o que quer fazer em linguagem natural e você executa usando ferramentas reais que operam no Drive.
+
+PASTA RAIZ DO USUÁRIO: ${folderId}
+
+━━━ FERRAMENTAS DISPONÍVEIS ━━━
+Use blocos <TOOLS> com array JSON para chamar ferramentas:
+
+<TOOLS>
+[
+  {"op": "list_folders", "parentId": "ID_DA_PASTA"},
+  {"op": "list_files", "parentId": "ID_DA_PASTA"},
+  {"op": "rename", "id": "ID_DO_ITEM", "name": "NOVO NOME"},
+  {"op": "create_folder", "name": "NOME DA PASTA", "parentId": "ID_PAI"},
+  {"op": "move", "id": "ID_ITEM", "newParent": "ID_DESTINO", "oldParent": "ID_ORIGEM"},
+  {"op": "delete", "id": "ID_DO_ITEM"},
+  {"op": "search", "query": "texto de busca", "parentId": "ID_OPCIONAL"},
+  {"op": "get_info", "id": "ID_DO_ITEM"}
+]
+</TOOLS>
+
+━━━ PROCESSO OBRIGATÓRIO ━━━
+1. SEMPRE explore a estrutura (list_folders / list_files) antes de fazer qualquer mudança
+2. Use os IDs REAIS retornados pelas ferramentas — NUNCA invente IDs
+3. Explique brevemente o que está fazendo em cada etapa
+4. Para tarefas complexas, divida em múltiplas rodadas de ferramentas
+5. Quando TERMINAR, escreva apenas texto de confirmação — SEM <TOOLS>
+
+━━━ REGRAS ━━━
+- Responda SEMPRE em português do Brasil
+- Para ações destrutivas em massa (delete de muitos itens), liste o que vai apagar antes
+- Seja direto e eficiente
+- Se o usuário pedir algo que não é possível via Drive API, explique claramente`;
+
+    try {
+      let iter = 0;
+      while (iter++ < 25) {
+        const resp = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true'
+          },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 4096,
+            system: SYSTEM,
+            messages: agenteHistorico
+          })
+        });
+
+        const data = await resp.json();
+        if (data.error) throw new Error(data.error.message);
+        const texto = data.content[0].text;
+        agenteHistorico.push({ role: 'assistant', content: texto });
+
+        const toolsMatch = texto.match(/<TOOLS>([\s\S]*?)<\/TOOLS>/);
+
+        if (!toolsMatch) {
+          // Resposta final
+          thinkingEl.remove();
+          agenteMsgUI('agent', texto.replace(/<TOOLS>[\s\S]*?<\/TOOLS>/g, '').trim());
+          break;
+        }
+
+        // Mostra raciocínio antes do bloco de tools
+        const antesTools = texto.split('<TOOLS>')[0].trim();
+        const thinkText = document.getElementById('agenteThinkingText');
+        if (thinkText && antesTools) {
+          thinkText.innerHTML = esc(antesTools);
+        }
+
+        // Parse ferramentas
+        let ops;
+        try {
+          ops = JSON.parse(toolsMatch[1].trim());
+          if (!Array.isArray(ops)) ops = [ops];
+        } catch(e) {
+          throw new Error('JSON inválido no bloco TOOLS: ' + e.message);
+        }
+
+        // Executa cada operação
+        const resultados = [];
+        for (const op of ops) {
+          if (thinkText) {
+            const label = op.name ? `${op.op}: "${op.name}"` : op.op;
+            thinkText.innerHTML = `<span style="color:#555">⚙ ${esc(label)}</span>`;
+          }
+          try {
+            const res = await executarOpAgente(op);
+            resultados.push(res);
+            const desc = res.count !== undefined ? `${op.op} → ${res.count} itens` :
+                         op.name ? `${op.op}: "${op.name}"` : op.op;
+            agenteMsgUI('tool-ok', desc);
+          } catch(e) {
+            resultados.push({ op: op.op, success: false, error: e.message });
+            agenteMsgUI('tool-err', `${op.op}: ${e.message}`);
+          }
+          await sleep(120);
+        }
+
+        // Retorna resultados para o Claude
+        agenteHistorico.push({ role: 'user', content: 'Resultados das operações:\n' + JSON.stringify(resultados, null, 2) });
+
+        if (thinkText) {
+          thinkText.innerHTML = '<span style="animation:blink 1.2s infinite">▋</span>';
+        }
+        // Scroll
+        document.getElementById('agenteChat').scrollTop = document.getElementById('agenteChat').scrollHeight;
+      }
+
+      if (iter >= 25) {
+        thinkingEl.remove();
+        agenteMsgUI('agent', '⚠️ Limite de iterações atingido. A tarefa pode ser muito complexa — tente dividi-la em partes menores.');
+      }
+
+    } catch(e) {
+      thinkingEl.remove();
+      agenteMsgUI('agent', '❌ Erro: ' + e.message);
+    }
+
+    agenteRodando = false;
+    document.getElementById('agenteSend').disabled = false;
+    input.disabled = false;
+    input.focus();
   }
 </script>
 </body>
