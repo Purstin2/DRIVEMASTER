@@ -72,6 +72,18 @@
     .status-running{background:rgba(0,230,118,.1);color:var(--green);border:1px solid rgba(0,230,118,.2)}
     .status-done{background:rgba(0,230,118,.15);color:var(--green)}
     .status-error{background:rgba(255,68,68,.1);color:var(--red)}
+    .status-stopped{background:rgba(255,136,0,.1);color:#ff8800;border:1px solid rgba(255,136,0,.2)}
+    .angle-presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+    .angle-preset{background:#000;border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);cursor:pointer;transition:all .2s}
+    .angle-preset:hover{border-color:#333;color:var(--text)}
+    .angle-preset.active{background:rgba(255,167,0,.1);color:#ffa700;border-color:rgba(255,167,0,.4)}
+    input[type=range].angle-slider{width:100%;accent-color:#ffa700;cursor:pointer;margin-top:4px}
+    .preview-cell{position:relative}
+    .preview-cell .refazer-btn{position:absolute;bottom:34px;right:5px;background:rgba(0,0,0,.85);border:1px solid #444;color:#ccc;border-radius:5px;font-size:10px;padding:4px 9px;cursor:pointer;opacity:0;transition:opacity .15s;font-weight:700;z-index:1}
+    .preview-cell:hover .refazer-btn{opacity:1}
+    .angle-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:10000;display:flex;align-items:center;justify-content:center}
+    .angle-modal-box{background:#0f0f0f;border:1px solid #222;border-radius:16px;padding:28px;width:420px;max-width:92vw;max-height:92vh;overflow-y:auto}
+    #anglePreviewCanvas{display:block;width:100%;border-radius:8px;margin-bottom:16px}
     .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
     .dot.pulse{animation:pulse 1s infinite}
     .cat-preview{margin-top:16px;display:none}
@@ -183,6 +195,7 @@
       <div class="btn-row">
         <button class="btn btn-primary" id="btnAuth" onclick="iniciarAuth()">🔑 Conectar ao Google</button>
         <button class="btn btn-secondary" id="btnRun" onclick="executarRenomear()" disabled>▶ Renomear pastas</button>
+        <button class="btn btn-danger" id="btnStopR" onclick="pararOperacao('renomear')" style="display:none">⛔ Parar</button>
         <button class="btn btn-secondary" onclick="limparLog('logRenomear')">Limpar log</button>
       </div>
     </div>
@@ -220,6 +233,7 @@
       <div class="btn-row">
         <button class="btn btn-primary" id="btnAnalyze" onclick="analisarComIA()">🤖 Analisar com IA</button>
         <button class="btn btn-secondary" id="btnApplyCategories" onclick="aplicarCategorias()" disabled>✅ Aplicar organização</button>
+        <button class="btn btn-danger" id="btnStopC" onclick="pararOperacao('cat')" style="display:none">⛔ Parar</button>
         <button class="btn btn-secondary" onclick="limparLog('logCat')">Limpar log</button>
       </div>
       <div class="cat-preview" id="catPreview">
@@ -269,6 +283,7 @@
       <div class="btn-row">
         <button class="btn btn-purple" id="btnAIAnalyze" onclick="iaInteligenteAnalisar()">🧠 Analisar com IA</button>
         <button class="btn btn-secondary" id="btnAIApply" onclick="iaInteligenteAplicar()" disabled>✅ Aplicar renomeações</button>
+        <button class="btn btn-danger" id="btnStopAI" onclick="pararOperacao('ai')" style="display:none">⛔ Parar</button>
         <button class="btn btn-secondary" onclick="limparLog('logAI')">Limpar log</button>
       </div>
       <div class="ai-preview" id="aiPreview">
@@ -304,6 +319,7 @@
       <div class="btn-row">
         <button class="btn btn-primary" id="btnScan" onclick="escanearVazias()">🔍 Escanear pastas vazias</button>
         <button class="btn btn-danger" id="btnDelete" onclick="apagarSelecionadas()" disabled>🗑 Apagar selecionadas</button>
+        <button class="btn btn-danger" id="btnStopL" onclick="pararOperacao('limpar')" style="display:none">⛔ Parar</button>
         <button class="btn btn-secondary" onclick="limparLog('logLimpar')">Limpar log</button>
       </div>
       <div class="empty-list" id="emptyList">
@@ -352,9 +368,31 @@
         <label class="opt active" id="opt-pv-pular"><input type="checkbox" checked onchange="toggleOpt(this,'opt-pv-pular')"/> Pular se já tem preview</label>
         <label class="opt" id="opt-pv-sobrescrever"><input type="checkbox" onchange="toggleOpt(this,'opt-pv-sobrescrever')"/> Sobrescrever previews existentes</label>
       </div>
+      <div style="margin-bottom:16px">
+        <label style="display:block;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Ângulo da câmera</label>
+        <div class="angle-presets" id="globalAnglePresets">
+          <button class="angle-preset active" onclick="pvSetPreset(30,20,this)">Isométrico</button>
+          <button class="angle-preset" onclick="pvSetPreset(0,5,this)">Frente</button>
+          <button class="angle-preset" onclick="pvSetPreset(90,5,this)">Lateral</button>
+          <button class="angle-preset" onclick="pvSetPreset(180,5,this)">Costas</button>
+          <button class="angle-preset" onclick="pvSetPreset(30,85,this)">Topo</button>
+          <button class="angle-preset" onclick="pvSetPreset(45,30,this)">¾ Frente</button>
+        </div>
+        <div class="row2">
+          <div>
+            <label style="font-size:10px;color:#444;letter-spacing:1px;text-transform:uppercase">Horizontal: <span id="pvAnguloHVal">30</span>°</label>
+            <input type="range" class="angle-slider" id="pvAnguloH" min="0" max="360" value="30" oninput="pvSliderChange()"/>
+          </div>
+          <div>
+            <label style="font-size:10px;color:#444;letter-spacing:1px;text-transform:uppercase">Vertical: <span id="pvAnguloVVal">20</span>°</label>
+            <input type="range" class="angle-slider" id="pvAnguloV" min="3" max="88" value="20" oninput="pvSliderChange()"/>
+          </div>
+        </div>
+      </div>
       <canvas id="stlCanvas" style="display:none"></canvas>
       <div class="btn-row">
         <button class="btn" style="background:#ffa700;color:#000;box-shadow:0 0 20px rgba(255,167,0,.3);font-weight:700;font-size:13px;letter-spacing:.5px;text-transform:uppercase;padding:13px 28px;border-radius:10px;border:none;cursor:pointer" id="btnPreview" onclick="gerarPreviews()">🖼 Gerar Previews</button>
+        <button class="btn btn-danger" id="btnStopPV" onclick="pararOperacao('preview')" style="display:none">⛔ Parar</button>
         <button class="btn btn-secondary" onclick="limparLog('logPreview')">Limpar log</button>
       </div>
       <div id="previewGrade" style="display:none;margin-top:24px">
@@ -410,6 +448,7 @@
       <canvas id="catalogCanvas" style="display:none"></canvas>
       <div class="btn-row">
         <button class="btn" style="background:#f472b6;color:#000;box-shadow:0 0 20px rgba(244,114,182,.3);font-weight:700;font-size:13px;letter-spacing:.5px;text-transform:uppercase;padding:13px 28px;border-radius:10px;border:none;cursor:pointer" id="btnCatalog" onclick="gerarCatalogo()">📸 Gerar Catálogo</button>
+        <button class="btn btn-danger" id="btnStopCat" onclick="pararOperacao('catalogo')" style="display:none">⛔ Parar</button>
         <button class="btn btn-secondary" onclick="limparLog('logCatalog')">Limpar log</button>
       </div>
       <div id="catalogPreviewWrap" style="display:none;margin-top:24px">
@@ -484,6 +523,42 @@
   </div>
 
 </div>
+
+<!-- MODAL: AJUSTE DE ÂNGULO INDIVIDUAL -->
+<div id="angleModalOverlay" style="display:none" class="angle-modal-overlay" onclick="if(event.target===this)fecharModalAngulo()">
+  <div class="angle-modal-box">
+    <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:16px">↻ Refazer Preview</div>
+    <div id="angleModalNome" style="font-size:12px;color:#666;font-family:'DM Mono',monospace;margin-bottom:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+    <div id="angleModalLoading" style="text-align:center;padding:30px 0;color:#444;font-size:12px;font-family:monospace">Carregando STL...</div>
+    <canvas id="anglePreviewCanvas" width="360" height="360" style="display:none"></canvas>
+    <div id="angleModalControls" style="display:none">
+      <div class="angle-presets" id="modalAnglePresets">
+        <button class="angle-preset active" onclick="modalSetPreset(30,20,this)">Isométrico</button>
+        <button class="angle-preset" onclick="modalSetPreset(0,5,this)">Frente</button>
+        <button class="angle-preset" onclick="modalSetPreset(90,5,this)">Lateral</button>
+        <button class="angle-preset" onclick="modalSetPreset(180,5,this)">Costas</button>
+        <button class="angle-preset" onclick="modalSetPreset(30,85,this)">Topo</button>
+        <button class="angle-preset" onclick="modalSetPreset(45,30,this)">¾ Frente</button>
+      </div>
+      <div class="row2" style="margin-top:10px;margin-bottom:18px">
+        <div>
+          <label style="font-size:10px;color:#444;letter-spacing:1px;text-transform:uppercase">Horizontal: <span id="modalAnguloHVal">30</span>°</label>
+          <input type="range" class="angle-slider" id="modalAnguloH" min="0" max="360" value="30" oninput="modalSliderChange()"/>
+        </div>
+        <div>
+          <label style="font-size:10px;color:#444;letter-spacing:1px;text-transform:uppercase">Vertical: <span id="modalAnguloVVal">20</span>°</label>
+          <input type="range" class="angle-slider" id="modalAnguloV" min="3" max="88" value="20" oninput="modalSliderChange()"/>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="btnSalvarAngulo" onclick="salvarAnguloModal()" style="background:#ffa700;color:#000;box-shadow:0 0 20px rgba(255,167,0,.3);font-weight:700;font-size:13px;letter-spacing:.5px;text-transform:uppercase;padding:13px 28px;border-radius:10px;border:none;cursor:pointer">💾 Salvar no Drive</button>
+        <button class="btn btn-secondary" onclick="fecharModalAngulo()">Cancelar</button>
+      </div>
+      <div id="modalStatusMsg" style="display:none;font-size:12px;font-family:monospace;margin-top:12px;text-align:center"></div>
+    </div>
+  </div>
+</div>
+
 <script src="https://accounts.google.com/gsi/client"></script>
 <script>
   let accessToken = null;
@@ -491,6 +566,133 @@
   let pastasCache = [];
   let pastasVazias = [];
   let aiRenomearPlan = [];
+  let pvAnguloH = 30, pvAnguloV = 20;
+  let _previewCells = [];
+  let _modalSTL = null;
+  let _modalDebounce = null;
+  const stopFlags = { renomear: false, cat: false, ai: false, limpar: false, preview: false, catalogo: false };
+  const _stopBtnIds = { renomear:'btnStopR', cat:'btnStopC', ai:'btnStopAI', limpar:'btnStopL', preview:'btnStopPV', catalogo:'btnStopCat' };
+  const _stopLogIds = { renomear:'logRenomear', cat:'logCat', ai:'logAI', limpar:'logLimpar', preview:'logPreview', catalogo:'logCatalog' };
+  function pararOperacao(key) {
+    stopFlags[key] = true;
+    const btn = document.getElementById(_stopBtnIds[key]);
+    if (btn) btn.disabled = true;
+    log(_stopLogIds[key], 'warn', '⛔ Parando após operação atual...');
+  }
+  function mostrarStop(key, show) {
+    const btn = document.getElementById(_stopBtnIds[key]);
+    if (btn) { btn.style.display = show ? '' : 'none'; btn.disabled = false; }
+  }
+
+  // ─── CONTROLES DE ÂNGULO ─────────────────────────────
+  function pvSetPreset(h, v, btn) {
+    pvAnguloH = h; pvAnguloV = v;
+    document.getElementById('pvAnguloH').value = h;
+    document.getElementById('pvAnguloV').value = v;
+    document.getElementById('pvAnguloHVal').textContent = h;
+    document.getElementById('pvAnguloVVal').textContent = v;
+    document.querySelectorAll('#globalAnglePresets .angle-preset').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+  }
+  function pvSliderChange() {
+    pvAnguloH = parseInt(document.getElementById('pvAnguloH').value);
+    pvAnguloV = parseInt(document.getElementById('pvAnguloV').value);
+    document.getElementById('pvAnguloHVal').textContent = pvAnguloH;
+    document.getElementById('pvAnguloVVal').textContent = pvAnguloV;
+    document.querySelectorAll('#globalAnglePresets .angle-preset').forEach(b => b.classList.remove('active'));
+  }
+
+  // ─── MODAL DE ÂNGULO INDIVIDUAL ──────────────────────
+  function modalSetPreset(h, v, btn) {
+    document.getElementById('modalAnguloH').value = h;
+    document.getElementById('modalAnguloV').value = v;
+    document.getElementById('modalAnguloHVal').textContent = h;
+    document.getElementById('modalAnguloVVal').textContent = v;
+    document.querySelectorAll('#modalAnglePresets .angle-preset').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    modalRenderPreview();
+  }
+  function modalSliderChange() {
+    document.getElementById('modalAnguloHVal').textContent = document.getElementById('modalAnguloH').value;
+    document.getElementById('modalAnguloVVal').textContent = document.getElementById('modalAnguloV').value;
+    document.querySelectorAll('#modalAnglePresets .angle-preset').forEach(b => b.classList.remove('active'));
+    clearTimeout(_modalDebounce);
+    _modalDebounce = setTimeout(modalRenderPreview, 280);
+  }
+  async function modalRenderPreview() {
+    if (!_modalSTL || !_modalSTL.buffer) return;
+    const h = parseInt(document.getElementById('modalAnguloH').value);
+    const v = parseInt(document.getElementById('modalAnguloV').value);
+    const canvas = document.getElementById('anglePreviewCanvas');
+    await renderizarSTL(_modalSTL.buffer, 360, h, v, canvas);
+  }
+  async function abrirAjusteAngulo(idx) {
+    const info = _previewCells[idx];
+    if (!info) return;
+    _modalSTL = { ...info, buffer: null };
+    document.getElementById('angleModalNome').textContent = info.stlNome;
+    document.getElementById('angleModalLoading').style.display = 'block';
+    document.getElementById('angleModalLoading').textContent = 'Carregando STL...';
+    document.getElementById('anglePreviewCanvas').style.display = 'none';
+    document.getElementById('angleModalControls').style.display = 'none';
+    document.getElementById('modalStatusMsg').style.display = 'none';
+    document.getElementById('angleModalOverlay').style.display = 'flex';
+    try {
+      const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${info.stlId}?alt=media`, { headers: { Authorization: `Bearer ${accessToken}` } });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      _modalSTL.buffer = await resp.arrayBuffer();
+      document.getElementById('modalAnguloH').value = pvAnguloH;
+      document.getElementById('modalAnguloV').value = pvAnguloV;
+      document.getElementById('modalAnguloHVal').textContent = pvAnguloH;
+      document.getElementById('modalAnguloVVal').textContent = pvAnguloV;
+      document.querySelectorAll('#modalAnglePresets .angle-preset').forEach(b => b.classList.remove('active'));
+      const canvas = document.getElementById('anglePreviewCanvas');
+      await renderizarSTL(_modalSTL.buffer, 360, pvAnguloH, pvAnguloV, canvas);
+      document.getElementById('angleModalLoading').style.display = 'none';
+      canvas.style.display = 'block';
+      document.getElementById('angleModalControls').style.display = 'block';
+    } catch(e) {
+      document.getElementById('angleModalLoading').textContent = '✗ Erro ao carregar: ' + e.message;
+    }
+  }
+  function fecharModalAngulo() {
+    document.getElementById('angleModalOverlay').style.display = 'none';
+    _modalSTL = null;
+    clearTimeout(_modalDebounce);
+  }
+  async function salvarAnguloModal() {
+    if (!_modalSTL || !_modalSTL.buffer) return;
+    const h = parseInt(document.getElementById('modalAnguloH').value);
+    const v = parseInt(document.getElementById('modalAnguloV').value);
+    const btn = document.getElementById('btnSalvarAngulo');
+    const msg = document.getElementById('modalStatusMsg');
+    btn.disabled = true;
+    msg.style.display = 'block'; msg.style.color = '#ffa700'; msg.textContent = '⏳ Renderizando e salvando...';
+    try {
+      const blob = await renderizarSTL(_modalSTL.buffer, _modalSTL.tamanho, h, v);
+      let ok = false;
+      if (_modalSTL.pngFileId) {
+        const resp = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${_modalSTL.pngFileId}?uploadType=media`, {
+          method: 'PATCH', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'image/png' }, body: blob
+        });
+        const d = await resp.json(); ok = !!(d.id || d.name);
+      } else {
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify({ name: _modalSTL.nomePNG, parents: [_modalSTL.parentId] })], { type: 'application/json' }));
+        form.append('file', blob, _modalSTL.nomePNG);
+        const resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: form });
+        const d = await resp.json(); ok = !!d.id; if (ok) _previewCells[_modalSTL.idx].pngFileId = d.id;
+      }
+      if (ok) {
+        // Atualizar a imagem no grid
+        const cellImg = document.querySelector(`#previewGrid .preview-cell:nth-child(${_modalSTL.idx + 1}) img`);
+        if (cellImg) { const url = URL.createObjectURL(blob); cellImg.src = url; }
+        msg.style.color = '#00e676'; msg.textContent = '✅ Salvo!';
+        setTimeout(fecharModalAngulo, 900);
+      } else { throw new Error('Upload falhou'); }
+    } catch(e) { msg.style.color = '#ff4444'; msg.textContent = '✗ Erro: ' + e.message; }
+    btn.disabled = false;
+  }
 
   // ─── PERSISTÊNCIA LOCAL ────────────────────────────────────────────
   const FIELDS_TO_SAVE = ['clientId','anthropicKey','anthropicKeyAI','anthropicKeyAgente'];
@@ -641,10 +843,12 @@
   }
 
   async function renomearRecursivo(folderId, profundidade, contRef, numerarRaiz) {
+    if (stopFlags.renomear) return;
     const pastas = await listarSubpastas(folderId);
     const recursivo = document.querySelector('#opt-recursivo input').checked;
     const indent = '  '.repeat(profundidade);
     for (let i = 0; i < pastas.length; i++) {
+      if (stopFlags.renomear) return;
       const pasta = pastas[i];
       const nomeOriginal = pasta.name;
       let nomeFinal = await traduzirTexto(limparNome(nomeOriginal));
@@ -663,7 +867,9 @@
     if (!accessToken) { alert('Conecte ao Google primeiro!'); return; }
     const folderId = document.getElementById('folderId').value.trim();
     if (!folderId) { alert('Preencha o ID da pasta!'); return; }
+    stopFlags.renomear = false;
     document.getElementById('btnRun').disabled = true;
+    mostrarStop('renomear', true);
     document.getElementById('progressWrapR').style.display = 'block';
     document.getElementById('progressBarR').style.width = '5%';
     setStatus('statusR', 'running', 'Processando...');
@@ -672,10 +878,11 @@
       const contRef = { count: 0 };
       await renomearRecursivo(folderId, 0, contRef, document.querySelector('#opt-numerar input').checked);
       document.getElementById('progressBarR').style.width = '100%';
-      setStatus('statusR', 'done', 'Concluído!');
-      log('logRenomear', 'info', `✅ ${contRef.count} pastas processadas!`);
+      if (stopFlags.renomear) { setStatus('statusR', 'stopped', 'Parado'); log('logRenomear', 'warn', `⛔ Parado! ${contRef.count} pastas processadas.`); }
+      else { setStatus('statusR', 'done', 'Concluído!'); log('logRenomear', 'info', `✅ ${contRef.count} pastas processadas!`); }
     } catch(e) { log('logRenomear', 'error', e.message); setStatus('statusR', 'error', 'Erro'); }
     document.getElementById('btnRun').disabled = false;
+    mostrarStop('renomear', false);
   }
 
   // ─── CATEGORIZAR COM IA ──────────────────────────────
@@ -686,7 +893,9 @@
     if (!folderId) { alert('Preencha o ID da pasta!'); return; }
     if (!apiKey) { alert('Preencha a chave da API Anthropic!'); return; }
     if (!accessToken) { alert('Conecte ao Google primeiro na aba "Renomear"!'); return; }
+    stopFlags.cat = false;
     document.getElementById('btnAnalyze').disabled = true;
+    mostrarStop('cat', true);
     document.getElementById('progressWrapC').style.display = 'block';
     setStatus('statusC', 'running', 'Buscando pastas...');
     log('logCat', 'info', '🔍 Buscando pastas...');
@@ -718,18 +927,22 @@
       setStatus('statusC', 'done', 'Pronto para aplicar!');
     } catch(e) { log('logCat', 'error', 'Erro: ' + e.message); setStatus('statusC', 'error', 'Erro'); }
     document.getElementById('btnAnalyze').disabled = false;
+    mostrarStop('cat', false);
   }
 
   async function aplicarCategorias() {
     if (!categoriasIA) return;
     const folderId = document.getElementById('folderIdCat').value.trim();
+    stopFlags.cat = false;
     document.getElementById('btnApplyCategories').disabled = true;
+    mostrarStop('cat', true);
     setStatus('statusC', 'running', 'Criando pastas...');
     log('logCat', 'info', '🚀 Aplicando organização...');
     try {
       const total = Object.values(categoriasIA.categorias).flat().length;
       let feito = 0;
       for (const [cat, folders] of Object.entries(categoriasIA.categorias)) {
+        if (stopFlags.cat) break;
         log('logCat', 'info', `📁 Criando: ${cat}`);
         const criarResp = await fetch('https://www.googleapis.com/drive/v3/files', {
           method: 'POST',
@@ -738,6 +951,7 @@
         });
         const catFolder = await criarResp.json();
         for (const nomeP of folders) {
+          if (stopFlags.cat) break;
           const pasta = pastasCache.find(p => p.name === nomeP);
           if (!pasta) continue;
           await fetch(`https://www.googleapis.com/drive/v3/files/${pasta.id}?addParents=${catFolder.id}&removeParents=${folderId}`, {
@@ -749,10 +963,10 @@
           await sleep(150);
         }
       }
-      setStatus('statusC', 'done', 'Organizado!');
-      log('logCat', 'info', `✅ ${feito} pastas organizadas!`);
-      document.getElementById('catPreview').style.display = 'none';
+      if (stopFlags.cat) { setStatus('statusC', 'stopped', 'Parado'); log('logCat', 'warn', `⛔ Parado! ${feito} pastas organizadas.`); }
+      else { setStatus('statusC', 'done', 'Organizado!'); log('logCat', 'info', `✅ ${feito} pastas organizadas!`); document.getElementById('catPreview').style.display = 'none'; }
     } catch(e) { log('logCat', 'error', 'Erro: ' + e.message); setStatus('statusC', 'error', 'Erro'); document.getElementById('btnApplyCategories').disabled = false; }
+    mostrarStop('cat', false);
   }
 
   // ─── IA INTELIGENTE ──────────────────────────────────
@@ -779,8 +993,10 @@
   }
 
   async function coletarTodasPastas(parentId, caminho, profundidade, resultado, contRef) {
+    if (stopFlags.ai) return;
     const subpastas = await listarSubpastas(parentId);
     for (const pasta of subpastas) {
+      if (stopFlags.ai) return;
       const caminhoCompleto = caminho ? `${caminho} / ${pasta.name}` : pasta.name;
       resultado.push({ pasta, caminho: caminhoCompleto, profundidade, parentId });
       contRef.total++;
@@ -801,8 +1017,10 @@
     const renomearArquivos = document.querySelector('#opt-ai-arquivos input').checked;
     const maiusculo = document.querySelector('#opt-ai-maiusculo input').checked;
 
+    stopFlags.ai = false;
     document.getElementById('btnAIAnalyze').disabled = true;
     document.getElementById('btnAIApply').disabled = true;
+    mostrarStop('ai', true);
     document.getElementById('progressWrapAI').style.display = 'block';
     document.getElementById('progressBarAI').style.width = '3%';
     document.getElementById('aiPreview').style.display = 'none';
@@ -832,6 +1050,7 @@
 
       const dadosPastas = [];
       for (let i = 0; i < todasPastas.length; i++) {
+        if (stopFlags.ai) break;
         const { pasta, caminho, profundidade, parentId } = todasPastas[i];
         const arquivos = await listarArquivos(pasta.id);
         dadosPastas.push({ pasta, arquivos, caminho, profundidade, parentId });
@@ -875,6 +1094,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
       const resultadoFinal = [];
 
       for (let inicio = 0; inicio < dadosPastas.length; inicio += LOTE) {
+        if (stopFlags.ai) break;
         const lote = dadosPastas.slice(inicio, inicio + LOTE);
         const numLote = Math.floor(inicio / LOTE) + 1;
         const totalLotes = Math.ceil(dadosPastas.length / LOTE);
@@ -963,23 +1183,31 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
       }
 
       document.getElementById('progressBarAI').style.width = '100%';
-      document.getElementById('aiPreview').style.display = 'block';
-      document.getElementById('btnAIApply').disabled = false;
-      setStatus('statusAI', 'done', `${totalMudancas} mudanças`);
-      log('logAI', 'info', `✅ Análise concluída! ${aiRenomearPlan.length} pastas analisadas, ${totalMudancas} renomeações planejadas.`);
-      log('logAI', 'info', `👆 Confira a prévia acima e clique em "Aplicar renomeações".`);
+      if (stopFlags.ai) {
+        setStatus('statusAI', 'stopped', 'Parado');
+        log('logAI', 'warn', `⛔ Parado! ${aiRenomearPlan.length} pastas analisadas até agora.`);
+      } else {
+        document.getElementById('aiPreview').style.display = 'block';
+        document.getElementById('btnAIApply').disabled = false;
+        setStatus('statusAI', 'done', `${totalMudancas} mudanças`);
+        log('logAI', 'info', `✅ Análise concluída! ${aiRenomearPlan.length} pastas analisadas, ${totalMudancas} renomeações planejadas.`);
+        log('logAI', 'info', `👆 Confira a prévia acima e clique em "Aplicar renomeações".`);
+      }
 
     } catch(e) {
       log('logAI', 'error', 'Erro: ' + e.message);
       setStatus('statusAI', 'error', 'Erro');
     }
     document.getElementById('btnAIAnalyze').disabled = false;
+    mostrarStop('ai', false);
   }
 
   async function iaInteligenteAplicar() {
     if (!aiRenomearPlan.length) return;
+    stopFlags.ai = false;
     document.getElementById('btnAIApply').disabled = true;
     document.getElementById('btnAIAnalyze').disabled = true;
+    mostrarStop('ai', true);
     setStatus('statusAI', 'running', 'Aplicando...');
     log('logAI', 'info', '🚀 Aplicando renomeações...');
 
@@ -991,6 +1219,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     }, 0);
 
     for (const item of aiRenomearPlan) {
+      if (stopFlags.ai) break;
       if (item.novoNomePasta !== item.pasta.name) {
         try {
           await renomearItem(item.pasta.id, item.novoNomePasta);
@@ -1000,6 +1229,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
       }
 
       for (const arq of item.arquivos) {
+        if (stopFlags.ai) break;
         if (arq.novoNome !== arq.nome) {
           try {
             await renomearItem(arq.id, arq.novoNome);
@@ -1016,16 +1246,18 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
       }
     }
 
-    setStatus('statusAI', 'done', 'Concluído!');
-    log('logAI', 'info', `✅ ${totalFeito} itens renomeados com sucesso!`);
-    document.getElementById('aiPreview').style.display = 'none';
+    if (stopFlags.ai) { setStatus('statusAI', 'stopped', 'Parado'); log('logAI', 'warn', `⛔ Parado! ${totalFeito} itens renomeados.`); }
+    else { setStatus('statusAI', 'done', 'Concluído!'); log('logAI', 'info', `✅ ${totalFeito} itens renomeados com sucesso!`); document.getElementById('aiPreview').style.display = 'none'; }
     document.getElementById('btnAIAnalyze').disabled = false;
+    mostrarStop('ai', false);
   }
 
   // ─── LIMPAR VAZIAS ───────────────────────────────────
   async function escanearRecursivo(folderId, caminhoAtual, resultado, contRef) {
+    if (stopFlags.limpar) return;
     const subpastas = await listarSubpastas(folderId);
     for (const pasta of subpastas) {
+      if (stopFlags.limpar) return;
       const caminho = caminhoAtual ? `${caminhoAtual} / ${pasta.name}` : pasta.name;
       contRef.total++;
       log('logLimpar', 'info', `📂 ${caminho}`);
@@ -1041,8 +1273,10 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     if (!accessToken) { alert('Conecte ao Google primeiro na aba "Renomear"!'); return; }
     const folderId = document.getElementById('folderIdLimpar').value.trim();
     if (!folderId) { alert('Preencha o ID da pasta raiz!'); return; }
+    stopFlags.limpar = false;
     document.getElementById('btnScan').disabled = true;
     document.getElementById('btnDelete').disabled = true;
+    mostrarStop('limpar', true);
     document.getElementById('emptyList').style.display = 'none';
     document.getElementById('progressWrapL').style.display = 'block';
     document.getElementById('progressBarL').style.width = '5%';
@@ -1053,7 +1287,23 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
       const contRef = { total: 0 };
       await escanearRecursivo(folderId, '', pastasVazias, contRef);
       document.getElementById('progressBarL').style.width = '100%';
-      if (!pastasVazias.length) {
+      if (stopFlags.limpar) {
+        setStatus('statusL', 'stopped', 'Parado');
+        log('logLimpar', 'warn', `⛔ Parado! ${pastasVazias.length} pastas vazias encontradas até agora.`);
+        if (pastasVazias.length) {
+          document.getElementById('emptySummary').innerHTML = `Encontradas <strong>${pastasVazias.length} pastas vazias</strong> (varredura incompleta). Marque as que deseja apagar:`;
+          const container = document.getElementById('emptyItems');
+          container.innerHTML = '';
+          pastasVazias.forEach((p, i) => {
+            const item = document.createElement('div');
+            item.className = 'empty-item';
+            item.innerHTML = `<span class="path" title="${esc(p.path)}">📁 ${esc(p.path)}</span><input type="checkbox" class="check" checked data-index="${i}"/>`;
+            container.appendChild(item);
+          });
+          document.getElementById('emptyList').style.display = 'block';
+          document.getElementById('btnDelete').disabled = false;
+        }
+      } else if (!pastasVazias.length) {
         setStatus('statusL', 'done', 'Nenhuma vazia!');
         log('logLimpar', 'info', '✅ Varredura concluída — nenhuma pasta vazia encontrada!');
       } else {
@@ -1073,6 +1323,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
       }
     } catch(e) { log('logLimpar', 'error', 'Erro: ' + e.message); setStatus('statusL', 'error', 'Erro'); }
     document.getElementById('btnScan').disabled = false;
+    mostrarStop('limpar', false);
   }
 
   function selecionarTodas(valor) { document.querySelectorAll('#emptyItems .check').forEach(cb => cb.checked = valor); }
@@ -1081,12 +1332,15 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     const selecionadas = [...document.querySelectorAll('#emptyItems .check')].filter(cb => cb.checked).map(cb => pastasVazias[parseInt(cb.dataset.index)]);
     if (!selecionadas.length) { alert('Nenhuma pasta selecionada!'); return; }
     if (!confirm(`Apagar ${selecionadas.length} pastas vazias? Esta ação não pode ser desfeita.`)) return;
+    stopFlags.limpar = false;
     document.getElementById('btnDelete').disabled = true;
     document.getElementById('btnScan').disabled = true;
+    mostrarStop('limpar', true);
     setStatus('statusL', 'running', 'Apagando...');
     log('logLimpar', 'info', `🗑 Apagando ${selecionadas.length} pastas...`);
     let apagadas = 0;
     for (const pasta of selecionadas) {
+      if (stopFlags.limpar) break;
       try {
         await fetch(`https://www.googleapis.com/drive/v3/files/${pasta.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } });
         log('logLimpar', 'delete', pasta.path);
@@ -1095,10 +1349,10 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
       document.getElementById('progressBarL').style.width = `${(apagadas/selecionadas.length)*100}%`;
       await sleep(200);
     }
-    setStatus('statusL', 'done', `${apagadas} apagadas!`);
-    log('logLimpar', 'info', `✅ ${apagadas} pastas apagadas com sucesso!`);
-    document.getElementById('emptyList').style.display = 'none';
+    if (stopFlags.limpar) { setStatus('statusL', 'stopped', 'Parado'); log('logLimpar', 'warn', `⛔ Parado! ${apagadas} pastas apagadas.`); }
+    else { setStatus('statusL', 'done', `${apagadas} apagadas!`); log('logLimpar', 'info', `✅ ${apagadas} pastas apagadas com sucesso!`); document.getElementById('emptyList').style.display = 'none'; }
     document.getElementById('btnScan').disabled = false;
+    mostrarStop('limpar', false);
   }
 
   function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -1163,9 +1417,9 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     return { positions: new Float32Array(positions), normals: new Float32Array(normals) };
   }
 
-  function renderizarSTL(buffer, tamanho) {
+  function renderizarSTL(buffer, tamanho, anguloH = 30, anguloV = 20, canvasEl = null) {
     const T = THREE_LIB;
-    const canvas = document.getElementById('stlCanvas');
+    const canvas = canvasEl || document.getElementById('stlCanvas');
     canvas.width = tamanho;
     canvas.height = tamanho;
 
@@ -1213,7 +1467,14 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
 
     // Mesh permanece na origem — geometria já está centrada
     const maxDim = Math.max(size.x, size.y, size.z);
-    camera.position.set(maxDim * 0.8, maxDim * 0.6, maxDim * 1.4);
+    const theta = anguloH * Math.PI / 180;
+    const phi   = anguloV * Math.PI / 180;
+    const dist  = maxDim * 1.7;
+    camera.position.set(
+      dist * Math.cos(phi) * Math.sin(theta),
+      dist * Math.sin(phi),
+      dist * Math.cos(phi) * Math.cos(theta)
+    );
     camera.lookAt(0, 0, 0);
 
     scene.add(new T.AmbientLight(0xffffff, 0.4));
@@ -1232,6 +1493,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
   }
 
   async function listarSTLsRecursivo(parentId, recursivo, resultado, contRef) {
+    if (stopFlags.preview) return;
     let pageToken = null;
     do {
       let url = `https://www.googleapis.com/drive/v3/files?q='${parentId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType),nextPageToken&pageSize=500&orderBy=name`;
@@ -1240,6 +1502,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
       const arquivos = data.files || [];
       const imagens = new Set(arquivos.filter(f => /\.(png|jpg|jpeg|webp)$/i.test(f.name)).map(f => f.name.replace(/\.[^.]+$/, '').toLowerCase()));
       for (const f of arquivos) {
+        if (stopFlags.preview) return;
         if (/\.stl$/i.test(f.name)) {
           const baseName = f.name.replace(/\.stl$/i, '').toLowerCase();
           resultado.push({ id: f.id, name: f.name, parentId, temPreview: imagens.has(baseName) });
@@ -1264,7 +1527,10 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     const recursivo = document.querySelector('#opt-pv-recursivo input').checked;
     const tamanho = parseInt(document.getElementById('previewSize').value) || 512;
 
+    stopFlags.preview = false;
+    _previewCells = [];
     document.getElementById('btnPreview').disabled = true;
+    mostrarStop('preview', true);
     document.getElementById('progressWrapPV').style.display = 'block';
     document.getElementById('progressBarPV').style.width = '3%';
     document.getElementById('previewGrade').style.display = 'none';
@@ -1298,13 +1564,14 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
       let feito = 0;
       let erros = 0;
       for (const stl of paraProcessar) {
+        if (stopFlags.preview) break;
         setStatus('statusPV', 'running', `${feito+1}/${paraProcessar.length}`);
         log('logPreview', 'info', `🔄 Renderizando: ${stl.name}`);
         try {
           const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${stl.id}?alt=media`, { headers: { Authorization: `Bearer ${accessToken}` } });
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
           const buffer = await resp.arrayBuffer();
-          const blob = await renderizarSTL(buffer, tamanho);
+          const blob = await renderizarSTL(buffer, tamanho, pvAnguloH, pvAnguloV);
           const nomePNG = stl.name.replace(/\.stl$/i, '') + '.png';
           const metadata = JSON.stringify({ name: nomePNG, parents: [stl.parentId] });
           const form = new FormData();
@@ -1315,10 +1582,13 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
           if (uploadData.id) {
             log('logPreview', 'rename', stl.name, nomePNG + ' ✅');
             feito++;
+            const cellIdx = _previewCells.length;
+            _previewCells.push({ stlId: stl.id, parentId: stl.parentId, stlNome: stl.name, nomePNG, pngFileId: uploadData.id, tamanho, idx: cellIdx });
             const url = URL.createObjectURL(blob);
             const cell = document.createElement('div');
+            cell.className = 'preview-cell';
             cell.style.cssText = 'background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px;overflow:hidden;text-align:center';
-            cell.innerHTML = `<img src="${url}" style="width:100%;aspect-ratio:1;object-fit:cover;display:block"/><div style="padding:6px 8px;font-size:10px;color:#555;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(stl.name)}">${esc(stl.name.replace(/\.stl$/i,''))}</div>`;
+            cell.innerHTML = `<div style="position:relative"><img src="${url}" style="width:100%;aspect-ratio:1;object-fit:cover;display:block"/><button class="refazer-btn" onclick="abrirAjusteAngulo(${cellIdx})">↻ Refazer</button></div><div style="padding:6px 8px;font-size:10px;color:#555;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(stl.name)}">${esc(stl.name.replace(/\.stl$/i,''))}</div>`;
             document.getElementById('previewGrid').appendChild(cell);
           } else { throw new Error('Upload falhou'); }
         } catch(e) { log('logPreview', 'error', `${stl.name}: ${e.message}`); erros++; }
@@ -1326,14 +1596,16 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
         document.getElementById('logCountPV').textContent = `${feito} gerados`;
         await sleep(200);
       }
-      setStatus('statusPV', 'done', `${feito} gerados!`);
-      log('logPreview', 'info', `✅ ${feito} previews gerados!${erros > 0 ? ' ' + erros + ' erros.' : ''}`);
+      if (stopFlags.preview) { setStatus('statusPV', 'stopped', 'Parado'); log('logPreview', 'warn', `⛔ Parado! ${feito} previews gerados.`); }
+      else { setStatus('statusPV', 'done', `${feito} gerados!`); log('logPreview', 'info', `✅ ${feito} previews gerados!${erros > 0 ? ' ' + erros + ' erros.' : ''}`); }
     } catch(e) { log('logPreview', 'error', 'Erro: ' + e.message); setStatus('statusPV', 'error', 'Erro'); }
     document.getElementById('btnPreview').disabled = false;
+    mostrarStop('preview', false);
   }
 
   // ─── CATÁLOGO ──────────────────────────────────────────────────────
   async function listarImagensCatalogo(folderId, folderName, recursivo, resultado) {
+    if (stopFlags.catalogo) return;
     const IMAGE_TYPES = ['image/jpeg','image/png','image/gif','image/webp','image/bmp'];
     let pageToken = null;
     const subpastas = [];
@@ -1343,6 +1615,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
       const r = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
       const d = await r.json();
       for (const f of (d.files || [])) {
+        if (stopFlags.catalogo) return;
         if (IMAGE_TYPES.includes(f.mimeType)) resultado.push({ id: f.id, name: f.name, folderName });
         else if (recursivo && f.mimeType === 'application/vnd.google-apps.folder') subpastas.push({ id: f.id, name: f.name });
       }
@@ -1361,7 +1634,9 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     const recursivo = document.querySelector('#opt-cat-recursivo input').checked;
     const mostrarTitulo = document.querySelector('#opt-cat-titulo input').checked;
 
+    stopFlags.catalogo = false;
     document.getElementById('btnCatalog').disabled = true;
+    mostrarStop('catalogo', true);
     document.getElementById('progressWrapCat').style.display = 'block';
     document.getElementById('progressBarCat').style.width = '3%';
     document.getElementById('catalogPreviewWrap').style.display = 'none';
@@ -1379,6 +1654,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
 
       const bitmaps = [];
       for (let i = 0; i < imagens.length; i++) {
+        if (stopFlags.catalogo) break;
         const img = imagens[i];
         setStatus('statusCat', 'running', `Baixando ${i+1}/${imagens.length}`);
         try {
@@ -1393,7 +1669,8 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
         await sleep(30);
       }
 
-      if (!bitmaps.length) { log('logCatalog', 'error', 'Nenhuma imagem pôde ser carregada!'); setStatus('statusCat', 'error', 'Erro'); document.getElementById('btnCatalog').disabled = false; return; }
+      if (stopFlags.catalogo) { setStatus('statusCat', 'stopped', 'Parado'); log('logCatalog', 'warn', `⛔ Parado! ${bitmaps.length} imagens baixadas.`); document.getElementById('btnCatalog').disabled = false; mostrarStop('catalogo', false); return; }
+      if (!bitmaps.length) { log('logCatalog', 'error', 'Nenhuma imagem pôde ser carregada!'); setStatus('statusCat', 'error', 'Erro'); document.getElementById('btnCatalog').disabled = false; mostrarStop('catalogo', false); return; }
 
       log('logCatalog', 'info', `🎨 Montando grade: ${cols} colunas × ${thumbSize}px...`);
       const TITLE_H = mostrarTitulo ? 30 : 0;
@@ -1453,6 +1730,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
       } else { throw new Error('Upload falhou: ' + JSON.stringify(upData)); }
     } catch(e) { log('logCatalog', 'error', 'Erro: ' + e.message); setStatus('statusCat', 'error', 'Erro'); }
     document.getElementById('btnCatalog').disabled = false;
+    mostrarStop('catalogo', false);
   }
 
   // ═══════════════════════════════════════════════════════════════════
