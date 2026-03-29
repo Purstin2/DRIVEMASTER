@@ -90,6 +90,16 @@
     .angle-modal-box{background:#0f0f0f;border:1px solid #222;border-radius:16px;padding:28px;width:420px;max-width:92vw;max-height:92vh;overflow-y:auto}
     #anglePreviewCanvas{display:block;width:100%;border-radius:8px;margin-bottom:16px;cursor:grab;user-select:none}
     #anglePreviewCanvas:active{cursor:grabbing}
+    .pv-folder-item{display:flex;align-items:center;gap:10px;background:#000;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:6px;cursor:pointer;transition:border-color .2s;user-select:none}
+    .pv-folder-item:hover{border-color:#333}
+    .pv-folder-item input[type=checkbox]{accent-color:#ffa700;width:15px;height:15px;flex-shrink:0;cursor:pointer}
+    .pv-folder-info{flex:1;min-width:0}
+    .pv-folder-path{font-size:11px;color:#aaa;font-family:'DM Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px}
+    .pv-folder-stats{font-size:10px;color:#555;font-family:'DM Mono',monospace}
+    .pv-badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 8px;border-radius:100px;letter-spacing:.5px;flex-shrink:0}
+    .pv-badge-done{background:rgba(0,230,118,.12);color:#00e676}
+    .pv-badge-partial{background:rgba(255,167,0,.12);color:#ffa700}
+    .pv-badge-none{background:rgba(255,68,68,.12);color:#ff4444}
     .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
     .dot.pulse{animation:pulse 1s infinite}
     .cat-preview{margin-top:16px;display:none}
@@ -411,10 +421,24 @@
       </div>
       <canvas id="stlCanvas" style="display:none"></canvas>
       <div class="btn-row">
-        <button class="btn" style="background:#ffa700;color:#000;box-shadow:0 0 20px rgba(255,167,0,.3);font-weight:700;font-size:13px;letter-spacing:.5px;text-transform:uppercase;padding:13px 28px;border-radius:10px;border:none;cursor:pointer" id="btnPreview" onclick="gerarPreviews()">🖼 Gerar Previews</button>
+        <button class="btn" style="background:#ffa700;color:#000;box-shadow:0 0 20px rgba(255,167,0,.3);font-weight:700;font-size:13px;letter-spacing:.5px;text-transform:uppercase;padding:13px 28px;border-radius:10px;border:none;cursor:pointer" id="btnScanPV" onclick="escanearFoldersParaPreview()">🔍 Ver Pastas</button>
+        <button class="btn btn-secondary" id="btnPreview" onclick="gerarPreviews()" disabled>🖼 Gerar Selecionadas</button>
         <button class="btn btn-danger" id="btnStopPV" onclick="pararOperacao('preview')" style="display:none">⛔ Parar</button>
         <button class="btn btn-secondary" onclick="limparLog('logPreview')">Limpar log</button>
       </div>
+
+      <div id="pvFolderSection" style="display:none;margin-top:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+          <span id="pvFolderSummary" style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Pastas</span>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-secondary" style="padding:5px 12px;font-size:11px" onclick="pvSelecionarTodas(true)">Todas</button>
+            <button class="btn btn-secondary" style="padding:5px 12px;font-size:11px" onclick="pvSelecionarTodas(false)">Nenhuma</button>
+            <button class="btn btn-secondary" style="padding:5px 12px;font-size:11px" onclick="pvSelecionarSoPendentes()">Só pendentes</button>
+          </div>
+        </div>
+        <div id="pvFolderList" style="max-height:340px;overflow-y:auto;padding-right:4px"></div>
+      </div>
+
       <div id="previewGrade" style="display:none;margin-top:24px">
         <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Previews gerados</div>
         <div id="previewGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px"></div>
@@ -604,6 +628,7 @@
   let pvColor = 0x00e676;
   let _modalColor = 0x00e676;
   let _previewCells = [];
+  let _pvFolderData = []; // resultado do scan de pastas
   let _modalSTL = null;
   let _modalDebounce = null;
   let _modalRendering = false;
@@ -1636,15 +1661,130 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     } while (pageToken);
   }
 
-  async function gerarPreviews() {
+  async function escanearFolderLevel(folderId, folderName, path) {
+    if (stopFlags.preview) return;
+    let pageToken = null;
+    const stlsLocal = [];
+    const subfolders = [];
+    do {
+      let url = `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType),nextPageToken&pageSize=500&orderBy=name`;
+      if (pageToken) url += `&pageToken=${pageToken}`;
+      const data = await driveGet(url);
+      const arquivos = data.files || [];
+      const imagens = new Set(arquivos.filter(f => /\.(png|jpg|jpeg|webp)$/i.test(f.name)).map(f => f.name.replace(/\.[^.]+$/, '').toLowerCase()));
+      for (const f of arquivos) {
+        if (stopFlags.preview) return;
+        if (/\.stl$/i.test(f.name)) {
+          const baseName = f.name.replace(/\.stl$/i, '').toLowerCase();
+          stlsLocal.push({ id: f.id, name: f.name, parentId: folderId, temPreview: imagens.has(baseName) });
+        }
+        if (f.mimeType === 'application/vnd.google-apps.folder') subfolders.push(f);
+      }
+      pageToken = data.nextPageToken || null;
+    } while (pageToken);
+
+    if (stlsLocal.length > 0) {
+      const comPreview = stlsLocal.filter(s => s.temPreview).length;
+      _pvFolderData.push({ folderId, folderName, path, stls: stlsLocal, totalStl: stlsLocal.length, comPreview, semPreview: stlsLocal.length - comPreview });
+    }
+    for (const sub of subfolders) {
+      if (stopFlags.preview) return;
+      const subPath = path === '/' ? '/' + sub.name : path + '/' + sub.name;
+      await escanearFolderLevel(sub.id, sub.name, subPath);
+    }
+  }
+
+  async function escanearFoldersParaPreview() {
     if (!accessToken) { alert('Conecte ao Google primeiro na aba "Renomear"!'); return; }
     const folderId = document.getElementById('folderIdPreview').value.trim();
     if (!folderId) { alert('Preencha o ID da pasta!'); return; }
 
+    _pvFolderData = [];
+    stopFlags.preview = false;
+    document.getElementById('btnScanPV').disabled = true;
+    document.getElementById('btnPreview').disabled = true;
+    const list = document.getElementById('pvFolderList');
+    list.innerHTML = '<div style="color:#555;font-size:12px;padding:12px 0">🔍 Escaneando pastas...</div>';
+    document.getElementById('pvFolderSection').style.display = 'block';
+    setStatus('statusPV', 'running', 'Escaneando...');
+    log('logPreview', 'info', '🔍 Escaneando estrutura de pastas...');
+
+    try {
+      const rootData = await driveGet(`https://www.googleapis.com/drive/v3/files/${folderId}?fields=name`);
+      const rootName = rootData.name || folderId;
+      await escanearFolderLevel(folderId, rootName, '/');
+
+      if (stopFlags.preview) {
+        setStatus('statusPV', 'stopped', 'Parado');
+        log('logPreview', 'warn', '⛔ Scan interrompido.');
+        list.innerHTML = '';
+        document.getElementById('btnScanPV').disabled = false;
+        return;
+      }
+
+      const totalPastas = _pvFolderData.length;
+      const totalStls = _pvFolderData.reduce((a, f) => a + f.totalStl, 0);
+      const totalCom = _pvFolderData.reduce((a, f) => a + f.comPreview, 0);
+      const totalSem = _pvFolderData.reduce((a, f) => a + f.semPreview, 0);
+      document.getElementById('pvFolderSummary').textContent = `${totalPastas} pasta${totalPastas !== 1 ? 's' : ''} · ${totalStls} STLs · ${totalCom} com preview · ${totalSem} pendentes`;
+
+      if (!totalPastas) {
+        list.innerHTML = '<div style="color:#555;font-size:12px;padding:12px 0">Nenhuma pasta com STLs encontrada.</div>';
+        setStatus('statusPV', 'done', 'Nenhum STL');
+        log('logPreview', 'warn', 'Nenhum STL encontrado na estrutura de pastas.');
+      } else {
+        list.innerHTML = _pvFolderData.map((f, i) => {
+          let badgeClass, badgeText;
+          if (f.semPreview === 0) { badgeClass = 'pv-badge-done'; badgeText = '✓ COMPLETO'; }
+          else if (f.comPreview > 0) { badgeClass = 'pv-badge-partial'; badgeText = `${f.semPreview} PENDENTES`; }
+          else { badgeClass = 'pv-badge-none'; badgeText = 'SEM PREVIEW'; }
+          const pathLabel = f.path === '/' ? '/' + f.folderName : f.path;
+          return `<label class="pv-folder-item">
+            <input type="checkbox" data-idx="${i}" ${f.semPreview > 0 ? 'checked' : ''}>
+            <div class="pv-folder-info">
+              <div class="pv-folder-path">${esc(pathLabel)}</div>
+              <div class="pv-folder-stats">${f.totalStl} STL${f.totalStl !== 1 ? 's' : ''} &nbsp;·&nbsp; ${f.comPreview} com preview &nbsp;·&nbsp; ${f.semPreview} sem</div>
+            </div>
+            <span class="pv-badge ${badgeClass}">${badgeText}</span>
+          </label>`;
+        }).join('');
+        document.getElementById('btnPreview').disabled = false;
+        setStatus('statusPV', 'done', `${totalPastas} pastas`);
+        log('logPreview', 'info', `✅ ${totalPastas} pasta${totalPastas !== 1 ? 's' : ''} encontradas. ${totalSem} STLs sem preview.`);
+      }
+    } catch(e) {
+      log('logPreview', 'error', 'Erro no scan: ' + e.message);
+      setStatus('statusPV', 'error', 'Erro');
+    }
+    document.getElementById('btnScanPV').disabled = false;
+  }
+
+  function pvSelecionarTodas(val) {
+    document.querySelectorAll('#pvFolderList input[type=checkbox]').forEach(cb => cb.checked = val);
+  }
+
+  function pvSelecionarSoPendentes() {
+    document.querySelectorAll('#pvFolderList input[type=checkbox]').forEach(cb => {
+      const idx = parseInt(cb.dataset.idx);
+      cb.checked = !isNaN(idx) && _pvFolderData[idx] && _pvFolderData[idx].semPreview > 0;
+    });
+  }
+
+  async function gerarPreviews() {
+    if (!accessToken) { alert('Conecte ao Google primeiro na aba "Renomear"!'); return; }
+    if (!_pvFolderData.length) { alert('Clique em "🔍 Ver Pastas" primeiro!'); return; }
+
+    const checkedIdxs = Array.from(document.querySelectorAll('#pvFolderList input[type=checkbox]:checked')).map(cb => parseInt(cb.dataset.idx));
+    if (!checkedIdxs.length) { alert('Selecione ao menos uma pasta!'); return; }
+
     const pularExistentes = document.querySelector('#opt-pv-pular input').checked;
     const sobrescrever = document.querySelector('#opt-pv-sobrescrever input').checked;
-    const recursivo = document.querySelector('#opt-pv-recursivo input').checked;
     const tamanho = parseInt(document.getElementById('previewSize').value) || 512;
+
+    const stls = [];
+    for (const idx of checkedIdxs) {
+      if (_pvFolderData[idx]) stls.push(..._pvFolderData[idx].stls);
+    }
 
     stopFlags.preview = false;
     _previewCells = [];
@@ -1659,25 +1799,10 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
 
     try {
       await carregarThree();
-      log('logPreview', 'info', '✅ Three.js carregado! Buscando arquivos STL...');
-      setStatus('statusPV', 'running', 'Buscando STLs...');
-
-      const stls = [];
-      const contRef = { total: 0, onUpdate: (n) => {
-        document.getElementById('logCountPV').textContent = `${n} STLs`;
-        document.getElementById('progressBarPV').style.width = `${Math.min(3 + n * 0.3, 20)}%`;
-      }};
-      await listarSTLsRecursivo(folderId, recursivo, stls, contRef);
-
-      if (!stls.length) {
-        log('logPreview', 'warn', 'Nenhum arquivo .stl encontrado!');
-        setStatus('statusPV', 'done', 'Nenhum STL');
-        document.getElementById('btnPreview').disabled = false;
-        return;
-      }
+      log('logPreview', 'info', `✅ Three.js carregado! ${stls.length} STLs de ${checkedIdxs.length} pasta${checkedIdxs.length !== 1 ? 's' : ''}...`);
 
       const paraProcessar = pularExistentes && !sobrescrever ? stls.filter(s => !s.temPreview) : stls;
-      log('logPreview', 'info', `📦 ${stls.length} STLs encontrados. Gerando ${paraProcessar.length} previews...`);
+      log('logPreview', 'info', `📦 ${stls.length} STLs selecionados. Gerando ${paraProcessar.length} previews...`);
       document.getElementById('previewGrade').style.display = 'block';
 
       let feito = 0;
