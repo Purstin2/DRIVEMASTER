@@ -620,6 +620,7 @@
 <script src="https://accounts.google.com/gsi/client"></script>
 <script>
   let accessToken = null;
+  let _tokenClient = null;
   let categoriasIA = null;
   let pastasCache = [];
   let pastasVazias = [];
@@ -677,7 +678,7 @@
     if (!info || !info.pngFileId) return;
     if (!confirm(`Apagar preview "${info.nomePNG}" do Drive?`)) return;
     try {
-      const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${info.pngFileId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } });
+      const resp = await driveAuthFetch(`https://www.googleapis.com/drive/v3/files/${info.pngFileId}`, { method: 'DELETE' });
       if (resp.status === 204 || resp.ok) {
         log('logPreview', 'warn', `🗑 Apagado: ${info.nomePNG}`);
         if (info.cellEl) info.cellEl.remove();
@@ -775,7 +776,7 @@
     document.getElementById('modalStatusMsg').style.display = 'none';
     document.getElementById('angleModalOverlay').style.display = 'flex';
     try {
-      const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${info.stlId}?alt=media`, { headers: { Authorization: `Bearer ${accessToken}` } });
+      const resp = await driveAuthFetch(`https://www.googleapis.com/drive/v3/files/${info.stlId}?alt=media`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       _modalSTL.buffer = await resp.arrayBuffer();
       _modalColor = pvColor;
@@ -817,15 +818,15 @@
       const blob = await renderizarSTL(_modalSTL.buffer, _modalSTL.tamanho, h, v, null, _modalColor);
       let ok = false;
       if (_modalSTL.pngFileId) {
-        const resp = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${_modalSTL.pngFileId}?uploadType=media`, {
-          method: 'PATCH', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'image/png' }, body: blob
+        const resp = await driveAuthFetch(`https://www.googleapis.com/upload/drive/v3/files/${_modalSTL.pngFileId}?uploadType=media`, {
+          method: 'PATCH', headers: { 'Content-Type': 'image/png' }, body: blob
         });
         const d = await resp.json(); ok = !!(d.id || d.name);
       } else {
         const form = new FormData();
         form.append('metadata', new Blob([JSON.stringify({ name: _modalSTL.nomePNG, parents: [_modalSTL.parentId] })], { type: 'application/json' }));
         form.append('file', blob, _modalSTL.nomePNG);
-        const resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: form });
+        const resp = await driveAuthFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', { method: 'POST', body: form });
         const d = await resp.json(); ok = !!d.id; if (ok) _previewCells[_modalSTL.idx].pngFileId = d.id;
       }
       if (ok) {
@@ -903,7 +904,7 @@
   function iniciarAuth() {
     const clientId = document.getElementById('clientId').value.trim();
     if (!clientId) { alert('Preencha o Client ID OAuth!'); return; }
-    const client = google.accounts.oauth2.initTokenClient({
+    _tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: clientId,
       scope: 'https://www.googleapis.com/auth/drive',
       callback: (resp) => {
@@ -917,12 +918,34 @@
         }
       }
     });
-    client.requestAccessToken();
+    _tokenClient.requestAccessToken();
+  }
+
+  function refreshToken() {
+    return new Promise((resolve, reject) => {
+      if (!_tokenClient) { reject(new Error('Token client não inicializado')); return; }
+      const prev = _tokenClient.callback;
+      _tokenClient.callback = (resp) => {
+        _tokenClient.callback = prev;
+        if (resp.access_token) { accessToken = resp.access_token; resolve(); }
+        else { reject(new Error('Falha ao renovar token')); }
+      };
+      _tokenClient.requestAccessToken({ prompt: '' });
+    });
+  }
+
+  async function driveAuthFetch(url, options = {}) {
+    const doFetch = () => fetch(url, { ...options, headers: { ...(options.headers || {}), Authorization: `Bearer ${accessToken}` } });
+    let resp = await doFetch();
+    if (resp.status === 401) {
+      try { await refreshToken(); resp = await doFetch(); } catch(e) { /* retorna 401 original se refresh falhar */ }
+    }
+    return resp;
   }
 
   // ─── DRIVE HELPERS ───────────────────────────────────
   async function driveGet(url) {
-    const r = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+    const r = await driveAuthFetch(url);
     return r.json();
   }
 
@@ -951,9 +974,9 @@
   }
 
   async function renomearItem(id, novoNome) {
-    await fetch(`https://www.googleapis.com/drive/v3/files/${id}`, {
+    await driveAuthFetch(`https://www.googleapis.com/drive/v3/files/${id}`, {
       method: 'PATCH',
-      headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: novoNome })
     });
   }
@@ -1088,9 +1111,9 @@
       for (const [cat, folders] of Object.entries(categoriasIA.categorias)) {
         if (stopFlags.cat) break;
         log('logCat', 'info', `📁 Criando: ${cat}`);
-        const criarResp = await fetch('https://www.googleapis.com/drive/v3/files', {
+        const criarResp = await driveAuthFetch('https://www.googleapis.com/drive/v3/files', {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: cat, mimeType: 'application/vnd.google-apps.folder', parents: [folderId] })
         });
         const catFolder = await criarResp.json();
@@ -1098,8 +1121,8 @@
           if (stopFlags.cat) break;
           const pasta = pastasCache.find(p => p.name === nomeP);
           if (!pasta) continue;
-          await fetch(`https://www.googleapis.com/drive/v3/files/${pasta.id}?addParents=${catFolder.id}&removeParents=${folderId}`, {
-            method: 'PATCH', headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({})
+          await driveAuthFetch(`https://www.googleapis.com/drive/v3/files/${pasta.id}?addParents=${catFolder.id}&removeParents=${folderId}`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({})
           });
           log('logCat', 'cat', nomeP, cat);
           feito++;
@@ -1486,7 +1509,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     for (const pasta of selecionadas) {
       if (stopFlags.limpar) break;
       try {
-        await fetch(`https://www.googleapis.com/drive/v3/files/${pasta.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } });
+        await driveAuthFetch(`https://www.googleapis.com/drive/v3/files/${pasta.id}`, { method: 'DELETE' });
         log('logLimpar', 'delete', pasta.path);
         apagadas++;
       } catch(e) { log('logLimpar', 'error', `Erro ao apagar ${pasta.name}: ${e.message}`); }
@@ -1812,7 +1835,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
         setStatus('statusPV', 'running', `${feito+1}/${paraProcessar.length}`);
         log('logPreview', 'info', `🔄 Renderizando: ${stl.name}`);
         try {
-          const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${stl.id}?alt=media`, { headers: { Authorization: `Bearer ${accessToken}` } });
+          const resp = await driveAuthFetch(`https://www.googleapis.com/drive/v3/files/${stl.id}?alt=media`);
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
           const buffer = await resp.arrayBuffer();
           const blob = await renderizarSTL(buffer, tamanho, pvAnguloH, pvAnguloV, null, pvColor);
@@ -1821,7 +1844,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
           const form = new FormData();
           form.append('metadata', new Blob([metadata], { type: 'application/json' }));
           form.append('file', blob, nomePNG);
-          const uploadResp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: form });
+          const uploadResp = await driveAuthFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', { method: 'POST', body: form });
           const uploadData = await uploadResp.json();
           if (uploadData.id) {
             log('logPreview', 'rename', stl.name, nomePNG + ' ✅');
@@ -1856,7 +1879,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     do {
       let url = `https://www.googleapis.com/drive/v3/files?pageSize=200&fields=nextPageToken,files(id,name,mimeType)&q='${folderId}'+in+parents+and+trashed=false`;
       if (pageToken) url += `&pageToken=${pageToken}`;
-      const r = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+      const r = await driveAuthFetch(url);
       const d = await r.json();
       for (const f of (d.files || [])) {
         if (stopFlags.catalogo) return;
@@ -1902,7 +1925,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
         const img = imagens[i];
         setStatus('statusCat', 'running', `Baixando ${i+1}/${imagens.length}`);
         try {
-          const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${img.id}?alt=media`, { headers: { Authorization: `Bearer ${accessToken}` } });
+          const resp = await driveAuthFetch(`https://www.googleapis.com/drive/v3/files/${img.id}?alt=media`);
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
           const blob = await resp.blob();
           const bitmap = await createImageBitmap(blob);
@@ -1963,7 +1986,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
       const form = new FormData();
       form.append('metadata', new Blob([JSON.stringify({ name: nomeArquivo, parents: [folderId] })], { type: 'application/json' }));
       form.append('file', jpgBlob, nomeArquivo);
-      const upResp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: form });
+      const upResp = await driveAuthFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', { method: 'POST', body: form });
       const upData = await upResp.json();
       document.getElementById('progressBarCat').style.width = '100%';
       if (upData.id) {
@@ -2055,9 +2078,9 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
         return { op: op.op, success: true, id: op.id, newName: op.name };
       }
       case 'create_folder': {
-        const r = await fetch('https://www.googleapis.com/drive/v3/files', {
+        const r = await driveAuthFetch('https://www.googleapis.com/drive/v3/files', {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: op.name, mimeType: 'application/vnd.google-apps.folder', parents: [op.parentId] })
         });
         const d = await r.json();
@@ -2065,9 +2088,9 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
         return { op: op.op, success: true, id: d.id, name: d.name };
       }
       case 'move': {
-        const r = await fetch(`https://www.googleapis.com/drive/v3/files/${op.id}?addParents=${op.newParent}&removeParents=${op.oldParent}&fields=id`, {
+        const r = await driveAuthFetch(`https://www.googleapis.com/drive/v3/files/${op.id}?addParents=${op.newParent}&removeParents=${op.oldParent}&fields=id`, {
           method: 'PATCH',
-          headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({})
         });
         const d = await r.json();
@@ -2075,10 +2098,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
         return { op: op.op, success: true, id: op.id };
       }
       case 'delete': {
-        const r = await fetch(`https://www.googleapis.com/drive/v3/files/${op.id}`, {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${accessToken}` }
-        });
+        const r = await driveAuthFetch(`https://www.googleapis.com/drive/v3/files/${op.id}`, { method: 'DELETE' });
         if (!r.ok && r.status !== 204) throw new Error(`HTTP ${r.status}`);
         return { op: op.op, success: true, id: op.id };
       }
