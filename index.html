@@ -1188,14 +1188,30 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     const mesh = new T.Mesh(geo, mat);
     scene.add(mesh);
 
+    // Centralizar geometria na origem local (operação na geometria, não no mesh)
     geo.computeBoundingBox();
-    const box = geo.boundingBox;
-    const center = new T.Vector3();
-    box.getCenter(center);
-    mesh.position.sub(center);
+    const box0 = geo.boundingBox;
+    geo.translate(
+      -(box0.min.x + box0.max.x) / 2,
+      -(box0.min.y + box0.max.y) / 2,
+      -(box0.min.z + box0.max.z) / 2
+    );
 
+    // Calcular dimensões após centralização
+    geo.computeBoundingBox();
     const size = new T.Vector3();
-    box.getSize(size);
+    geo.boundingBox.getSize(size);
+
+    // Auto-orientar: STL de impressão 3D usam Z como "cima" (Z-up),
+    // mas Three.js usa Y como "cima" (Y-up). Se Z for o eixo mais alto,
+    // rotacionar -90° em X para corrigir a postura antes do preview.
+    if (size.z > size.y * 1.1) {
+      mesh.rotation.x = -Math.PI / 2;
+      // Após rotação: Y-mundo = Z-geometria, Z-mundo = Y-geometria
+      const tmp = size.y; size.y = size.z; size.z = tmp;
+    }
+
+    // Mesh permanece na origem — geometria já está centrada
     const maxDim = Math.max(size.x, size.y, size.z);
     camera.position.set(maxDim * 0.8, maxDim * 0.6, maxDim * 1.4);
     camera.lookAt(0, 0, 0);
