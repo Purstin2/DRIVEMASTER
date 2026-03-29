@@ -934,8 +934,13 @@
     });
   }
 
-  async function driveAuthFetch(url, options = {}) {
-    const doFetch = () => fetch(url, { ...options, headers: { ...(options.headers || {}), Authorization: `Bearer ${accessToken}` } });
+  async function driveAuthFetch(url, options = {}, timeoutMs = 60000) {
+    const doFetch = () => {
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), timeoutMs);
+      return fetch(url, { ...options, signal: ctrl.signal, headers: { ...(options.headers || {}), Authorization: `Bearer ${accessToken}` } })
+        .finally(() => clearTimeout(tid));
+    };
     let resp = await doFetch();
     if (resp.status === 401) {
       try { await refreshToken(); resp = await doFetch(); } catch(e) { /* retorna 401 original se refresh falhar */ }
@@ -1654,8 +1659,18 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
 
     renderer.render(scene, camera);
 
-    return new Promise(resolve => {
-      canvas.toBlob(blob => { renderer.dispose(); geo.dispose(); mat.dispose(); resolve(blob); }, 'image/png');
+    return new Promise((resolve, reject) => {
+      const _cleanup = () => { try { renderer.dispose(); geo.dispose(); mat.dispose(); } catch(_){} };
+      const _timeout = setTimeout(() => {
+        _cleanup();
+        reject(new Error('canvas.toBlob timeout (contexto WebGL perdido)'));
+      }, 20000);
+      canvas.toBlob(blob => {
+        clearTimeout(_timeout);
+        _cleanup();
+        if (!blob) { reject(new Error('canvas.toBlob retornou null (contexto WebGL perdido)')); return; }
+        resolve(blob);
+      }, 'image/png');
     });
   }
 
