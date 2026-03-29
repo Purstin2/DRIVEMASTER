@@ -79,8 +79,13 @@
     .angle-preset.active{background:rgba(255,167,0,.1);color:#ffa700;border-color:rgba(255,167,0,.4)}
     input[type=range].angle-slider{width:100%;accent-color:#ffa700;cursor:pointer;margin-top:4px}
     .preview-cell{position:relative}
-    .preview-cell .refazer-btn{position:absolute;bottom:34px;right:5px;background:rgba(0,0,0,.85);border:1px solid #444;color:#ccc;border-radius:5px;font-size:10px;padding:4px 9px;cursor:pointer;opacity:0;transition:opacity .15s;font-weight:700;z-index:1}
-    .preview-cell:hover .refazer-btn{opacity:1}
+    .preview-cell .card-btn{position:absolute;bottom:5px;background:rgba(0,0,0,.85);border-radius:5px;font-size:10px;padding:4px 8px;cursor:pointer;opacity:0;transition:opacity .15s;font-weight:700;z-index:1;line-height:1.3}
+    .preview-cell:hover .card-btn{opacity:1}
+    .preview-cell .refazer-btn{right:5px;border:1px solid #444;color:#ccc}
+    .preview-cell .apagar-btn{left:5px;border:1px solid #552222;color:#ff8888;background:rgba(60,0,0,.85)}
+    .cor-swatch{width:26px;height:26px;border-radius:6px;border:2px solid transparent;cursor:pointer;transition:all .15s;flex-shrink:0;display:inline-block}
+    .cor-swatch:hover{transform:scale(1.15)}
+    .cor-swatch.active{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.2)}
     .angle-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:10000;display:flex;align-items:center;justify-content:center}
     .angle-modal-box{background:#0f0f0f;border:1px solid #222;border-radius:16px;padding:28px;width:420px;max-width:92vw;max-height:92vh;overflow-y:auto}
     #anglePreviewCanvas{display:block;width:100%;border-radius:8px;margin-bottom:16px}
@@ -369,6 +374,20 @@
         <label class="opt" id="opt-pv-sobrescrever"><input type="checkbox" onchange="toggleOpt(this,'opt-pv-sobrescrever')"/> Sobrescrever previews existentes</label>
       </div>
       <div style="margin-bottom:16px">
+        <label style="display:block;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Cor do modelo</label>
+        <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+          <div class="cor-swatch active" id="cs0" style="background:#00e676" onclick="pvSetCor(0x00e676,0)" title="Verde"></div>
+          <div class="cor-swatch" id="cs1" style="background:#e0e0e0" onclick="pvSetCor(0xe0e0e0,1)" title="Branco"></div>
+          <div class="cor-swatch" id="cs2" style="background:#9e9e9e" onclick="pvSetCor(0x9e9e9e,2)" title="Prata"></div>
+          <div class="cor-swatch" id="cs3" style="background:#ffc107" onclick="pvSetCor(0xffc107,3)" title="Dourado"></div>
+          <div class="cor-swatch" id="cs4" style="background:#ff6d00" onclick="pvSetCor(0xff6d00,4)" title="Laranja"></div>
+          <div class="cor-swatch" id="cs5" style="background:#2196f3" onclick="pvSetCor(0x2196f3,5)" title="Azul"></div>
+          <div class="cor-swatch" id="cs6" style="background:#f44336" onclick="pvSetCor(0xf44336,6)" title="Vermelho"></div>
+          <div class="cor-swatch" id="cs7" style="background:#222;border:1px solid #555" onclick="pvSetCor(0x222222,7)" title="Preto"></div>
+          <input type="color" id="pvColorPicker" value="#00e676" oninput="pvSetCorCustom(this.value)" title="Cor personalizada" style="width:26px;height:26px;border:2px solid #333;border-radius:6px;padding:1px;background:none;cursor:pointer;vertical-align:top"/>
+        </div>
+      </div>
+      <div style="margin-bottom:16px">
         <label style="display:block;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Ângulo da câmera</label>
         <div class="angle-presets" id="globalAnglePresets">
           <button class="angle-preset active" onclick="pvSetPreset(30,20,this)">Isométrico</button>
@@ -532,6 +551,20 @@
     <div id="angleModalLoading" style="text-align:center;padding:30px 0;color:#444;font-size:12px;font-family:monospace">Carregando STL...</div>
     <canvas id="anglePreviewCanvas" width="360" height="360" style="display:none"></canvas>
     <div id="angleModalControls" style="display:none">
+      <div style="margin-bottom:12px">
+        <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#444;margin-bottom:7px">Cor</div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <div class="cor-swatch active" id="mcs0" style="background:#00e676" onclick="modalSetCor(0x00e676,0)" title="Verde"></div>
+          <div class="cor-swatch" id="mcs1" style="background:#e0e0e0" onclick="modalSetCor(0xe0e0e0,1)" title="Branco"></div>
+          <div class="cor-swatch" id="mcs2" style="background:#9e9e9e" onclick="modalSetCor(0x9e9e9e,2)" title="Prata"></div>
+          <div class="cor-swatch" id="mcs3" style="background:#ffc107" onclick="modalSetCor(0xffc107,3)" title="Dourado"></div>
+          <div class="cor-swatch" id="mcs4" style="background:#ff6d00" onclick="modalSetCor(0xff6d00,4)" title="Laranja"></div>
+          <div class="cor-swatch" id="mcs5" style="background:#2196f3" onclick="modalSetCor(0x2196f3,5)" title="Azul"></div>
+          <div class="cor-swatch" id="mcs6" style="background:#f44336" onclick="modalSetCor(0xf44336,6)" title="Vermelho"></div>
+          <div class="cor-swatch" id="mcs7" style="background:#222;border:1px solid #555" onclick="modalSetCor(0x222222,7)" title="Preto"></div>
+          <input type="color" id="modalColorPicker" value="#00e676" oninput="modalSetCorCustom(this.value)" title="Cor personalizada" style="width:26px;height:26px;border:2px solid #333;border-radius:6px;padding:1px;background:none;cursor:pointer;vertical-align:top"/>
+        </div>
+      </div>
       <div class="angle-presets" id="modalAnglePresets">
         <button class="angle-preset active" onclick="modalSetPreset(30,20,this)">Isométrico</button>
         <button class="angle-preset" onclick="modalSetPreset(0,5,this)">Frente</button>
@@ -567,6 +600,8 @@
   let pastasVazias = [];
   let aiRenomearPlan = [];
   let pvAnguloH = 30, pvAnguloV = 20;
+  let pvColor = 0x00e676;
+  let _modalColor = 0x00e676;
   let _previewCells = [];
   let _modalSTL = null;
   let _modalDebounce = null;
@@ -601,6 +636,27 @@
     document.getElementById('pvAnguloVVal').textContent = pvAnguloV;
     document.querySelectorAll('#globalAnglePresets .angle-preset').forEach(b => b.classList.remove('active'));
   }
+  function pvSetCor(hex, idx) {
+    pvColor = hex;
+    for (let i = 0; i < 8; i++) { const el = document.getElementById('cs' + i); if (el) el.classList.toggle('active', i === idx); }
+  }
+  function pvSetCorCustom(hexStr) {
+    pvColor = parseInt(hexStr.replace('#',''), 16);
+    for (let i = 0; i < 8; i++) { const el = document.getElementById('cs' + i); if (el) el.classList.remove('active'); }
+  }
+  async function apagarPreview(idx) {
+    const info = _previewCells[idx];
+    if (!info || !info.pngFileId) return;
+    if (!confirm(`Apagar preview "${info.nomePNG}" do Drive?`)) return;
+    try {
+      const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${info.pngFileId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } });
+      if (resp.status === 204 || resp.ok) {
+        log('logPreview', 'warn', `🗑 Apagado: ${info.nomePNG}`);
+        if (info.cellEl) info.cellEl.remove();
+        _previewCells[idx].pngFileId = null;
+      } else { throw new Error(`HTTP ${resp.status}`); }
+    } catch(e) { log('logPreview', 'error', `Erro ao apagar: ${e.message}`); }
+  }
 
   // ─── MODAL DE ÂNGULO INDIVIDUAL ──────────────────────
   function modalSetPreset(h, v, btn) {
@@ -619,12 +675,24 @@
     clearTimeout(_modalDebounce);
     _modalDebounce = setTimeout(modalRenderPreview, 280);
   }
+  function modalSetCor(hex, idx) {
+    _modalColor = hex;
+    for (let i = 0; i < 8; i++) { const el = document.getElementById('mcs' + i); if (el) el.classList.toggle('active', i === idx); }
+    clearTimeout(_modalDebounce);
+    _modalDebounce = setTimeout(modalRenderPreview, 180);
+  }
+  function modalSetCorCustom(hexStr) {
+    _modalColor = parseInt(hexStr.replace('#',''), 16);
+    for (let i = 0; i < 8; i++) { const el = document.getElementById('mcs' + i); if (el) el.classList.remove('active'); }
+    clearTimeout(_modalDebounce);
+    _modalDebounce = setTimeout(modalRenderPreview, 180);
+  }
   async function modalRenderPreview() {
     if (!_modalSTL || !_modalSTL.buffer) return;
     const h = parseInt(document.getElementById('modalAnguloH').value);
     const v = parseInt(document.getElementById('modalAnguloV').value);
     const canvas = document.getElementById('anglePreviewCanvas');
-    await renderizarSTL(_modalSTL.buffer, 360, h, v, canvas);
+    await renderizarSTL(_modalSTL.buffer, 360, h, v, canvas, _modalColor);
   }
   async function abrirAjusteAngulo(idx) {
     const info = _previewCells[idx];
@@ -641,13 +709,19 @@
       const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${info.stlId}?alt=media`, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       _modalSTL.buffer = await resp.arrayBuffer();
+      _modalColor = pvColor;
       document.getElementById('modalAnguloH').value = pvAnguloH;
       document.getElementById('modalAnguloV').value = pvAnguloV;
       document.getElementById('modalAnguloHVal').textContent = pvAnguloH;
       document.getElementById('modalAnguloVVal').textContent = pvAnguloV;
       document.querySelectorAll('#modalAnglePresets .angle-preset').forEach(b => b.classList.remove('active'));
+      // Sync color swatches — mark active if matches a swatch
+      const _swatchColors = [0x00e676,0xe0e0e0,0x9e9e9e,0xffc107,0xff6d00,0x2196f3,0xf44336,0x222222];
+      const swatchIdx = _swatchColors.indexOf(_modalColor);
+      for (let i = 0; i < 8; i++) { const el = document.getElementById('mcs'+i); if(el) el.classList.toggle('active', i===swatchIdx); }
+      document.getElementById('modalColorPicker').value = '#' + _modalColor.toString(16).padStart(6,'0');
       const canvas = document.getElementById('anglePreviewCanvas');
-      await renderizarSTL(_modalSTL.buffer, 360, pvAnguloH, pvAnguloV, canvas);
+      await renderizarSTL(_modalSTL.buffer, 360, pvAnguloH, pvAnguloV, canvas, _modalColor);
       document.getElementById('angleModalLoading').style.display = 'none';
       canvas.style.display = 'block';
       document.getElementById('angleModalControls').style.display = 'block';
@@ -669,7 +743,7 @@
     btn.disabled = true;
     msg.style.display = 'block'; msg.style.color = '#ffa700'; msg.textContent = '⏳ Renderizando e salvando...';
     try {
-      const blob = await renderizarSTL(_modalSTL.buffer, _modalSTL.tamanho, h, v);
+      const blob = await renderizarSTL(_modalSTL.buffer, _modalSTL.tamanho, h, v, null, _modalColor);
       let ok = false;
       if (_modalSTL.pngFileId) {
         const resp = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${_modalSTL.pngFileId}?uploadType=media`, {
@@ -684,9 +758,8 @@
         const d = await resp.json(); ok = !!d.id; if (ok) _previewCells[_modalSTL.idx].pngFileId = d.id;
       }
       if (ok) {
-        // Atualizar a imagem no grid
-        const cellImg = document.querySelector(`#previewGrid .preview-cell:nth-child(${_modalSTL.idx + 1}) img`);
-        if (cellImg) { const url = URL.createObjectURL(blob); cellImg.src = url; }
+        const info = _previewCells[_modalSTL.idx];
+        if (info && info.cellEl) { const url = URL.createObjectURL(blob); const img = info.cellEl.querySelector('img'); if(img) img.src = url; }
         msg.style.color = '#00e676'; msg.textContent = '✅ Salvo!';
         setTimeout(fecharModalAngulo, 900);
       } else { throw new Error('Upload falhou'); }
@@ -1417,7 +1490,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     return { positions: new Float32Array(positions), normals: new Float32Array(normals) };
   }
 
-  function renderizarSTL(buffer, tamanho, anguloH = 30, anguloV = 20, canvasEl = null) {
+  function renderizarSTL(buffer, tamanho, anguloH = 30, anguloV = 20, canvasEl = null, cor = 0x00e676) {
     const T = THREE_LIB;
     const canvas = canvasEl || document.getElementById('stlCanvas');
     canvas.width = tamanho;
@@ -1438,7 +1511,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     geo.setAttribute('normal', new T.BufferAttribute(normals, 3));
     geo.computeVertexNormals();
 
-    const mat = new T.MeshPhongMaterial({ color: 0x00e676, specular: 0x224422, shininess: 60, side: T.DoubleSide });
+    const mat = new T.MeshPhongMaterial({ color: cor, specular: 0x333333, shininess: 60, side: T.DoubleSide });
     const mesh = new T.Mesh(geo, mat);
     scene.add(mesh);
 
@@ -1571,7 +1644,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
           const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${stl.id}?alt=media`, { headers: { Authorization: `Bearer ${accessToken}` } });
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
           const buffer = await resp.arrayBuffer();
-          const blob = await renderizarSTL(buffer, tamanho, pvAnguloH, pvAnguloV);
+          const blob = await renderizarSTL(buffer, tamanho, pvAnguloH, pvAnguloV, null, pvColor);
           const nomePNG = stl.name.replace(/\.stl$/i, '') + '.png';
           const metadata = JSON.stringify({ name: nomePNG, parents: [stl.parentId] });
           const form = new FormData();
@@ -1583,12 +1656,12 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
             log('logPreview', 'rename', stl.name, nomePNG + ' ✅');
             feito++;
             const cellIdx = _previewCells.length;
-            _previewCells.push({ stlId: stl.id, parentId: stl.parentId, stlNome: stl.name, nomePNG, pngFileId: uploadData.id, tamanho, idx: cellIdx });
             const url = URL.createObjectURL(blob);
             const cell = document.createElement('div');
             cell.className = 'preview-cell';
             cell.style.cssText = 'background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px;overflow:hidden;text-align:center';
-            cell.innerHTML = `<div style="position:relative"><img src="${url}" style="width:100%;aspect-ratio:1;object-fit:cover;display:block"/><button class="refazer-btn" onclick="abrirAjusteAngulo(${cellIdx})">↻ Refazer</button></div><div style="padding:6px 8px;font-size:10px;color:#555;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(stl.name)}">${esc(stl.name.replace(/\.stl$/i,''))}</div>`;
+            cell.innerHTML = `<div style="position:relative"><img src="${url}" style="width:100%;aspect-ratio:1;object-fit:cover;display:block"/><button class="card-btn refazer-btn" onclick="abrirAjusteAngulo(${cellIdx})">↻</button><button class="card-btn apagar-btn" onclick="apagarPreview(${cellIdx})">🗑</button></div><div style="padding:6px 8px;font-size:10px;color:#555;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(stl.name)}">${esc(stl.name.replace(/\.stl$/i,''))}</div>`;
+            _previewCells.push({ stlId: stl.id, parentId: stl.parentId, stlNome: stl.name, nomePNG, pngFileId: uploadData.id, tamanho, idx: cellIdx, cellEl: cell });
             document.getElementById('previewGrid').appendChild(cell);
           } else { throw new Error('Upload falhou'); }
         } catch(e) { log('logPreview', 'error', `${stl.name}: ${e.message}`); erros++; }
