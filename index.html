@@ -88,7 +88,8 @@
     .cor-swatch.active{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.2)}
     .angle-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:10000;display:flex;align-items:center;justify-content:center}
     .angle-modal-box{background:#0f0f0f;border:1px solid #222;border-radius:16px;padding:28px;width:420px;max-width:92vw;max-height:92vh;overflow-y:auto}
-    #anglePreviewCanvas{display:block;width:100%;border-radius:8px;margin-bottom:16px}
+    #anglePreviewCanvas{display:block;width:100%;border-radius:8px;margin-bottom:16px;cursor:grab;user-select:none}
+    #anglePreviewCanvas:active{cursor:grabbing}
     .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
     .dot.pulse{animation:pulse 1s infinite}
     .cat-preview{margin-top:16px;display:none}
@@ -605,6 +606,8 @@
   let _previewCells = [];
   let _modalSTL = null;
   let _modalDebounce = null;
+  let _modalRendering = false;
+  let _canvasDragInit = false;
   const stopFlags = { renomear: false, cat: false, ai: false, limpar: false, preview: false, catalogo: false };
   const _stopBtnIds = { renomear:'btnStopR', cat:'btnStopC', ai:'btnStopAI', limpar:'btnStopL', preview:'btnStopPV', catalogo:'btnStopCat' };
   const _stopLogIds = { renomear:'logRenomear', cat:'logCat', ai:'logAI', limpar:'logLimpar', preview:'logPreview', catalogo:'logCatalog' };
@@ -688,11 +691,52 @@
     _modalDebounce = setTimeout(modalRenderPreview, 180);
   }
   async function modalRenderPreview() {
-    if (!_modalSTL || !_modalSTL.buffer) return;
+    if (!_modalSTL || !_modalSTL.buffer || _modalRendering) return;
+    _modalRendering = true;
     const h = parseInt(document.getElementById('modalAnguloH').value);
     const v = parseInt(document.getElementById('modalAnguloV').value);
     const canvas = document.getElementById('anglePreviewCanvas');
     await renderizarSTL(_modalSTL.buffer, 360, h, v, canvas, _modalColor);
+    _modalRendering = false;
+  }
+  function initModalCanvasDrag() {
+    if (_canvasDragInit) return;
+    _canvasDragInit = true;
+    const canvas = document.getElementById('anglePreviewCanvas');
+    let dragging = false, lastX = 0, lastY = 0;
+
+    function onDragStart(x, y) {
+      if (!_modalSTL || !_modalSTL.buffer) return;
+      dragging = true; lastX = x; lastY = y;
+      canvas.style.cursor = 'grabbing';
+    }
+    function onDragMove(x, y) {
+      if (!dragging) return;
+      const dx = x - lastX, dy = y - lastY;
+      lastX = x; lastY = y;
+      let h = parseInt(document.getElementById('modalAnguloH').value);
+      let v = parseInt(document.getElementById('modalAnguloV').value);
+      h = Math.round(((h + dx * 0.8) % 360 + 360) % 360);
+      v = Math.round(Math.max(3, Math.min(88, v - dy * 0.4)));
+      document.getElementById('modalAnguloH').value = h;
+      document.getElementById('modalAnguloV').value = v;
+      document.getElementById('modalAnguloHVal').textContent = h;
+      document.getElementById('modalAnguloVVal').textContent = v;
+      document.querySelectorAll('#modalAnglePresets .angle-preset').forEach(b => b.classList.remove('active'));
+      clearTimeout(_modalDebounce);
+      _modalDebounce = setTimeout(modalRenderPreview, 60);
+    }
+    function onDragEnd() {
+      dragging = false;
+      canvas.style.cursor = 'grab';
+    }
+
+    canvas.addEventListener('mousedown',  e => { e.preventDefault(); onDragStart(e.clientX, e.clientY); });
+    document.addEventListener('mousemove', e => onDragMove(e.clientX, e.clientY));
+    document.addEventListener('mouseup',   () => onDragEnd());
+    canvas.addEventListener('touchstart',  e => { e.preventDefault(); onDragStart(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+    document.addEventListener('touchmove', e => { if (dragging) { e.preventDefault(); onDragMove(e.touches[0].clientX, e.touches[0].clientY); } }, { passive: false });
+    document.addEventListener('touchend',  () => onDragEnd());
   }
   async function abrirAjusteAngulo(idx) {
     const info = _previewCells[idx];
@@ -724,7 +768,9 @@
       await renderizarSTL(_modalSTL.buffer, 360, pvAnguloH, pvAnguloV, canvas, _modalColor);
       document.getElementById('angleModalLoading').style.display = 'none';
       canvas.style.display = 'block';
+      canvas.style.cursor = 'grab';
       document.getElementById('angleModalControls').style.display = 'block';
+      initModalCanvasDrag();
     } catch(e) {
       document.getElementById('angleModalLoading').textContent = '✗ Erro ao carregar: ' + e.message;
     }
