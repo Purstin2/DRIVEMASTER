@@ -185,6 +185,7 @@
     <div class="tab preview-tab" onclick="setTab('preview')">🖼 Previews STL</div>
     <div class="tab" onclick="setTab('catalogo')">📸 Catálogo</div>
     <div class="tab agente-tab" onclick="setTab('agente')">🤖 Agente</div>
+    <div class="tab" onclick="setTab('achatar')">🔀 Achatar</div>
   </div>
 
   <!-- PANEL: RENOMEAR -->
@@ -566,6 +567,48 @@
     </div>
   </div>
 
+  <!-- PANEL: ACHATAR ÁRVORE ──────────────────────────────────────────────── -->
+  <div class="panel" id="panel-achatar">
+    <div class="card">
+      <div class="info-box" style="background:rgba(0,230,118,.05);border-color:rgba(0,230,118,.2)">
+        <strong style="color:#00e676">🔀 Achatar Árvore de Pastas</strong><br/>
+        Encontra pastas de projetos enterradas em sub-pastas de categorias e as traz para a raiz — sem precisar navegar em árvores profundas.<br/><br/>
+        <span style="color:#666">A ferramenta identifica qual pasta contém os arquivos do projeto, move ela para a raiz e apaga automaticamente as pastas de categoria que ficarem vazias.</span>
+      </div>
+      <div>
+        <label>ID da Pasta Raiz do Drive</label>
+        <input type="text" id="folderIdAchatar" placeholder="Cole o ID da pasta raiz aqui"/>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btnAchatarScan" onclick="achatarEscanear()">🔍 Escanear</button>
+        <button class="btn btn-danger" id="btnAchatarAplicar" onclick="achatarAplicar()" disabled>✅ Achatar</button>
+        <button class="btn btn-secondary" onclick="limparLog('logAchatar')">Limpar log</button>
+      </div>
+      <div class="empty-list" id="achatarLista" style="display:none">
+        <h3>Pastas de projeto identificadas</h3>
+        <p id="achatarResumo" style="color:#aaa;font-size:13px;font-family:'DM Mono',monospace;margin-bottom:12px"></p>
+        <div style="display:flex;gap:10px;margin-bottom:12px">
+          <button class="btn btn-secondary" style="padding:8px 16px;font-size:11px" onclick="achatarSelecionarTodas(true)">Selecionar todas</button>
+          <button class="btn btn-secondary" style="padding:8px 16px;font-size:11px" onclick="achatarSelecionarTodas(false)">Desmarcar todas</button>
+        </div>
+        <div id="achatarItems"></div>
+      </div>
+    </div>
+    <div class="log-card">
+      <div class="log-header">
+        <span>Log de execução</span>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="log-count" id="logCountAchatar">0 pastas</span>
+          <span class="status-badge status-idle" id="statusAchatar"><span class="dot"></span> Aguardando</span>
+        </div>
+      </div>
+      <div class="progress-wrap" id="progressWrapAchatar">
+        <div class="progress-bar-bg"><div class="progress-bar" id="progressBarAchatar" style="width:0%"></div></div>
+      </div>
+      <div class="log-body" id="logAchatar"><div class="log-empty">Cole o ID da pasta raiz e clique em "Escanear".</div></div>
+    </div>
+  </div>
+
 </div>
 
 <!-- MODAL: AJUSTE DE ÂNGULO INDIVIDUAL -->
@@ -864,7 +907,7 @@
 
   // ─── TABS ──────────────────────────────────────────
   function setTab(tab) {
-    const tabs = ['renomear','categorizar','ai','limpar','preview','catalogo','agente'];
+    const tabs = ['renomear','categorizar','ai','limpar','preview','catalogo','agente','achatar'];
     document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', tabs[i] === tab));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-' + tab).classList.add('active');
@@ -2292,6 +2335,264 @@ Regras: explore antes de agir. Quando terminar, responda SEM <TOOLS>. Seja conci
     document.getElementById('agenteSend').disabled = false;
     input.disabled = false;
     input.focus();
+  }
+
+  // ─── ACHATAR ÁRVORE ──────────────────────────────────────────────────────
+
+  let achatarPlan = [];
+  let achatarRaizId = null;
+
+  // Nomes que indicam subpastas organizacionais (padrão FILES/IMG)
+  const NOMES_ORG_ACHATAR = new Set([
+    'files','file','img','imgs','image','images','imagem','imagens',
+    'fotos','foto','photo','photos','render','renders','stl','stls',
+    'model','models','print','prints','preview','previews',
+    'thumb','thumbs','arquivos','arquivo','textures','texture',
+    'asset','assets','source','sources','original','originals','ref','refs'
+  ]);
+
+  function isNomeOrgAchatar(nome) {
+    return NOMES_ORG_ACHATAR.has(nome.toLowerCase().replace(/[^a-z]/g, ''));
+  }
+
+  // Percorre a árvore recursivamente identificando pastas de projeto.
+  // ancestrais = IDs entre a raiz (exclusive) e pastaId (exclusive)
+  async function identificarPastasProjeto(pastaId, raizId, caminho, ancestrais, resultado) {
+    const [subpastas, arquivos] = await Promise.all([
+      listarSubpastas(pastaId),
+      listarArquivos(pastaId)
+    ]);
+
+    // Raiz: apenas recursa nos filhos diretos
+    if (pastaId === raizId) {
+      for (const sub of subpastas) {
+        await identificarPastasProjeto(sub.id, raizId, sub.name, [], resultado);
+      }
+      return;
+    }
+
+    // CASO 1: pasta tem arquivos diretos → é pasta de projeto
+    if (arquivos.length > 0) {
+      resultado.push({
+        id: pastaId,
+        name: caminho.includes(' > ') ? caminho.split(' > ').pop() : caminho,
+        caminho,
+        parentId: ancestrais.length > 0 ? ancestrais[ancestrais.length - 1] : raizId,
+        ancestrais: [...ancestrais]
+      });
+      return;
+    }
+
+    // Pasta vazia: ignora
+    if (subpastas.length === 0) return;
+
+    // CASO 2: sem arquivos diretos, só subpastas
+    // Verifica quais filhos têm arquivos diretos
+    const subInfos = await Promise.all(
+      subpastas.map(async sub => {
+        const [subs, files] = await Promise.all([listarSubpastas(sub.id), listarArquivos(sub.id)]);
+        return { sub, subs, files };
+      })
+    );
+
+    const todasComArquivos = subInfos.every(si => si.files.length > 0);
+
+    if (todasComArquivos) {
+      // Todos os filhos têm arquivos diretos
+      const todosOrg = subpastas.every(s => isNomeOrgAchatar(s.name));
+      if (todosOrg) {
+        // Padrão FILES/IMG → pasta atual é a pasta do projeto
+        resultado.push({
+          id: pastaId,
+          name: caminho.includes(' > ') ? caminho.split(' > ').pop() : caminho,
+          caminho,
+          parentId: ancestrais.length > 0 ? ancestrais[ancestrais.length - 1] : raizId,
+          ancestrais: [...ancestrais]
+        });
+      } else {
+        // Cada filho é um projeto independente
+        for (const { sub } of subInfos) {
+          resultado.push({
+            id: sub.id,
+            name: sub.name,
+            caminho: caminho + ' > ' + sub.name,
+            parentId: pastaId,
+            ancestrais: [...ancestrais, pastaId]
+          });
+        }
+      }
+      return;
+    }
+
+    // CASO 3: situação mista ou mais profunda — recursa por filho
+    for (const { sub, subs, files } of subInfos) {
+      if (files.length > 0) {
+        // Filho com arquivos → projeto
+        resultado.push({
+          id: sub.id,
+          name: sub.name,
+          caminho: caminho + ' > ' + sub.name,
+          parentId: pastaId,
+          ancestrais: [...ancestrais, pastaId]
+        });
+      } else if (subs.length > 0) {
+        // Filho só com subpastas → recursa
+        await identificarPastasProjeto(sub.id, raizId, caminho + ' > ' + sub.name, [...ancestrais, pastaId], resultado);
+      }
+      // Filho vazio: ignora
+    }
+  }
+
+  async function achatarEscanear() {
+    const folderId = document.getElementById('folderIdAchatar').value.trim();
+    if (!folderId) { alert('Cole o ID da pasta raiz.'); return; }
+    if (!accessToken) { alert('Conecte ao Google primeiro (aba Renomear).'); return; }
+
+    achatarRaizId = folderId;
+    achatarPlan = [];
+
+    document.getElementById('achatarLista').style.display = 'none';
+    document.getElementById('btnAchatarAplicar').disabled = true;
+    document.getElementById('btnAchatarScan').disabled = true;
+    document.getElementById('logAchatar').innerHTML = '';
+    document.getElementById('progressBarAchatar').style.width = '0%';
+    document.getElementById('logCountAchatar').textContent = '0 pastas';
+    setStatus('statusAchatar', 'running', 'Escaneando...');
+    log('logAchatar', 'info', 'Iniciando escaneamento recursivo...');
+
+    try {
+      await identificarPastasProjeto(folderId, folderId, '', [], achatarPlan);
+
+      // Remove duplicatas por id
+      const seen = new Set();
+      achatarPlan = achatarPlan.filter(item => {
+        if (seen.has(item.id)) return false;
+        seen.add(item.id);
+        return true;
+      });
+
+      // Remove itens que já estão direto na raiz (parentId === raizId)
+      achatarPlan = achatarPlan.filter(item => item.parentId !== folderId);
+
+      document.getElementById('logCountAchatar').textContent = `${achatarPlan.length} pastas`;
+
+      if (achatarPlan.length === 0) {
+        setStatus('statusAchatar', 'ok', 'Tudo já na raiz');
+        log('logAchatar', 'warn', 'Nenhuma pasta de projeto enterrada encontrada. Tudo já está na raiz.');
+        document.getElementById('btnAchatarScan').disabled = false;
+        return;
+      }
+
+      setStatus('statusAchatar', 'ok', `${achatarPlan.length} encontradas`);
+      log('logAchatar', 'ok', `Escaneamento concluído. ${achatarPlan.length} pasta(s) de projeto encontradas.`);
+
+      // Monta preview com checkboxes
+      const itemsEl = document.getElementById('achatarItems');
+      itemsEl.innerHTML = '';
+      for (const item of achatarPlan) {
+        const div = document.createElement('div');
+        div.className = 'empty-item';
+        div.innerHTML = `
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:6px 0">
+            <input type="checkbox" checked data-id="${esc(item.id)}" style="margin-top:3px;flex-shrink:0"/>
+            <div>
+              <div style="font-family:'DM Mono',monospace;font-size:12px;color:#aaa">${esc(item.caminho)}</div>
+              <div style="font-family:'DM Mono',monospace;font-size:11px;color:#00e676;margin-top:3px">→ Raiz / ${esc(item.name)}</div>
+            </div>
+          </label>`;
+        itemsEl.appendChild(div);
+      }
+
+      document.getElementById('achatarResumo').textContent =
+        `${achatarPlan.length} pasta(s) serão movidas para a raiz. Pastas de categoria que ficarem vazias serão apagadas automaticamente.`;
+      document.getElementById('achatarLista').style.display = '';
+      document.getElementById('btnAchatarAplicar').disabled = false;
+      document.getElementById('progressBarAchatar').style.width = '100%';
+
+    } catch (e) {
+      setStatus('statusAchatar', 'error', 'Erro');
+      log('logAchatar', 'error', 'Erro no escaneamento: ' + e.message);
+    }
+
+    document.getElementById('btnAchatarScan').disabled = false;
+  }
+
+  function achatarSelecionarTodas(sel) {
+    document.querySelectorAll('#achatarItems input[type=checkbox]').forEach(cb => cb.checked = sel);
+  }
+
+  async function achatarAplicar() {
+    if (!achatarPlan.length || !achatarRaizId) return;
+
+    const selecionados = achatarPlan.filter(item => {
+      const cb = document.querySelector(`#achatarItems input[data-id="${item.id}"]`);
+      return cb && cb.checked;
+    });
+
+    if (selecionados.length === 0) { alert('Selecione ao menos uma pasta.'); return; }
+
+    document.getElementById('btnAchatarScan').disabled = true;
+    document.getElementById('btnAchatarAplicar').disabled = true;
+    setStatus('statusAchatar', 'running', 'Movendo...');
+    log('logAchatar', 'info', `Iniciando movimentação de ${selecionados.length} pasta(s)...`);
+    document.getElementById('progressBarAchatar').style.width = '0%';
+
+    // Mapeia profundidade de cada ancestral para deletar do mais profundo ao mais raso
+    const depthMap = new Map();
+    for (const item of selecionados) {
+      item.ancestrais.forEach((id, idx) => {
+        const cur = depthMap.get(id) ?? -1;
+        if (idx > cur) depthMap.set(id, idx);
+      });
+    }
+
+    let feito = 0;
+    let erros = 0;
+
+    // FASE 1: Move todas as pastas de projeto para a raiz
+    for (const item of selecionados) {
+      try {
+        const r = await driveAuthFetch(
+          `https://www.googleapis.com/drive/v3/files/${item.id}?addParents=${achatarRaizId}&removeParents=${item.parentId}&fields=id`,
+          { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) }
+        );
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        log('logAchatar', 'ok', `Movido: ${item.caminho}`);
+      } catch (e) {
+        log('logAchatar', 'error', `Erro ao mover "${item.name}": ${e.message}`);
+        erros++;
+      }
+      feito++;
+      document.getElementById('progressBarAchatar').style.width = `${(feito / selecionados.length) * 70}%`;
+    }
+
+    // FASE 2: Apaga ancestrais vazios — mais profundos primeiro
+    const ancestraisOrdenados = [...depthMap.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([id]) => id);
+
+    log('logAchatar', 'info', `Verificando ${ancestraisOrdenados.length} pasta(s) de categoria para limpeza...`);
+    let apagadas = 0;
+
+    for (const ancestralId of ancestraisOrdenados) {
+      try {
+        const count = await contarConteudo(ancestralId);
+        if (count === 0) {
+          await driveAuthFetch(`https://www.googleapis.com/drive/v3/files/${ancestralId}`, { method: 'DELETE' });
+          log('logAchatar', 'delete', `Pasta vazia apagada (id: ${ancestralId})`);
+          apagadas++;
+        }
+      } catch (_) { /* ignora falhas de limpeza */ }
+    }
+
+    document.getElementById('progressBarAchatar').style.width = '100%';
+    const msg = `Concluído! ${feito - erros} movida(s)${apagadas > 0 ? `, ${apagadas} pasta(s) de categoria apagada(s)` : ''}.${erros > 0 ? ` (${erros} erro(s))` : ''}`;
+    setStatus('statusAchatar', erros > 0 ? 'warn' : 'ok', msg);
+    log('logAchatar', erros > 0 ? 'warn' : 'ok', msg);
+
+    achatarPlan = [];
+    document.getElementById('achatarLista').style.display = 'none';
+    document.getElementById('btnAchatarScan').disabled = false;
   }
 </script>
 </body>
