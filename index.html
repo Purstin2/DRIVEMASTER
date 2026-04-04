@@ -680,6 +680,7 @@
   let _modalColor = 0x00e676;
   let _previewCells = [];
   let _pvFolderData = []; // resultado do scan de pastas
+  let _extCoversSet = null; // Set de basenames já gerados na pasta externa
   let _modalSTL = null;
   let _modalDebounce = null;
   let _modalRendering = false;
@@ -1752,7 +1753,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
         if (stopFlags.preview) return;
         if (/\.stl$/i.test(f.name)) {
           const baseName = f.name.replace(/\.stl$/i, '').toLowerCase();
-          resultado.push({ id: f.id, name: f.name, parentId, temPreview: imagens.has(baseName) });
+          resultado.push({ id: f.id, name: f.name, parentId, temPreview: imagens.has(baseName) || !!(_extCoversSet && _extCoversSet.has(baseName)) });
           contRef.total++;
           if (contRef.onUpdate) contRef.onUpdate(contRef.total);
         }
@@ -1779,7 +1780,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
         if (stopFlags.preview) return;
         if (/\.stl$/i.test(f.name)) {
           const baseName = f.name.replace(/\.stl$/i, '').toLowerCase();
-          stlsLocal.push({ id: f.id, name: f.name, parentId: folderId, temPreview: imagens.has(baseName) });
+          stlsLocal.push({ id: f.id, name: f.name, parentId: folderId, temPreview: imagens.has(baseName) || !!(_extCoversSet && _extCoversSet.has(baseName)) });
         }
         if (f.mimeType === 'application/vnd.google-apps.folder') subfolders.push(f);
       }
@@ -1803,6 +1804,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     if (!folderId) { alert('Preencha o ID da pasta!'); return; }
 
     _pvFolderData = [];
+    _extCoversSet = null;
     stopFlags.preview = false;
     document.getElementById('btnScanPV').disabled = true;
     document.getElementById('btnPreview').disabled = true;
@@ -1811,6 +1813,29 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     document.getElementById('pvFolderSection').style.display = 'block';
     setStatus('statusPV', 'running', 'Escaneando...');
     log('logPreview', 'info', '🔍 Escaneando estrutura de pastas...');
+
+    // Pré-carrega pasta externa para saber quais previews já foram gerados lá
+    const extId = ((document.getElementById('extFolderId') || {}).value || '').trim();
+    if (extId) {
+      try {
+        _extCoversSet = new Set();
+        let extToken = null;
+        do {
+          let extUrl = `https://www.googleapis.com/drive/v3/files?q='${extId}'+in+parents+and+trashed=false&fields=files(name),nextPageToken&pageSize=500`;
+          if (extToken) extUrl += `&pageToken=${extToken}`;
+          const extData = await driveGet(extUrl);
+          (extData.files || []).forEach(f => {
+            if (/\.(png|jpg|jpeg|webp)$/i.test(f.name))
+              _extCoversSet.add(f.name.replace(/\.[^.]+$/, '').toLowerCase());
+          });
+          extToken = extData.nextPageToken || null;
+        } while (extToken);
+        log('logPreview', 'info', `📂 Pasta externa: ${_extCoversSet.size} preview(s) já gerados`);
+      } catch(e) {
+        log('logPreview', 'warn', `⚠️ Não leu pasta externa: ${e.message}`);
+        _extCoversSet = null;
+      }
+    }
 
     try {
       const rootData = await driveGet(`https://www.googleapis.com/drive/v3/files/${folderId}?fields=name`);
