@@ -420,17 +420,11 @@
           </div>
         </div>
       </div>
-      <!-- Opção: salvar na pasta externa do ULTRAPACK3D -->
+      <!-- Pasta externa do ULTRAPACK3D -->
       <div style="margin-bottom:16px;padding:14px 16px;background:rgba(255,167,0,.05);border:1px solid rgba(255,167,0,.2);border-radius:8px">
-        <label class="opt" id="opt-ext-salvar" style="margin-bottom:0">
-          <input type="checkbox" id="chkExtFolder" onchange="toggleOpt(this,'opt-ext-salvar');toggleExtFolderInput()"/>
-          📤 Salvar na pasta externa (ULTRAPACK3D)
-        </label>
-        <div id="extFolderInputWrap" style="display:none;margin-top:12px">
-          <label style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#ffa700;margin-bottom:6px;display:block">ID da pasta externa no Drive</label>
-          <input type="text" id="extFolderId" placeholder="Cole aqui o ID da pasta ultrapack-external-covers" oninput="localStorage.setItem('dm_extFolderId',this.value)"/>
-          <div style="font-size:10px;color:#666;margin-top:6px;font-family:'DM Mono',monospace">As imagens serão salvas nessa pasta com o mesmo nome do arquivo STL. O ULTRAPACK3D irá linkará automaticamente.</div>
-        </div>
+        <label style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#ffa700;margin-bottom:6px;display:block">📤 Pasta externa ULTRAPACK3D (opcional)</label>
+        <input type="text" id="extFolderId" placeholder="Cole o ID da pasta ultrapack-external-covers" oninput="localStorage.setItem('dm_extFolderId',this.value)"/>
+        <div style="font-size:10px;color:#666;margin-top:6px;font-family:'DM Mono',monospace">Quando preenchido, <strong style="color:#ffa700">todas</strong> as imagens vão para essa pasta automaticamente. Deixe vazio para salvar na mesma pasta do STL.</div>
       </div>
 
       <canvas id="stlCanvas" style="display:none"></canvas>
@@ -873,8 +867,9 @@
     try {
       const blob = await renderizarSTL(_modalSTL.buffer, _modalSTL.tamanho, h, v, null, _modalColor);
       let ok = false;
-      const targetParent = _getExtTarget(_modalSTL.parentId);
-      const usingExt = targetParent !== _modalSTL.parentId;
+      const _extId = ((document.getElementById('extFolderId') || {}).value || '').trim();
+      const targetParent = _extId || _modalSTL.parentId;
+      const usingExt = !!_extId;
       const existingId = usingExt ? _modalSTL.extPngFileId : _modalSTL.pngFileId;
       if (existingId) {
         const resp = await driveAuthFetch(`https://www.googleapis.com/upload/drive/v3/files/${existingId}?uploadType=media`, {
@@ -916,26 +911,13 @@
       const el = document.getElementById(id);
       if (val && el) el.value = val;
     });
-    // Restaura estado da pasta externa
+    // Restaura ID da pasta externa
     const extId = localStorage.getItem('dm_extFolderId');
-    const extChk = localStorage.getItem('dm_extFolderEnabled');
     if (extId) { const el = document.getElementById('extFolderId'); if (el) el.value = extId; }
-    if (extChk === '1') {
-      const chk = document.getElementById('chkExtFolder');
-      if (chk) { chk.checked = true; toggleOpt(chk, 'opt-ext-salvar'); toggleExtFolderInput(); }
-    }
-  }
-  function toggleExtFolderInput() {
-    const chk = document.getElementById('chkExtFolder');
-    const wrap = document.getElementById('extFolderInputWrap');
-    if (!wrap) return;
-    wrap.style.display = chk.checked ? 'block' : 'none';
-    localStorage.setItem('dm_extFolderEnabled', chk.checked ? '1' : '0');
   }
   function _getExtTarget(fallbackParentId) {
-    const chk = document.getElementById('chkExtFolder');
-    const extId = (document.getElementById('extFolderId') || {}).value || '';
-    return (chk && chk.checked && extId.trim()) ? extId.trim() : fallbackParentId;
+    const extId = ((document.getElementById('extFolderId') || {}).value || '').trim();
+    return extId || fallbackParentId;
   }
   document.addEventListener('DOMContentLoaded', () => {
     loadFields();
