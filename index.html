@@ -420,6 +420,19 @@
           </div>
         </div>
       </div>
+      <!-- Opção: salvar na pasta externa do ULTRAPACK3D -->
+      <div style="margin-bottom:16px;padding:14px 16px;background:rgba(255,167,0,.05);border:1px solid rgba(255,167,0,.2);border-radius:8px">
+        <label class="opt" id="opt-ext-salvar" style="margin-bottom:0">
+          <input type="checkbox" id="chkExtFolder" onchange="toggleOpt(this,'opt-ext-salvar');toggleExtFolderInput()"/>
+          📤 Salvar na pasta externa (ULTRAPACK3D)
+        </label>
+        <div id="extFolderInputWrap" style="display:none;margin-top:12px">
+          <label style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#ffa700;margin-bottom:6px;display:block">ID da pasta externa no Drive</label>
+          <input type="text" id="extFolderId" placeholder="Cole aqui o ID da pasta ultrapack-external-covers" oninput="localStorage.setItem('dm_extFolderId',this.value)"/>
+          <div style="font-size:10px;color:#666;margin-top:6px;font-family:'DM Mono',monospace">As imagens serão salvas nessa pasta com o mesmo nome do arquivo STL. O ULTRAPACK3D irá linkará automaticamente.</div>
+        </div>
+      </div>
+
       <canvas id="stlCanvas" style="display:none"></canvas>
       <div class="btn-row">
         <button class="btn" style="background:#ffa700;color:#000;box-shadow:0 0 20px rgba(255,167,0,.3);font-weight:700;font-size:13px;letter-spacing:.5px;text-transform:uppercase;padding:13px 28px;border-radius:10px;border:none;cursor:pointer" id="btnScanPV" onclick="escanearFoldersParaPreview()">🔍 Ver Pastas</button>
@@ -860,17 +873,24 @@
     try {
       const blob = await renderizarSTL(_modalSTL.buffer, _modalSTL.tamanho, h, v, null, _modalColor);
       let ok = false;
-      if (_modalSTL.pngFileId) {
-        const resp = await driveAuthFetch(`https://www.googleapis.com/upload/drive/v3/files/${_modalSTL.pngFileId}?uploadType=media`, {
+      const targetParent = _getExtTarget(_modalSTL.parentId);
+      const usingExt = targetParent !== _modalSTL.parentId;
+      const existingId = usingExt ? _modalSTL.extPngFileId : _modalSTL.pngFileId;
+      if (existingId) {
+        const resp = await driveAuthFetch(`https://www.googleapis.com/upload/drive/v3/files/${existingId}?uploadType=media`, {
           method: 'PATCH', headers: { 'Content-Type': 'image/png' }, body: blob
         });
         const d = await resp.json(); ok = !!(d.id || d.name);
       } else {
         const form = new FormData();
-        form.append('metadata', new Blob([JSON.stringify({ name: _modalSTL.nomePNG, parents: [_modalSTL.parentId] })], { type: 'application/json' }));
+        form.append('metadata', new Blob([JSON.stringify({ name: _modalSTL.nomePNG, parents: [targetParent] })], { type: 'application/json' }));
         form.append('file', blob, _modalSTL.nomePNG);
         const resp = await driveAuthFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', { method: 'POST', body: form });
-        const d = await resp.json(); ok = !!d.id; if (ok) _previewCells[_modalSTL.idx].pngFileId = d.id;
+        const d = await resp.json(); ok = !!d.id;
+        if (ok) {
+          if (usingExt) { _modalSTL.extPngFileId = d.id; _previewCells[_modalSTL.idx].extPngFileId = d.id; }
+          else { _previewCells[_modalSTL.idx].pngFileId = d.id; }
+        }
       }
       if (ok) {
         const info = _previewCells[_modalSTL.idx];
@@ -896,6 +916,26 @@
       const el = document.getElementById(id);
       if (val && el) el.value = val;
     });
+    // Restaura estado da pasta externa
+    const extId = localStorage.getItem('dm_extFolderId');
+    const extChk = localStorage.getItem('dm_extFolderEnabled');
+    if (extId) { const el = document.getElementById('extFolderId'); if (el) el.value = extId; }
+    if (extChk === '1') {
+      const chk = document.getElementById('chkExtFolder');
+      if (chk) { chk.checked = true; toggleOpt(chk, 'opt-ext-salvar'); toggleExtFolderInput(); }
+    }
+  }
+  function toggleExtFolderInput() {
+    const chk = document.getElementById('chkExtFolder');
+    const wrap = document.getElementById('extFolderInputWrap');
+    if (!wrap) return;
+    wrap.style.display = chk.checked ? 'block' : 'none';
+    localStorage.setItem('dm_extFolderEnabled', chk.checked ? '1' : '0');
+  }
+  function _getExtTarget(fallbackParentId) {
+    const chk = document.getElementById('chkExtFolder');
+    const extId = (document.getElementById('extFolderId') || {}).value || '';
+    return (chk && chk.checked && extId.trim()) ? extId.trim() : fallbackParentId;
   }
   document.addEventListener('DOMContentLoaded', () => {
     loadFields();
@@ -1898,7 +1938,8 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
           const buffer = await resp.arrayBuffer();
           const blob = await renderizarSTL(buffer, tamanho, pvAnguloH, pvAnguloV, null, pvColor);
           const nomePNG = stl.name.replace(/\.stl$/i, '') + '.png';
-          const metadata = JSON.stringify({ name: nomePNG, parents: [stl.parentId] });
+          const targetParent = _getExtTarget(stl.parentId);
+          const metadata = JSON.stringify({ name: nomePNG, parents: [targetParent] });
           const form = new FormData();
           form.append('metadata', new Blob([metadata], { type: 'application/json' }));
           form.append('file', blob, nomePNG);
