@@ -1822,19 +1822,27 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
       try {
         _extCoversSet = new Set();
         let extToken = null;
+        let extPagina = 0;
+        log('logPreview', 'info', `📂 Carregando pasta externa (ultrapack-external-covers)...`);
         do {
-          let extUrl = `https://www.googleapis.com/drive/v3/files?q='${extId}'+in+parents+and+trashed=false&fields=files(name),nextPageToken&pageSize=500`;
+          let extUrl = `https://www.googleapis.com/drive/v3/files?q='${extId}'+in+parents+and+trashed=false&fields=files(name),nextPageToken&pageSize=1000`;
           if (extToken) extUrl += `&pageToken=${extToken}`;
-          const extData = await driveGet(extUrl);
-          (extData.files || []).forEach(f => {
+          const extResp = await driveAuthFetch(extUrl);
+          if (!extResp.ok) throw new Error(`HTTP ${extResp.status} ao carregar pasta externa (página ${extPagina + 1})`);
+          const extData = await extResp.json();
+          if (extData.error) throw new Error(`API ${extData.error.code}: ${extData.error.message}`);
+          extPagina++;
+          const lote = extData.files || [];
+          lote.forEach(f => {
             if (/\.(png|jpg|jpeg|webp)$/i.test(f.name))
               _extCoversSet.add(f.name.replace(/\.[^.]+$/, '').toLowerCase());
           });
+          log('logPreview', 'info', `📂 Pasta externa — página ${extPagina}: ${lote.length} arquivos lidos (total: ${_extCoversSet.size} imagens)`);
           extToken = extData.nextPageToken || null;
         } while (extToken);
-        log('logPreview', 'info', `📂 Pasta externa: ${_extCoversSet.size} preview(s) já gerados`);
+        log('logPreview', 'info', `✅ Pasta externa: ${_extCoversSet.size} preview(s) carregados em ${extPagina} página(s)`);
       } catch(e) {
-        log('logPreview', 'warn', `⚠️ Não leu pasta externa: ${e.message}`);
+        log('logPreview', 'warn', `⚠️ Erro ao ler pasta externa: ${e.message}`);
         _extCoversSet = null;
       }
     }
