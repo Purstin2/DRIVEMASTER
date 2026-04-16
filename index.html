@@ -1914,28 +1914,40 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     await _carregarFflate();
     const uint8 = new Uint8Array(buffer);
     const unzipped = fflate.unzipSync(uint8);
-    let modelXml = null;
-    // Prefer standard path, fallback to any .model file
-    for (const path of Object.keys(unzipped)) {
-      if (path === '3D/3dmodel.model' || (!modelXml && path.endsWith('.model'))) {
-        modelXml = new TextDecoder().decode(unzipped[path]);
-        if (path === '3D/3dmodel.model') break;
+    const allPaths = Object.keys(unzipped);
+
+    // Find model file: prefer standard path, fallback to any .model or .xml with <mesh>
+    let modelXml = null, modelPath = null;
+    const candidates = allPaths.filter(p => p.endsWith('.model') || (p.endsWith('.xml') && !p.includes('_rels') && !p.includes('[Content')));
+    // Prefer 3D/3dmodel.model
+    for (const p of ['3D/3dmodel.model', ...candidates]) {
+      if (unzipped[p]) {
+        const txt = new TextDecoder('utf-8', { ignoreBOM: true }).decode(unzipped[p]);
+        if (txt.includes('<mesh') || txt.includes(':mesh')) { modelXml = txt; modelPath = p; break; }
       }
     }
-    if (!modelXml) throw new Error('3MF: arquivo .model não encontrado no ZIP');
-    const doc = new DOMParser().parseFromString(modelXml, 'application/xml');
+    if (!modelXml) {
+      const zipContents = allPaths.join(', ');
+      throw new Error(`3MF: modelo não encontrado. Arquivos no ZIP: [${zipContents}]`);
+    }
+
+    // Parse XML — use text/xml for lenient parsing
+    const doc = new DOMParser().parseFromString(modelXml, 'text/xml');
+    const parseErr = doc.querySelector('parsererror');
+    if (parseErr) throw new Error('3MF: XML inválido em ' + modelPath);
+
     const positions = [], normals = [];
-    // getElementsByTagName ignora namespace — necessário pois 3MF usa xmlns padrão
-    const meshes = doc.getElementsByTagName('mesh');
+    // getElementsByTagNameNS('*', name) handles any namespace prefix robustly
+    const meshes = doc.getElementsByTagNameNS('*', 'mesh');
     for (let m = 0; m < meshes.length; m++) {
       const mesh = meshes[m];
-      const vertEls = mesh.getElementsByTagName('vertex');
+      const vertEls = mesh.getElementsByTagNameNS('*', 'vertex');
       const verts = [];
       for (let i = 0; i < vertEls.length; i++) {
         const v = vertEls[i];
         verts.push([parseFloat(v.getAttribute('x')), parseFloat(v.getAttribute('y')), parseFloat(v.getAttribute('z'))]);
       }
-      const triEls = mesh.getElementsByTagName('triangle');
+      const triEls = mesh.getElementsByTagNameNS('*', 'triangle');
       for (let i = 0; i < triEls.length; i++) {
         const tri = triEls[i];
         const v0 = verts[+tri.getAttribute('v1')];
@@ -1950,7 +1962,10 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
         normals.push(nx/l,ny/l,nz/l, nx/l,ny/l,nz/l, nx/l,ny/l,nz/l);
       }
     }
-    if (!positions.length) throw new Error('3MF: nenhuma geometria encontrada no modelo');
+    if (!positions.length) {
+      const meshCount = meshes.length;
+      throw new Error(`3MF: sem geometria em "${modelPath}" (${meshCount} mesh(es), ${doc.getElementsByTagNameNS('*','vertex').length} vertices encontrados)`);
+    }
     return { positions: new Float32Array(positions), normals: new Float32Array(normals) };
   }
 
