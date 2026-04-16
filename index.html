@@ -182,6 +182,7 @@
     <div class="tab" onclick="setTab('categorizar')">Categorizar IA</div>
     <div class="tab ai-tab" onclick="setTab('ai')">🧠 IA Inteligente</div>
     <div class="tab" onclick="setTab('limpar')">🗑 Limpar Vazias</div>
+    <div class="tab" onclick="setTab('limpar-arquivos')">🗂 Limpar Arquivos</div>
     <div class="tab preview-tab" onclick="setTab('preview')">🖼 Previews STL</div>
     <div class="tab" onclick="setTab('catalogo')">📸 Catálogo</div>
     <div class="tab agente-tab" onclick="setTab('agente')">🤖 Agente</div>
@@ -361,6 +362,68 @@
         <div class="progress-bar-bg"><div class="progress-bar" id="progressBarL" style="width:0%"></div></div>
       </div>
       <div class="log-body" id="logLimpar"><div class="log-empty">Conecte ao Google na aba "Renomear" e cole o ID da pasta raiz.</div></div>
+    </div>
+  </div>
+
+  <!-- PANEL: LIMPAR ARQUIVOS -->
+  <div class="panel" id="panel-limpar-arquivos">
+    <div class="card">
+      <div class="warn-box">
+        <strong>🗂 Como funciona:</strong> Varre todas as subpastas recursivamente e lista arquivos pelos tipos selecionados. <strong style="color:#ff4444">Nunca apaga</strong> STL, 3MF, OBJ, AMF, STEP, GCODE, imagens (PNG/JPG/WEBP), vídeos nem arquivos compactados (ZIP/RAR).
+      </div>
+      <div>
+        <label>ID da Pasta Raiz do Drive</label>
+        <input type="text" id="folderIdLimparArq" placeholder="Cole o ID da pasta raiz aqui"/>
+      </div>
+      <label style="display:block;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;margin-top:4px">Tipos de arquivo alvo</label>
+      <div class="options" id="arqOpcoes" style="margin-bottom:12px">
+        <label class="opt active" id="opt-arq-pdf"><input type="checkbox" checked value="pdf" onchange="toggleOpt(this,'opt-arq-pdf')"/> PDF</label>
+        <label class="opt active" id="opt-arq-txt"><input type="checkbox" checked value="txt" onchange="toggleOpt(this,'opt-arq-txt')"/> TXT</label>
+        <label class="opt active" id="opt-arq-md"><input type="checkbox" checked value="md" onchange="toggleOpt(this,'opt-arq-md')"/> MD</label>
+        <label class="opt active" id="opt-arq-doc"><input type="checkbox" checked value="doc,docx" onchange="toggleOpt(this,'opt-arq-doc')"/> DOC / DOCX</label>
+        <label class="opt" id="opt-arq-html"><input type="checkbox" value="html,htm" onchange="toggleOpt(this,'opt-arq-html')"/> HTML</label>
+        <label class="opt" id="opt-arq-xlsx"><input type="checkbox" value="xlsx,xls" onchange="toggleOpt(this,'opt-arq-xlsx')"/> XLSX / XLS</label>
+        <label class="opt" id="opt-arq-csv"><input type="checkbox" value="csv" onchange="toggleOpt(this,'opt-arq-csv')"/> CSV</label>
+        <label class="opt" id="opt-arq-xml"><input type="checkbox" value="xml" onchange="toggleOpt(this,'opt-arq-xml')"/> XML</label>
+        <label class="opt" id="opt-arq-json"><input type="checkbox" value="json" onchange="toggleOpt(this,'opt-arq-json')"/> JSON</label>
+      </div>
+      <div style="margin-bottom:20px">
+        <label>Extensões personalizadas (separadas por vírgula)</label>
+        <input type="text" id="arqExtCustom" placeholder=".psd, .ai, .sketch, .lys"/>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btnArqScan" onclick="escanearArquivosLixo()">🔍 Escanear</button>
+        <button class="btn btn-danger" id="btnArqDelete" onclick="apagarArquivosLixo()" disabled>🗑 Apagar selecionados</button>
+        <button class="btn btn-danger" id="btnStopArq" onclick="pararOperacao('limparArq')" style="display:none">⛔ Parar</button>
+        <button class="btn btn-secondary" onclick="limparLog('logArq')">Limpar log</button>
+      </div>
+      <div id="arqLista" style="display:none;margin-top:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+          <div>
+            <span style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Arquivos encontrados</span>
+            <p id="arqResumo" style="font-size:12px;color:#666;font-family:'DM Mono',monospace;margin-top:5px"></p>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-secondary" style="padding:5px 12px;font-size:11px" onclick="arqSelecionarTodas(true)">Todas</button>
+            <button class="btn btn-secondary" style="padding:5px 12px;font-size:11px" onclick="arqSelecionarTodas(false)">Nenhuma</button>
+          </div>
+        </div>
+        <div id="arqExtBtns" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
+        <div id="arqItems" style="max-height:400px;overflow-y:auto;padding-right:4px"></div>
+      </div>
+    </div>
+    <div class="log-card">
+      <div class="log-header">
+        <span>Log de execução</span>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="log-count" id="logCountArq">0 encontrados</span>
+          <span class="status-badge status-idle" id="statusArq"><span class="dot"></span> Aguardando</span>
+        </div>
+      </div>
+      <div class="progress-wrap" id="progressWrapArq">
+        <div class="progress-bar-bg"><div class="progress-bar" id="progressBarArq" style="width:0%;background:var(--red);box-shadow:0 0 8px rgba(255,68,68,.5)"></div></div>
+      </div>
+      <div class="log-body" id="logArq"><div class="log-empty">Conecte ao Google na aba "Renomear" e cole o ID da pasta raiz.</div></div>
     </div>
   </div>
 
@@ -685,9 +748,9 @@
   let _modalDebounce = null;
   let _modalRendering = false;
   let _canvasDragInit = false;
-  const stopFlags = { renomear: false, cat: false, ai: false, limpar: false, preview: false, catalogo: false };
-  const _stopBtnIds = { renomear:'btnStopR', cat:'btnStopC', ai:'btnStopAI', limpar:'btnStopL', preview:'btnStopPV', catalogo:'btnStopCat' };
-  const _stopLogIds = { renomear:'logRenomear', cat:'logCat', ai:'logAI', limpar:'logLimpar', preview:'logPreview', catalogo:'logCatalog' };
+  const stopFlags = { renomear: false, cat: false, ai: false, limpar: false, limparArq: false, preview: false, catalogo: false };
+  const _stopBtnIds = { renomear:'btnStopR', cat:'btnStopC', ai:'btnStopAI', limpar:'btnStopL', limparArq:'btnStopArq', preview:'btnStopPV', catalogo:'btnStopCat' };
+  const _stopLogIds = { renomear:'logRenomear', cat:'logCat', ai:'logAI', limpar:'logLimpar', limparArq:'logArq', preview:'logPreview', catalogo:'logCatalog' };
   function pararOperacao(key) {
     stopFlags[key] = true;
     const btn = document.getElementById(_stopBtnIds[key]);
@@ -930,7 +993,7 @@
 
   // ─── TABS ──────────────────────────────────────────
   function setTab(tab) {
-    const tabs = ['renomear','categorizar','ai','limpar','preview','catalogo','agente','achatar'];
+    const tabs = ['renomear','categorizar','ai','limpar','limpar-arquivos','preview','catalogo','agente','achatar'];
     document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', tabs[i] === tab));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-' + tab).classList.add('active');
@@ -1594,6 +1657,185 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
   }
 
   function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  // ─── LIMPAR ARQUIVOS ─────────────────────────────────
+  let _arqEncontrados = [];
+
+  const PROTECTED_EXTS_ARQ = new Set([
+    // 3D printing
+    'stl','3mf','obj','amf','step','stp','iges','igs','g','gcode','f3d','f3z','lys','chitubox','ctb','photon','sl1','pwms','pw0','pwx',
+    // Compactados (podem conter 3D)
+    'zip','rar','7z','tar','gz','bz2',
+    // Imagens
+    'png','jpg','jpeg','webp','gif','bmp','tiff','tif','svg','ico','heic',
+    // Vídeos
+    'mp4','mov','avi','mkv','webm','m4v','wmv'
+  ]);
+
+  const _arqExtColors = {
+    pdf:'#ff6b6b', txt:'#74c0fc', md:'#a9e34b', doc:'#4dabf7', docx:'#4dabf7',
+    html:'#ff922b', htm:'#ff922b', xlsx:'#69db7c', xls:'#69db7c',
+    csv:'#63e6be', xml:'#da77f2', json:'#ffa94d'
+  };
+  function _arqExtColor(ext) { return _arqExtColors[ext] || '#aaa'; }
+
+  function _getAlvoExts() {
+    const s = new Set();
+    document.querySelectorAll('#arqOpcoes input[type=checkbox]:checked').forEach(cb => {
+      cb.value.split(',').forEach(e => { const t = e.trim().toLowerCase(); if (t) s.add(t); });
+    });
+    (document.getElementById('arqExtCustom').value || '').split(/[\s,;]+/).forEach(e => {
+      const t = e.trim().toLowerCase().replace(/^\./,''); if (t) s.add(t);
+    });
+    return s;
+  }
+
+  async function escanearArquivosLixo() {
+    if (!accessToken) { alert('Conecte ao Google primeiro na aba "Renomear"!'); return; }
+    const folderId = document.getElementById('folderIdLimparArq').value.trim();
+    if (!folderId) { alert('Preencha o ID da pasta!'); return; }
+    const alvoExts = _getAlvoExts();
+    if (!alvoExts.size) { alert('Selecione pelo menos um tipo de arquivo!'); return; }
+
+    _arqEncontrados = [];
+    stopFlags.limparArq = false;
+    document.getElementById('btnArqScan').disabled = true;
+    document.getElementById('btnArqDelete').disabled = true;
+    document.getElementById('arqLista').style.display = 'none';
+    document.getElementById('logCountArq').textContent = '0 encontrados';
+    mostrarStop('limparArq', true);
+    setStatus('statusArq', 'running', 'Escaneando...');
+    log('logArq', 'info', `🔍 Buscando: ${[...alvoExts].map(e=>'.'+e).join(', ')}...`);
+    document.getElementById('progressWrapArq').style.display = 'block';
+    document.getElementById('progressBarArq').style.width = '5%';
+
+    try {
+      await _escanearArqRecursivo(folderId, '/', alvoExts);
+      document.getElementById('progressBarArq').style.width = '100%';
+      if (stopFlags.limparArq) {
+        setStatus('statusArq', 'stopped', 'Parado');
+        log('logArq', 'warn', `⛔ Scan interrompido. ${_arqEncontrados.length} arquivo(s) encontrado(s).`);
+      } else if (!_arqEncontrados.length) {
+        setStatus('statusArq', 'done', 'Nenhum encontrado');
+        log('logArq', 'info', '✅ Nenhum arquivo dos tipos selecionados encontrado!');
+      } else {
+        setStatus('statusArq', 'done', `${_arqEncontrados.length} encontrados`);
+        log('logArq', 'warn', `⚠️ ${_arqEncontrados.length} arquivo(s) encontrado(s). Revise e selecione o que deseja apagar.`);
+        _renderArqLista();
+        document.getElementById('arqLista').style.display = 'block';
+        document.getElementById('btnArqDelete').disabled = false;
+      }
+    } catch(e) {
+      log('logArq', 'error', 'Erro: ' + e.message);
+      setStatus('statusArq', 'error', 'Erro');
+    }
+    document.getElementById('btnArqScan').disabled = false;
+    mostrarStop('limparArq', false);
+  }
+
+  async function _escanearArqRecursivo(folderId, path, alvoExts) {
+    if (stopFlags.limparArq) return;
+    let pageToken = null;
+    const subfolders = [];
+    do {
+      let url = `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType),nextPageToken&pageSize=1000`;
+      if (pageToken) url += `&pageToken=${pageToken}`;
+      const r = await driveAuthFetch(url);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data = await r.json();
+      if (data.error) throw new Error(`API ${data.error.code}: ${data.error.message}`);
+      for (const f of (data.files || [])) {
+        if (stopFlags.limparArq) return;
+        if (f.mimeType === 'application/vnd.google-apps.folder') {
+          subfolders.push({ id: f.id, name: f.name });
+        } else {
+          const ext = f.name.includes('.') ? f.name.split('.').pop().toLowerCase() : '';
+          if (ext && !PROTECTED_EXTS_ARQ.has(ext) && alvoExts.has(ext)) {
+            _arqEncontrados.push({ id: f.id, name: f.name, ext, path });
+            document.getElementById('logCountArq').textContent = `${_arqEncontrados.length} encontrados`;
+          }
+        }
+      }
+      pageToken = data.nextPageToken || null;
+    } while (pageToken);
+    for (const sub of subfolders) {
+      if (stopFlags.limparArq) return;
+      const subPath = path === '/' ? '/' + sub.name : path + '/' + sub.name;
+      await _escanearArqRecursivo(sub.id, subPath, alvoExts);
+    }
+  }
+
+  function _renderArqLista() {
+    const container = document.getElementById('arqItems');
+    container.innerHTML = '';
+    const byExt = {};
+    _arqEncontrados.forEach(f => { byExt[f.ext] = (byExt[f.ext] || 0) + 1; });
+    document.getElementById('arqResumo').innerHTML =
+      Object.entries(byExt).map(([e,n]) => `<span style="color:${_arqExtColor(e)};font-weight:700">${n}× .${e.toUpperCase()}</span>`).join(' &nbsp;·&nbsp; ');
+    document.getElementById('arqExtBtns').innerHTML =
+      Object.keys(byExt).map(ext =>
+        `<button class="btn btn-secondary" style="padding:4px 10px;font-size:10px;border-color:${_arqExtColor(ext)}55;color:${_arqExtColor(ext)}"
+          onclick="arqSelecionarPorExt('${ext}',true)">Todos .${ext.toUpperCase()}</button>
+         <button class="btn btn-secondary" style="padding:4px 10px;font-size:10px;border-color:#333;color:#555"
+          onclick="arqSelecionarPorExt('${ext}',false)">Nenhum .${ext.toUpperCase()}</button>`
+      ).join('');
+    _arqEncontrados.forEach((f, i) => {
+      const item = document.createElement('div');
+      item.className = 'empty-item';
+      item.style.cssText = 'align-items:flex-start;flex-wrap:wrap;gap:6px;padding:10px 14px';
+      item.innerHTML = `
+        <div style="flex:1;min-width:0">
+          <div style="color:#ccc;font-size:12px;font-family:'DM Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(f.name)}">${esc(f.name)}</div>
+          <div style="color:#333;font-size:10px;margin-top:3px;font-family:'DM Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.path)}</div>
+        </div>
+        <span style="background:${_arqExtColor(f.ext)}18;color:${_arqExtColor(f.ext)};border:1px solid ${_arqExtColor(f.ext)}44;border-radius:4px;font-size:9px;font-weight:700;padding:2px 8px;letter-spacing:.5px;flex-shrink:0;align-self:center">.${f.ext.toUpperCase()}</span>
+        <input type="checkbox" class="arq-check" checked data-index="${i}" data-ext="${f.ext}" style="accent-color:var(--red);width:14px;height:14px;cursor:pointer;flex-shrink:0;margin-top:3px"/>
+      `;
+      container.appendChild(item);
+    });
+  }
+
+  function arqSelecionarTodas(val) { document.querySelectorAll('.arq-check').forEach(cb => cb.checked = val); }
+  function arqSelecionarPorExt(ext, val) { document.querySelectorAll(`.arq-check[data-ext="${ext}"]`).forEach(cb => cb.checked = val); }
+
+  async function apagarArquivosLixo() {
+    const selecionados = [...document.querySelectorAll('.arq-check:checked')].map(cb => _arqEncontrados[parseInt(cb.dataset.index)]);
+    if (!selecionados.length) { alert('Nenhum arquivo selecionado!'); return; }
+    if (!confirm(`Apagar ${selecionados.length} arquivo(s)? Esta ação não pode ser desfeita.`)) return;
+    stopFlags.limparArq = false;
+    document.getElementById('btnArqDelete').disabled = true;
+    document.getElementById('btnArqScan').disabled = true;
+    mostrarStop('limparArq', true);
+    setStatus('statusArq', 'running', 'Apagando...');
+    log('logArq', 'info', `🗑 Apagando ${selecionados.length} arquivo(s)...`);
+    let feito = 0;
+    const deletedIds = new Set();
+    for (const arq of selecionados) {
+      if (stopFlags.limparArq) break;
+      try {
+        const r = await driveAuthFetch(`https://www.googleapis.com/drive/v3/files/${arq.id}`, { method: 'DELETE' });
+        if (r.status === 204 || r.ok) {
+          log('logArq', 'delete', arq.path !== '/' ? arq.path + '/' + arq.name : '/' + arq.name);
+          deletedIds.add(arq.id);
+          feito++;
+        } else { throw new Error(`HTTP ${r.status}`); }
+      } catch(e) { log('logArq', 'error', `Erro ao apagar "${arq.name}": ${e.message}`); }
+      document.getElementById('progressBarArq').style.width = `${(feito / selecionados.length) * 100}%`;
+      await sleep(150);
+    }
+    if (stopFlags.limparArq) {
+      setStatus('statusArq', 'stopped', 'Parado');
+      log('logArq', 'warn', `⛔ Parado! ${feito} arquivo(s) apagados.`);
+    } else {
+      setStatus('statusArq', 'done', `${feito} apagados!`);
+      log('logArq', 'info', `✅ ${feito} arquivo(s) apagados com sucesso!`);
+    }
+    _arqEncontrados = _arqEncontrados.filter(a => !deletedIds.has(a.id));
+    if (_arqEncontrados.length > 0) { _renderArqLista(); }
+    else { document.getElementById('arqLista').style.display = 'none'; document.getElementById('btnArqDelete').disabled = true; }
+    document.getElementById('btnArqScan').disabled = false;
+    mostrarStop('limparArq', false);
+  }
 
   // ─── PREVIEWS STL ────────────────────────────────────
   let threeLoaded = false;
