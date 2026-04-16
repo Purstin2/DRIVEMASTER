@@ -1743,26 +1743,27 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
   async function listarSTLsRecursivo(parentId, recursivo, resultado, contRef) {
     if (stopFlags.preview) return;
     let pageToken = null;
+    const todosArquivos = [];
     do {
       let url = `https://www.googleapis.com/drive/v3/files?q='${parentId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType),nextPageToken&pageSize=500&orderBy=name`;
       if (pageToken) url += `&pageToken=${pageToken}`;
       const data = await driveGet(url);
-      const arquivos = data.files || [];
-      const imagens = new Set(arquivos.filter(f => /\.(png|jpg|jpeg|webp)$/i.test(f.name)).map(f => f.name.replace(/\.[^.]+$/, '').toLowerCase()));
-      for (const f of arquivos) {
-        if (stopFlags.preview) return;
-        if (/\.stl$/i.test(f.name)) {
-          const baseName = f.name.replace(/\.stl$/i, '').toLowerCase();
-          resultado.push({ id: f.id, name: f.name, parentId, temPreview: imagens.has(baseName) || !!(_extCoversSet && _extCoversSet.has(baseName)) });
-          contRef.total++;
-          if (contRef.onUpdate) contRef.onUpdate(contRef.total);
-        }
-        if (recursivo && f.mimeType === 'application/vnd.google-apps.folder') {
-          await listarSTLsRecursivo(f.id, recursivo, resultado, contRef);
-        }
-      }
+      todosArquivos.push(...(data.files || []));
       pageToken = data.nextPageToken || null;
     } while (pageToken);
+    const imagens = new Set(todosArquivos.filter(f => /\.(png|jpg|jpeg|webp)$/i.test(f.name)).map(f => f.name.replace(/\.[^.]+$/, '').toLowerCase()));
+    for (const f of todosArquivos) {
+      if (stopFlags.preview) return;
+      if (/\.stl$/i.test(f.name)) {
+        const baseName = f.name.replace(/\.stl$/i, '').toLowerCase();
+        resultado.push({ id: f.id, name: f.name, parentId, temPreview: imagens.has(baseName) || !!(_extCoversSet && _extCoversSet.has(baseName)) });
+        contRef.total++;
+        if (contRef.onUpdate) contRef.onUpdate(contRef.total);
+      }
+      if (recursivo && f.mimeType === 'application/vnd.google-apps.folder') {
+        await listarSTLsRecursivo(f.id, recursivo, resultado, contRef);
+      }
+    }
   }
 
   async function escanearFolderLevel(folderId, folderName, path) {
@@ -1770,22 +1771,23 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     let pageToken = null;
     const stlsLocal = [];
     const subfolders = [];
+    const todosArquivos = [];
     do {
       let url = `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType),nextPageToken&pageSize=500&orderBy=name`;
       if (pageToken) url += `&pageToken=${pageToken}`;
       const data = await driveGet(url);
-      const arquivos = data.files || [];
-      const imagens = new Set(arquivos.filter(f => /\.(png|jpg|jpeg|webp)$/i.test(f.name)).map(f => f.name.replace(/\.[^.]+$/, '').toLowerCase()));
-      for (const f of arquivos) {
-        if (stopFlags.preview) return;
-        if (/\.stl$/i.test(f.name)) {
-          const baseName = f.name.replace(/\.stl$/i, '').toLowerCase();
-          stlsLocal.push({ id: f.id, name: f.name, parentId: folderId, temPreview: imagens.has(baseName) || !!(_extCoversSet && _extCoversSet.has(baseName)) });
-        }
-        if (f.mimeType === 'application/vnd.google-apps.folder') subfolders.push(f);
-      }
+      todosArquivos.push(...(data.files || []));
       pageToken = data.nextPageToken || null;
     } while (pageToken);
+    const imagens = new Set(todosArquivos.filter(f => /\.(png|jpg|jpeg|webp)$/i.test(f.name)).map(f => f.name.replace(/\.[^.]+$/, '').toLowerCase()));
+    for (const f of todosArquivos) {
+      if (stopFlags.preview) return;
+      if (/\.stl$/i.test(f.name)) {
+        const baseName = f.name.replace(/\.stl$/i, '').toLowerCase();
+        stlsLocal.push({ id: f.id, name: f.name, parentId: folderId, temPreview: imagens.has(baseName) || !!(_extCoversSet && _extCoversSet.has(baseName)) });
+      }
+      if (f.mimeType === 'application/vnd.google-apps.folder') subfolders.push(f);
+    }
 
     if (stlsLocal.length > 0) {
       const comPreview = stlsLocal.filter(s => s.temPreview).length;
