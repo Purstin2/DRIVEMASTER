@@ -1925,15 +1925,23 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     if (!modelXml) throw new Error('3MF: arquivo .model não encontrado no ZIP');
     const doc = new DOMParser().parseFromString(modelXml, 'application/xml');
     const positions = [], normals = [];
-    for (const mesh of doc.querySelectorAll('mesh')) {
-      const vertEls = mesh.querySelectorAll('vertices vertex');
-      const verts = Array.from(vertEls).map(v => [
-        parseFloat(v.getAttribute('x')), parseFloat(v.getAttribute('y')), parseFloat(v.getAttribute('z'))
-      ]);
-      for (const tri of mesh.querySelectorAll('triangles triangle')) {
+    // getElementsByTagName ignora namespace — necessário pois 3MF usa xmlns padrão
+    const meshes = doc.getElementsByTagName('mesh');
+    for (let m = 0; m < meshes.length; m++) {
+      const mesh = meshes[m];
+      const vertEls = mesh.getElementsByTagName('vertex');
+      const verts = [];
+      for (let i = 0; i < vertEls.length; i++) {
+        const v = vertEls[i];
+        verts.push([parseFloat(v.getAttribute('x')), parseFloat(v.getAttribute('y')), parseFloat(v.getAttribute('z'))]);
+      }
+      const triEls = mesh.getElementsByTagName('triangle');
+      for (let i = 0; i < triEls.length; i++) {
+        const tri = triEls[i];
         const v0 = verts[+tri.getAttribute('v1')];
         const v1 = verts[+tri.getAttribute('v2')];
         const v2 = verts[+tri.getAttribute('v3')];
+        if (!v0 || !v1 || !v2) continue;
         positions.push(...v0, ...v1, ...v2);
         const ax=v1[0]-v0[0],ay=v1[1]-v0[1],az=v1[2]-v0[2];
         const bx=v2[0]-v0[0],by=v2[1]-v0[1],bz=v2[2]-v0[2];
