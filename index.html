@@ -1086,7 +1086,7 @@
   async function listarSubpastas(parentId) {
     let todas = [], pageToken = null;
     do {
-      let url = `https://www.googleapis.com/drive/v3/files?q='${parentId}'+in+parents+and+mimeType='application/vnd.google-apps.folder'+and+trashed=false&fields=files(id,name),nextPageToken&pageSize=500&orderBy=name`;
+      let url = `https://www.googleapis.com/drive/v3/files?q='${parentId}'+in+parents+and+mimeType='application/vnd.google-apps.folder'+and+trashed=false&fields=files(id,name),nextPageToken&pageSize=1000&orderBy=name`;
       if (pageToken) url += `&pageToken=${pageToken}`;
       const data = await driveGet(url);
       todas = todas.concat(data.files || []);
@@ -1098,7 +1098,7 @@
   async function listarArquivos(parentId) {
     let todos = [], pageToken = null;
     do {
-      let url = `https://www.googleapis.com/drive/v3/files?q='${parentId}'+in+parents+and+mimeType!='application/vnd.google-apps.folder'+and+trashed=false&fields=files(id,name),nextPageToken&pageSize=500&orderBy=name`;
+      let url = `https://www.googleapis.com/drive/v3/files?q='${parentId}'+in+parents+and+mimeType!='application/vnd.google-apps.folder'+and+trashed=false&fields=files(id,name),nextPageToken&pageSize=1000&orderBy=name`;
       if (pageToken) url += `&pageToken=${pageToken}`;
       const data = await driveGet(url);
       todos = todos.concat(data.files || []);
@@ -1987,7 +1987,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     let pageToken = null;
     const todosArquivos = [];
     do {
-      let url = `https://www.googleapis.com/drive/v3/files?q='${parentId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType),nextPageToken&pageSize=500&orderBy=name`;
+      let url = `https://www.googleapis.com/drive/v3/files?q='${parentId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType),nextPageToken&pageSize=1000&orderBy=name`;
       if (pageToken) url += `&pageToken=${pageToken}`;
       const data = await driveGet(url);
       todosArquivos.push(...(data.files || []));
@@ -2015,7 +2015,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     const subfolders = [];
     const todosArquivos = [];
     do {
-      let url = `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType),nextPageToken&pageSize=500&orderBy=name`;
+      let url = `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType),nextPageToken&pageSize=1000&orderBy=name`;
       if (pageToken) url += `&pageToken=${pageToken}`;
       const data = await driveGet(url);
       todosArquivos.push(...(data.files || []));
@@ -2235,7 +2235,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     let pageToken = null;
     const subpastas = [];
     do {
-      let url = `https://www.googleapis.com/drive/v3/files?pageSize=200&fields=nextPageToken,files(id,name,mimeType)&q='${folderId}'+in+parents+and+trashed=false`;
+      let url = `https://www.googleapis.com/drive/v3/files?pageSize=1000&fields=nextPageToken,files(id,name,mimeType)&q='${folderId}'+in+parents+and+trashed=false`;
       if (pageToken) url += `&pageToken=${pageToken}`;
       const r = await driveAuthFetch(url);
       const d = await r.json();
@@ -2464,7 +2464,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
         let q = 'trashed=false';
         if (op.parentId) q += ` and '${op.parentId}' in parents`;
         if (op.query) q += ` and name contains '${op.query.replace(/'/g, "\\'")}'`;
-        const data = await driveGet(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,mimeType,parents)&pageSize=200`);
+        const data = await driveGet(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,mimeType,parents)&pageSize=1000`);
         return {
           op: op.op, success: true, count: (data.files || []).length,
           items: (data.files || []).map(f => ({ id: f.id, name: f.name, type: f.mimeType.includes('folder') ? 'folder' : 'file', parents: f.parents }))
