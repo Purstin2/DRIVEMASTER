@@ -836,7 +836,7 @@
     const h = parseInt(document.getElementById('modalAnguloH').value);
     const v = parseInt(document.getElementById('modalAnguloV').value);
     const canvas = document.getElementById('anglePreviewCanvas');
-    await renderizarSTL(_modalSTL.buffer, 360, h, v, canvas, _modalColor);
+    await _renderizarArquivo(_modalSTL.buffer, _modalSTL.ext || 'stl', 360, h, v, canvas, _modalColor);
     _modalRendering = false;
   }
   function initModalCanvasDrag() {
@@ -905,7 +905,7 @@
       for (let i = 0; i < 8; i++) { const el = document.getElementById('mcs'+i); if(el) el.classList.toggle('active', i===swatchIdx); }
       document.getElementById('modalColorPicker').value = '#' + _modalColor.toString(16).padStart(6,'0');
       const canvas = document.getElementById('anglePreviewCanvas');
-      await renderizarSTL(_modalSTL.buffer, 360, pvAnguloH, pvAnguloV, canvas, _modalColor);
+      await _renderizarArquivo(_modalSTL.buffer, _modalSTL.ext || 'stl', 360, pvAnguloH, pvAnguloV, canvas, _modalColor);
       document.getElementById('angleModalLoading').style.display = 'none';
       canvas.style.display = 'block';
       canvas.style.cursor = 'grab';
@@ -929,7 +929,7 @@
     btn.disabled = true;
     msg.style.display = 'block'; msg.style.color = '#ffa700'; msg.textContent = '⏳ Renderizando e salvando...';
     try {
-      const blob = await renderizarSTL(_modalSTL.buffer, _modalSTL.tamanho, h, v, null, _modalColor);
+      const blob = await _renderizarArquivo(_modalSTL.buffer, _modalSTL.ext || 'stl', _modalSTL.tamanho, h, v, null, _modalColor);
       let ok = false;
       const _extId = ((document.getElementById('extFolderId') || {}).value || '').trim();
       const targetParent = _extId || _modalSTL.parentId;
@@ -1897,7 +1897,56 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     return { positions: new Float32Array(positions), normals: new Float32Array(normals) };
   }
 
-  function renderizarSTL(buffer, tamanho, anguloH = 30, anguloV = 20, canvasEl = null, cor = 0x00e676) {
+  // ─── SUPORTE 3MF ─────────────────────────────────────
+  let _fflateLoaded = false;
+  async function _carregarFflate() {
+    if (_fflateLoaded) return;
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js';
+      s.onload = () => { _fflateLoaded = true; resolve(); };
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  async function parsear3MF(buffer) {
+    await _carregarFflate();
+    const uint8 = new Uint8Array(buffer);
+    const unzipped = fflate.unzipSync(uint8);
+    let modelXml = null;
+    // Prefer standard path, fallback to any .model file
+    for (const path of Object.keys(unzipped)) {
+      if (path === '3D/3dmodel.model' || (!modelXml && path.endsWith('.model'))) {
+        modelXml = new TextDecoder().decode(unzipped[path]);
+        if (path === '3D/3dmodel.model') break;
+      }
+    }
+    if (!modelXml) throw new Error('3MF: arquivo .model não encontrado no ZIP');
+    const doc = new DOMParser().parseFromString(modelXml, 'application/xml');
+    const positions = [], normals = [];
+    for (const mesh of doc.querySelectorAll('mesh')) {
+      const vertEls = mesh.querySelectorAll('vertices vertex');
+      const verts = Array.from(vertEls).map(v => [
+        parseFloat(v.getAttribute('x')), parseFloat(v.getAttribute('y')), parseFloat(v.getAttribute('z'))
+      ]);
+      for (const tri of mesh.querySelectorAll('triangles triangle')) {
+        const v0 = verts[+tri.getAttribute('v1')];
+        const v1 = verts[+tri.getAttribute('v2')];
+        const v2 = verts[+tri.getAttribute('v3')];
+        positions.push(...v0, ...v1, ...v2);
+        const ax=v1[0]-v0[0],ay=v1[1]-v0[1],az=v1[2]-v0[2];
+        const bx=v2[0]-v0[0],by=v2[1]-v0[1],bz=v2[2]-v0[2];
+        const nx=ay*bz-az*by,ny=az*bx-ax*bz,nz=ax*by-ay*bx;
+        const l=Math.sqrt(nx*nx+ny*ny+nz*nz)||1;
+        normals.push(nx/l,ny/l,nz/l, nx/l,ny/l,nz/l, nx/l,ny/l,nz/l);
+      }
+    }
+    if (!positions.length) throw new Error('3MF: nenhuma geometria encontrada no modelo');
+    return { positions: new Float32Array(positions), normals: new Float32Array(normals) };
+  }
+
+  function _renderizarGeo(positions, normals, tamanho, anguloH = 30, anguloV = 20, canvasEl = null, cor = 0x00e676) {
     const T = THREE_LIB;
     const canvas = canvasEl || document.getElementById('stlCanvas');
     canvas.width = tamanho;
@@ -1912,7 +1961,6 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     const scene = new T.Scene();
     const camera = new T.PerspectiveCamera(45, 1, 0.01, 10000);
 
-    const { positions, normals } = parsearSTL(buffer);
     const geo = new T.BufferGeometry();
     geo.setAttribute('position', new T.BufferAttribute(positions, 3));
     geo.setAttribute('normal', new T.BufferAttribute(normals, 3));
@@ -1982,6 +2030,21 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     });
   }
 
+  function renderizarSTL(buffer, tamanho, anguloH = 30, anguloV = 20, canvasEl = null, cor = 0x00e676) {
+    const { positions, normals } = parsearSTL(buffer);
+    return _renderizarGeo(positions, normals, tamanho, anguloH, anguloV, canvasEl, cor);
+  }
+
+  async function renderizar3MF(buffer, tamanho, anguloH = 30, anguloV = 20, canvasEl = null, cor = 0x00e676) {
+    const { positions, normals } = await parsear3MF(buffer);
+    return _renderizarGeo(positions, normals, tamanho, anguloH, anguloV, canvasEl, cor);
+  }
+
+  function _renderizarArquivo(buffer, ext, tamanho, anguloH, anguloV, canvasEl, cor) {
+    if (ext === '3mf') return renderizar3MF(buffer, tamanho, anguloH, anguloV, canvasEl, cor);
+    return renderizarSTL(buffer, tamanho, anguloH, anguloV, canvasEl, cor);
+  }
+
   async function listarSTLsRecursivo(parentId, recursivo, resultado, contRef) {
     if (stopFlags.preview) return;
     let pageToken = null;
@@ -1996,9 +2059,10 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     const imagens = new Set(todosArquivos.filter(f => /\.(png|jpg|jpeg|webp)$/i.test(f.name)).map(f => f.name.replace(/\.[^.]+$/, '').toLowerCase()));
     for (const f of todosArquivos) {
       if (stopFlags.preview) return;
-      if (/\.stl$/i.test(f.name)) {
-        const baseName = f.name.replace(/\.stl$/i, '').toLowerCase();
-        resultado.push({ id: f.id, name: f.name, parentId, temPreview: imagens.has(baseName) || !!(_extCoversSet && _extCoversSet.has(baseName)) });
+      if (/\.(stl|3mf)$/i.test(f.name)) {
+        const ext = f.name.split('.').pop().toLowerCase();
+        const baseName = f.name.replace(/\.(stl|3mf)$/i, '').toLowerCase();
+        resultado.push({ id: f.id, name: f.name, ext, parentId, temPreview: imagens.has(baseName) || !!(_extCoversSet && _extCoversSet.has(baseName)) });
         contRef.total++;
         if (contRef.onUpdate) contRef.onUpdate(contRef.total);
       }
@@ -2024,9 +2088,10 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     const imagens = new Set(todosArquivos.filter(f => /\.(png|jpg|jpeg|webp)$/i.test(f.name)).map(f => f.name.replace(/\.[^.]+$/, '').toLowerCase()));
     for (const f of todosArquivos) {
       if (stopFlags.preview) return;
-      if (/\.stl$/i.test(f.name)) {
-        const baseName = f.name.replace(/\.stl$/i, '').toLowerCase();
-        stlsLocal.push({ id: f.id, name: f.name, parentId: folderId, temPreview: imagens.has(baseName) || !!(_extCoversSet && _extCoversSet.has(baseName)) });
+      if (/\.(stl|3mf)$/i.test(f.name)) {
+        const ext = f.name.split('.').pop().toLowerCase();
+        const baseName = f.name.replace(/\.(stl|3mf)$/i, '').toLowerCase();
+        stlsLocal.push({ id: f.id, name: f.name, ext, parentId: folderId, temPreview: imagens.has(baseName) || !!(_extCoversSet && _extCoversSet.has(baseName)) });
       }
       if (f.mimeType === 'application/vnd.google-apps.folder') subfolders.push(f);
     }
@@ -2179,10 +2244,12 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
 
     try {
       await carregarThree();
-      log('logPreview', 'info', `✅ Three.js carregado! ${stls.length} STLs de ${checkedIdxs.length} pasta${checkedIdxs.length !== 1 ? 's' : ''}...`);
+      const has3mf = stls.some(s => s.ext === '3mf');
+      if (has3mf) { await _carregarFflate(); log('logPreview', 'info', '✅ Suporte 3MF carregado!'); }
+      log('logPreview', 'info', `✅ Renderizador pronto! ${stls.length} arquivo(s) de ${checkedIdxs.length} pasta${checkedIdxs.length !== 1 ? 's' : ''}...`);
 
       const paraProcessar = pularExistentes && !sobrescrever ? stls.filter(s => !s.temPreview) : stls;
-      log('logPreview', 'info', `📦 ${stls.length} STLs selecionados. Gerando ${paraProcessar.length} previews...`);
+      log('logPreview', 'info', `📦 ${stls.length} arquivo(s) selecionados. Gerando ${paraProcessar.length} previews...`);
       document.getElementById('previewGrade').style.display = 'block';
 
       let feito = 0;
@@ -2195,8 +2262,8 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
           const resp = await driveAuthFetch(`https://www.googleapis.com/drive/v3/files/${stl.id}?alt=media`);
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
           const buffer = await resp.arrayBuffer();
-          const blob = await renderizarSTL(buffer, tamanho, pvAnguloH, pvAnguloV, null, pvColor);
-          const nomePNG = stl.name.replace(/\.stl$/i, '') + '.png';
+          const blob = await _renderizarArquivo(buffer, stl.ext || 'stl', tamanho, pvAnguloH, pvAnguloV, null, pvColor);
+          const nomePNG = stl.name.replace(/\.(stl|3mf)$/i, '') + '.png';
           const targetParent = _getExtTarget(stl.parentId);
           const metadata = JSON.stringify({ name: nomePNG, parents: [targetParent] });
           const form = new FormData();
@@ -2212,8 +2279,8 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
             const cell = document.createElement('div');
             cell.className = 'preview-cell';
             cell.style.cssText = 'background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px;overflow:hidden;text-align:center';
-            cell.innerHTML = `<div style="position:relative"><img src="${url}" style="width:100%;aspect-ratio:1;object-fit:cover;display:block"/><button class="card-btn refazer-btn" onclick="abrirAjusteAngulo(${cellIdx})">↻</button><button class="card-btn apagar-btn" onclick="apagarPreview(${cellIdx})">🗑</button></div><div style="padding:6px 8px;font-size:10px;color:#555;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(stl.name)}">${esc(stl.name.replace(/\.stl$/i,''))}</div>`;
-            _previewCells.push({ stlId: stl.id, parentId: stl.parentId, stlNome: stl.name, nomePNG, pngFileId: uploadData.id, tamanho, idx: cellIdx, cellEl: cell });
+            cell.innerHTML = `<div style="position:relative"><img src="${url}" style="width:100%;aspect-ratio:1;object-fit:cover;display:block"/><button class="card-btn refazer-btn" onclick="abrirAjusteAngulo(${cellIdx})">↻</button><button class="card-btn apagar-btn" onclick="apagarPreview(${cellIdx})">🗑</button></div><div style="padding:6px 8px;font-size:10px;color:#555;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(stl.name)}">${esc(stl.name.replace(/\.(stl|3mf)$/i,''))}</div>`;
+            _previewCells.push({ stlId: stl.id, ext: stl.ext || 'stl', parentId: stl.parentId, stlNome: stl.name, nomePNG, pngFileId: uploadData.id, tamanho, idx: cellIdx, cellEl: cell });
             document.getElementById('previewGrid').appendChild(cell);
           } else { throw new Error('Upload falhou'); }
         } catch(e) { log('logPreview', 'error', `${stl.name}: ${e.message}`); erros++; }
