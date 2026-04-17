@@ -134,6 +134,13 @@
     .empty-item .path{color:#888;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .empty-item .check{accent-color:var(--red);width:14px;height:14px;cursor:pointer;flex-shrink:0;margin-left:12px}
     .tab.preview-tab.active{background:#ffa700;color:#000}
+    .tab.vincular-tab.active{background:#00bcd4;color:#000}
+    .vincular-table{width:100%;border-collapse:collapse}
+    .vincular-table th{padding:8px;text-align:left;font-size:10px;letter-spacing:1px;color:#444;text-transform:uppercase;border-bottom:1px solid #222}
+    .vincular-table td{padding:10px 8px;border-bottom:1px solid #111;vertical-align:middle}
+    .vincular-conf{font-family:'DM Mono',monospace;font-size:11px;font-weight:700}
+    .vincular-nome{font-family:'DM Mono',monospace;font-size:11px}
+    .vincular-reason{font-size:11px;color:#555;max-width:180px}
 
     /* ─── AGENTE IA ─── */
     .agente-chat{background:#000;border:1px solid var(--border);border-radius:12px;padding:20px;min-height:220px;max-height:450px;overflow-y:auto;margin-bottom:14px;scroll-behavior:smooth}
@@ -187,6 +194,7 @@
     <div class="tab" onclick="setTab('catalogo')">📸 Catálogo</div>
     <div class="tab agente-tab" onclick="setTab('agente')">🤖 Agente</div>
     <div class="tab" onclick="setTab('achatar')">🔀 Achatar</div>
+    <div class="tab vincular-tab" onclick="setTab('vincular')">🔗 Vincular Capas</div>
   </div>
 
   <!-- PANEL: RENOMEAR -->
@@ -679,6 +687,58 @@
     </div>
   </div>
 
+  <!-- ═══════════════════════════════════════════ VINCULAR CAPAS ═══ -->
+  <div class="panel" id="panel-vincular">
+    <div class="card">
+      <div class="info-box" style="background:rgba(0,188,212,.05);border-color:rgba(0,188,212,.2)">
+        <strong style="color:#00bcd4">🔗 Vincular Capas com IA</strong><br/>
+        A IA analisa cada imagem visualmente e identifica qual pasta do Drive corresponde ao modelo — mesmo que os nomes sejam completamente diferentes. Depois renomeia as imagens (ou as pastas) para ficarem iguais.
+      </div>
+      <label>Chave API Anthropic</label>
+      <input type="password" id="anthropicKeyVincular" placeholder="sk-ant-..." style="margin-bottom:16px"/>
+      <div class="row2">
+        <div>
+          <label>ID da pasta com as SUBPASTAS</label>
+          <input type="text" id="vincularFolderPastas" placeholder="ID do Google Drive (pasta com subpastas de modelos)"/>
+        </div>
+        <div>
+          <label>ID da pasta com as IMAGENS (capas)</label>
+          <input type="text" id="vincularFolderImagens" placeholder="ID do Google Drive (pasta com as capas)"/>
+        </div>
+      </div>
+      <div style="margin-bottom:18px">
+        <label>O que renomear</label>
+        <div class="options" style="margin-bottom:0">
+          <label class="opt active" id="opt-vincular-img" onclick="this.classList.add('active');document.getElementById('opt-vincular-pasta').classList.remove('active')">
+            <input type="radio" name="vincularModo" value="imagens" checked/> Renomear imagens para casar com pastas
+          </label>
+          <label class="opt" id="opt-vincular-pasta" onclick="this.classList.add('active');document.getElementById('opt-vincular-img').classList.remove('active')">
+            <input type="radio" name="vincularModo" value="pastas"/> Renomear pastas para casar com imagens
+          </label>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-purple" id="btnVincularAnalisar" onclick="vincularAnalisar()">🔍 Analisar com IA</button>
+        <button class="btn" id="btnVincularAplicar" style="background:#00bcd4;color:#000;box-shadow:0 0 20px rgba(0,188,212,.3)" onclick="vincularAplicar()" disabled>✅ Renomear selecionados</button>
+        <button class="btn btn-secondary" onclick="limparLog('logVincular')">Limpar log</button>
+      </div>
+      <div id="vincularTabela" style="display:none;margin-top:24px"></div>
+    </div>
+    <div class="log-card">
+      <div class="log-header">
+        <span>Log de execução</span>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="log-count" id="logCountVincular">0 pares</span>
+          <span class="status-badge status-idle" id="statusVincular"><span class="dot"></span> Aguardando</span>
+        </div>
+      </div>
+      <div class="progress-wrap" id="progressWrapVincular">
+        <div class="progress-bar-bg"><div class="progress-bar" id="progressBarVincular" style="width:0%;background:#00bcd4;box-shadow:0 0 8px rgba(0,188,212,.5)"></div></div>
+      </div>
+      <div class="log-body" id="logVincular"><div class="log-empty">Preencha os IDs das pastas e clique em "Analisar com IA".</div></div>
+    </div>
+  </div>
+
 </div>
 
 <!-- MODAL: AJUSTE DE ÂNGULO INDIVIDUAL -->
@@ -962,7 +1022,7 @@
   }
 
   // ─── PERSISTÊNCIA LOCAL ────────────────────────────────────────────
-  const FIELDS_TO_SAVE = ['clientId','anthropicKey','anthropicKeyAI','anthropicKeyAgente'];
+  const FIELDS_TO_SAVE = ['clientId','anthropicKey','anthropicKeyAI','anthropicKeyAgente','anthropicKeyVincular'];
   function saveFields() {
     FIELDS_TO_SAVE.forEach(id => {
       const el = document.getElementById(id);
@@ -993,7 +1053,7 @@
 
   // ─── TABS ──────────────────────────────────────────
   function setTab(tab) {
-    const tabs = ['renomear','categorizar','ai','limpar','limpar-arquivos','preview','catalogo','agente','achatar'];
+    const tabs = ['renomear','categorizar','ai','limpar','limpar-arquivos','preview','catalogo','agente','achatar','vincular'];
     document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', tabs[i] === tab));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-' + tab).classList.add('active');
@@ -2983,6 +3043,246 @@ Regras: explore antes de agir. Quando terminar, responda SEM <TOOLS>. Seja conci
     achatarPlan = [];
     document.getElementById('achatarLista').style.display = 'none';
     document.getElementById('btnAchatarScan').disabled = false;
+  }
+
+  // ─── VINCULAR CAPAS ─────────────────────────────────────────────────────────
+  let vincularPares = [];
+
+  function logVincular(tipo, texto) {
+    log('logVincular', tipo, texto);
+    const n = document.getElementById('logCountVincular');
+    const cur = parseInt(n.textContent) || 0;
+    n.textContent = (cur + 1) + ' entradas';
+  }
+
+  function setStatusVincular(tipo, texto) {
+    setStatus('statusVincular', tipo, texto);
+  }
+
+  function updateProgressVincular(done, total) {
+    const wrap = document.getElementById('progressWrapVincular');
+    const bar = document.getElementById('progressBarVincular');
+    wrap.style.display = 'block';
+    bar.style.width = total > 0 ? Math.round((done / total) * 100) + '%' : '0%';
+  }
+
+  async function listarArquivosImagem(parentId) {
+    let files = [], token = null;
+    do {
+      let url = `https://www.googleapis.com/drive/v3/files?q='${parentId}'+in+parents+and+mimeType+contains+'image/'+and+trashed=false&fields=files(id,name,mimeType),nextPageToken&pageSize=1000&orderBy=name`;
+      if (token) url += '&pageToken=' + token;
+      const data = await driveGet(url);
+      files = files.concat(data.files || []);
+      token = data.nextPageToken || null;
+    } while (token);
+    return files;
+  }
+
+  function extOf(name) {
+    const m = name.match(/(\.[^.]+)$/);
+    return m ? m[1] : '';
+  }
+
+  function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function callClaudeVision(apiKey, imageBase64, mimeType, folderNames) {
+    const folderList = folderNames.map((n, i) => `${i + 1}. ${n}`).join('\n');
+    const body = {
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 300,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: mimeType || 'image/jpeg', data: imageBase64 } },
+          { type: 'text', text: `Você é um assistente de organização de modelos 3D imprimíveis.\n\nOlhe esta imagem de capa e identifique qual pasta da lista abaixo corresponde a este modelo.\n\nPASTAS DISPONÍVEIS:\n${folderList}\n\nResponda APENAS com JSON válido, sem markdown:\n{"folder": "nome exato da pasta que mais combina", "confidence": 85, "reason": "breve motivo em português"}\n\nSe nenhuma combinar, use: {"folder": null, "confidence": 0, "reason": "motivo"}` }
+        ]
+      }]
+    };
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify(body)
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error.message);
+    const text = data.content[0].text.trim().replace(/^```json\s*/i, '').replace(/\s*```$/, '');
+    return JSON.parse(text);
+  }
+
+  async function vincularAnalisar() {
+    if (!accessToken) { alert('Conecte ao Google primeiro na aba "Renomear"!'); return; }
+    const apiKey = document.getElementById('anthropicKeyVincular').value.trim();
+    const folderPastasId = document.getElementById('vincularFolderPastas').value.trim();
+    const folderImagensId = document.getElementById('vincularFolderImagens').value.trim();
+    if (!apiKey) { alert('Preencha a chave da API Anthropic!'); return; }
+    if (!folderPastasId || !folderImagensId) { alert('Preencha os dois IDs de pasta!'); return; }
+
+    vincularPares = [];
+    document.getElementById('vincularTabela').style.display = 'none';
+    document.getElementById('btnVincularAnalisar').disabled = true;
+    document.getElementById('btnVincularAplicar').disabled = true;
+    document.getElementById('logCountVincular').textContent = '0 entradas';
+    setStatusVincular('running', 'Analisando...');
+    logVincular('info', '📂 Listando pastas...');
+
+    try {
+      const pastas = await listarSubpastas(folderPastasId);
+      logVincular('info', `✅ ${pastas.length} pastas encontradas`);
+      const imagens = await listarArquivosImagem(folderImagensId);
+      logVincular('info', `✅ ${imagens.length} imagens encontradas`);
+
+      if (!pastas.length) { logVincular('error', 'Nenhuma subpasta encontrada!'); setStatusVincular('error', 'Sem pastas'); document.getElementById('btnVincularAnalisar').disabled = false; return; }
+      if (!imagens.length) { logVincular('error', 'Nenhuma imagem encontrada!'); setStatusVincular('error', 'Sem imagens'); document.getElementById('btnVincularAnalisar').disabled = false; return; }
+
+      const pastaNomes = pastas.map(p => p.name);
+
+      for (let i = 0; i < imagens.length; i++) {
+        const img = imagens[i];
+        logVincular('info', `🔍 [${i + 1}/${imagens.length}] ${img.name}`);
+        updateProgressVincular(i, imagens.length);
+
+        try {
+          const imgResp = await driveAuthFetch(`https://www.googleapis.com/drive/v3/files/${img.id}?alt=media`);
+          const blob = await imgResp.blob();
+          const b64 = await blobToBase64(blob);
+          const result = await callClaudeVision(apiKey, b64, blob.type || 'image/jpeg', pastaNomes);
+
+          const matchedPasta = result.folder ? pastas.find(p => p.name === result.folder) : null;
+          vincularPares.push({
+            imageFile: img,
+            folderMatch: matchedPasta,
+            folderName: result.folder || null,
+            confidence: result.confidence || 0,
+            reason: result.reason || '',
+            selected: (result.confidence || 0) >= 50
+          });
+
+          const conf = result.confidence || 0;
+          const tipo = conf >= 80 ? 'info' : conf >= 50 ? 'warn' : 'error';
+          logVincular(tipo, `  → ${result.folder || 'sem match'} (${conf}%)`);
+        } catch (e) {
+          logVincular('error', `  Erro: ${e.message}`);
+          vincularPares.push({ imageFile: img, folderMatch: null, folderName: null, confidence: 0, reason: 'Erro: ' + e.message, selected: false });
+        }
+        await sleep(250);
+      }
+
+      updateProgressVincular(imagens.length, imagens.length);
+      renderVincularTabela();
+      const bons = vincularPares.filter(p => p.confidence >= 50).length;
+      setStatusVincular('done', `${bons} matches, ${imagens.length - bons} sem match`);
+      logVincular('info', `✅ Análise concluída! ${bons} matches encontrados.`);
+      document.getElementById('btnVincularAplicar').disabled = false;
+    } catch (e) {
+      logVincular('error', 'Erro geral: ' + e.message);
+      setStatusVincular('error', 'Erro');
+    }
+    document.getElementById('btnVincularAnalisar').disabled = false;
+  }
+
+  function renderVincularTabela() {
+    const modo = document.querySelector('input[name="vincularModo"]:checked').value;
+    const tabela = document.getElementById('vincularTabela');
+    tabela.style.display = 'block';
+
+    const rows = vincularPares.map((par, i) => {
+      const conf = par.confidence;
+      const confColor = conf >= 80 ? '#00e676' : conf >= 50 ? '#ffb300' : '#ff4444';
+      const nomeAtual = par.imageFile ? par.imageFile.name : '?';
+      let nomeNovo;
+      if (modo === 'imagens') {
+        nomeNovo = par.folderName ? par.folderName + extOf(nomeAtual) : '—';
+      } else {
+        nomeNovo = par.imageFile ? par.imageFile.name.replace(/\.[^.]+$/, '') : '—';
+      }
+      const podeRenomear = par.folderName && conf > 0;
+      return `<tr>
+        <td><input type="checkbox" ${par.selected && podeRenomear ? 'checked' : ''} ${podeRenomear ? '' : 'disabled'} onchange="vincularPares[${i}].selected=this.checked" style="accent-color:#00bcd4;width:15px;height:15px;cursor:pointer"/></td>
+        <td class="vincular-nome" style="color:#aaa">${esc(nomeAtual)}</td>
+        <td style="color:#444;font-size:18px;text-align:center;padding:0 6px">→</td>
+        <td class="vincular-nome" style="color:#fff">${esc(nomeNovo)}</td>
+        <td style="text-align:center"><span class="vincular-conf" style="color:${confColor}">${conf}%</span></td>
+        <td class="vincular-reason">${esc(par.reason)}</td>
+      </tr>`;
+    }).join('');
+
+    tabela.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <span style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#555">${vincularPares.length} pares analisados</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" style="padding:6px 14px;font-size:11px" onclick="vincularSelecionarTodos(true)">Selecionar todos</button>
+          <button class="btn btn-secondary" style="padding:6px 14px;font-size:11px" onclick="vincularSelecionarTodos(false)">Desmarcar todos</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="vincular-table">
+          <thead><tr>
+            <th style="width:32px">✓</th>
+            <th>Nome atual</th>
+            <th></th>
+            <th>Novo nome</th>
+            <th style="text-align:center">Conf.</th>
+            <th>Motivo da IA</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  function vincularSelecionarTodos(val) {
+    vincularPares.forEach(p => { if (p.folderName && p.confidence > 0) p.selected = val; });
+    renderVincularTabela();
+  }
+
+  async function vincularAplicar() {
+    const modo = document.querySelector('input[name="vincularModo"]:checked').value;
+    const selecionados = vincularPares.filter(p => p.selected && p.confidence > 0 && p.folderName);
+    if (!selecionados.length) { alert('Nenhum par selecionado!'); return; }
+    const alvo = modo === 'imagens' ? 'imagens' : 'pastas';
+    if (!confirm(`Renomear ${selecionados.length} ${alvo}? Esta ação não pode ser desfeita.`)) return;
+
+    document.getElementById('btnVincularAplicar').disabled = true;
+    setStatusVincular('running', 'Renomeando...');
+    let ok = 0, err = 0;
+
+    for (let i = 0; i < selecionados.length; i++) {
+      const par = selecionados[i];
+      updateProgressVincular(i, selecionados.length);
+      try {
+        if (modo === 'imagens') {
+          const novoNome = par.folderName + extOf(par.imageFile.name);
+          await renomearItem(par.imageFile.id, novoNome);
+          logVincular('info', `✅ ${par.imageFile.name} → ${novoNome}`);
+        } else {
+          if (!par.folderMatch) throw new Error('Pasta não encontrada para renomear');
+          const novoNome = par.imageFile.name.replace(/\.[^.]+$/, '');
+          await renomearItem(par.folderMatch.id, novoNome);
+          logVincular('info', `✅ Pasta: ${par.folderMatch.name} → ${novoNome}`);
+        }
+        ok++;
+      } catch (e) {
+        logVincular('error', `❌ Erro em ${par.imageFile.name}: ${e.message}`);
+        err++;
+      }
+      await sleep(150);
+    }
+
+    updateProgressVincular(selecionados.length, selecionados.length);
+    setStatusVincular(err > 0 ? 'warn' : 'done', `${ok} renomeados${err > 0 ? ', ' + err + ' erros' : ''}`);
+    logVincular('info', `✅ Concluído! ${ok} renomeados, ${err} erros.`);
+    document.getElementById('btnVincularAplicar').disabled = false;
   }
 </script>
 </body>
