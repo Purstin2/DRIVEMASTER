@@ -141,6 +141,13 @@
     .vincular-conf{font-family:'DM Mono',monospace;font-size:11px;font-weight:700}
     .vincular-nome{font-family:'DM Mono',monospace;font-size:11px}
     .vincular-reason{font-size:11px;color:#555;max-width:180px}
+    .tab.limpeza-tab.active{background:#ff8c00;color:#000}
+    .lp-mode-btn{flex:1;justify-content:center;transition:all .2s}
+    .lp-table{width:100%;border-collapse:collapse}
+    .lp-table th{padding:8px;text-align:left;font-size:10px;letter-spacing:1px;color:#444;text-transform:uppercase;border-bottom:1px solid #222;position:sticky;top:0;background:#0f0f0f;z-index:1}
+    .lp-table td{padding:7px 6px;border-bottom:1px solid #0d0d0d;vertical-align:middle}
+    .lp-nome-input{width:100%;background:#000;border:1px solid #1a1a1a;border-radius:6px;padding:5px 10px;color:#fff;font-family:'DM Mono',monospace;font-size:11px;outline:none;transition:border-color .15s}
+    .lp-nome-input:focus{border-color:#ff8c00}
 
     /* ─── AGENTE IA ─── */
     .agente-chat{background:#000;border:1px solid var(--border);border-radius:12px;padding:20px;min-height:220px;max-height:450px;overflow-y:auto;margin-bottom:14px;scroll-behavior:smooth}
@@ -195,6 +202,7 @@
     <div class="tab agente-tab" onclick="setTab('agente')">🤖 Agente</div>
     <div class="tab" onclick="setTab('achatar')">🔀 Achatar</div>
     <div class="tab vincular-tab" onclick="setTab('vincular')">🔗 Vincular Capas</div>
+    <div class="tab limpeza-tab" onclick="setTab('limpeza')">🧹 Limpar Nomes</div>
   </div>
 
   <!-- PANEL: RENOMEAR -->
@@ -687,6 +695,66 @@
     </div>
   </div>
 
+  <!-- ══════════════════════════════════════════════ LIMPAR NOMES ═══ -->
+  <div class="panel" id="panel-limpeza">
+    <div class="card">
+      <div class="info-box" style="background:rgba(255,140,0,.05);border-color:rgba(255,140,0,.25)">
+        <strong style="color:#ff8c00">🧹 Limpar e Renomear Arquivos</strong><br/>
+        Escaneia uma pasta do Drive, limpa os nomes (remove @menções, chars especiais, datas, hashes) e traduz para português. <strong>Automático</strong> usa regex + Google Translate, sem custo. <strong>IA (Claude)</strong> entende o contexto e traduz melhor. Histórico de desfazer/refazer em memória.
+      </div>
+
+      <label>Modo de limpeza</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
+        <button id="btnLimpezaModoAuto" class="btn limpeza-tab active lp-mode-btn" onclick="limpezaSetModo('auto')" style="background:#ff8c00;color:#000;box-shadow:0 0 20px rgba(255,140,0,.3)">⚡ Automático</button>
+        <button id="btnLimpezaModoIA" class="btn btn-secondary lp-mode-btn" onclick="limpezaSetModo('ia')">🤖 IA (Claude)</button>
+      </div>
+
+      <div id="limpezaApiKeyWrap" style="display:none">
+        <label>Chave API Anthropic</label>
+        <input type="password" id="anthropicKeyLimpeza" placeholder="sk-ant-..." style="margin-bottom:16px"/>
+      </div>
+
+      <label>ID ou Link da Pasta do Drive</label>
+      <input type="text" id="limpezaFolderId" placeholder="Cole o ID ou URL da pasta do Google Drive"/>
+
+      <label>Operações</label>
+      <div class="options">
+        <label class="opt active" id="opt-lp-maiusc"><input type="checkbox" checked onchange="toggleOpt(this,'opt-lp-maiusc')"/> Tudo maiúsculo</label>
+        <label class="opt active" id="opt-lp-arroba"><input type="checkbox" checked onchange="toggleOpt(this,'opt-lp-arroba')"/> Remover @menções</label>
+        <label class="opt active" id="opt-lp-chars"><input type="checkbox" checked onchange="toggleOpt(this,'opt-lp-chars')"/> Remover . _ + - # $</label>
+        <label class="opt active" id="opt-lp-datas"><input type="checkbox" checked onchange="toggleOpt(this,'opt-lp-datas')"/> Remover datas e códigos</label>
+        <label class="opt active" id="opt-lp-traduzir"><input type="checkbox" checked onchange="toggleOpt(this,'opt-lp-traduzir')"/> Traduzir para português</label>
+        <label class="opt active" id="opt-lp-arquivos"><input type="checkbox" checked onchange="toggleOpt(this,'opt-lp-arquivos')"/> Incluir arquivos</label>
+        <label class="opt active" id="opt-lp-pastas"><input type="checkbox" checked onchange="toggleOpt(this,'opt-lp-pastas')"/> Incluir pastas</label>
+        <label class="opt" id="opt-lp-recursivo"><input type="checkbox" onchange="toggleOpt(this,'opt-lp-recursivo')"/> Entrar em subpastas</label>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn" id="btnLimpezaEscanear" onclick="limpezaEscanear()" style="background:#ff8c00;color:#000;box-shadow:0 0 20px rgba(255,140,0,.3)">🔍 Escanear</button>
+        <button class="btn btn-primary" id="btnLimpezaAplicar" onclick="limpezaAplicar()" disabled>✅ Aplicar selecionados</button>
+        <button class="btn btn-secondary" id="btnLimpezaDesfazer" onclick="limpezaDesfazer()" disabled>↩ Desfazer</button>
+        <button class="btn btn-secondary" id="btnLimpezaRefazer" onclick="limpezaRefazer()" disabled>↪ Refazer</button>
+        <button class="btn btn-danger" id="btnLimpezaParar" onclick="limpezaStopFlag=true" style="display:none">⛔ Parar</button>
+        <button class="btn btn-secondary" onclick="limparLog('logLimpeza')">Limpar log</button>
+      </div>
+
+      <div id="limpezaPreview" style="display:none;margin-top:24px"></div>
+    </div>
+    <div class="log-card">
+      <div class="log-header">
+        <span>Log de execução</span>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="log-count" id="logCountLimpeza">0 entradas</span>
+          <span class="status-badge status-idle" id="statusLimpeza"><span class="dot"></span> Aguardando</span>
+        </div>
+      </div>
+      <div class="progress-wrap" id="progressWrapLimpeza">
+        <div class="progress-bar-bg"><div class="progress-bar" id="progressBarLimpeza" style="width:0%;background:#ff8c00;box-shadow:0 0 8px rgba(255,140,0,.5)"></div></div>
+      </div>
+      <div class="log-body" id="logLimpeza"><div class="log-empty">Cole o ID da pasta e clique em "Escanear".</div></div>
+    </div>
+  </div>
+
   <!-- ═══════════════════════════════════════════ VINCULAR CAPAS ═══ -->
   <div class="panel" id="panel-vincular">
     <div class="card">
@@ -1022,7 +1090,7 @@
   }
 
   // ─── PERSISTÊNCIA LOCAL ────────────────────────────────────────────
-  const FIELDS_TO_SAVE = ['clientId','anthropicKey','anthropicKeyAI','anthropicKeyAgente','anthropicKeyVincular'];
+  const FIELDS_TO_SAVE = ['clientId','anthropicKey','anthropicKeyAI','anthropicKeyAgente','anthropicKeyVincular','anthropicKeyLimpeza'];
   function saveFields() {
     FIELDS_TO_SAVE.forEach(id => {
       const el = document.getElementById(id);
@@ -1053,7 +1121,7 @@
 
   // ─── TABS ──────────────────────────────────────────
   function setTab(tab) {
-    const tabs = ['renomear','categorizar','ai','limpar','limpar-arquivos','preview','catalogo','agente','achatar','vincular'];
+    const tabs = ['renomear','categorizar','ai','limpar','limpar-arquivos','preview','catalogo','agente','achatar','vincular','limpeza'];
     document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', tabs[i] === tab));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-' + tab).classList.add('active');
@@ -3043,6 +3111,320 @@ Regras: explore antes de agir. Quando terminar, responda SEM <TOOLS>. Seja conci
     achatarPlan = [];
     document.getElementById('achatarLista').style.display = 'none';
     document.getElementById('btnAchatarScan').disabled = false;
+  }
+
+  // ─── LIMPAR NOMES ────────────────────────────────────────────────────────────
+  let limpezaItens = [];
+  let limpezaUndoStack = [];
+  let limpezaRedoStack = [];
+  let limpezaModo = 'auto';
+  let limpezaStopFlag = false;
+
+  function limpezaLog(tipo, txt, b) { log('logLimpeza', tipo, txt, b); const c=document.getElementById('logCountLimpeza'); c.textContent=(parseInt(c.textContent)||0)+1+' entradas'; }
+  function limpezaSetStatus(t,txt){setStatus('statusLimpeza',t,txt);}
+  function limpezaProgress(done,total){document.getElementById('progressWrapLimpeza').style.display='block';document.getElementById('progressBarLimpeza').style.width=total>0?Math.round(done/total*100)+'%':'0%';}
+
+  function limpezaSetModo(modo) {
+    limpezaModo = modo;
+    const a = document.getElementById('btnLimpezaModoAuto');
+    const b = document.getElementById('btnLimpezaModoIA');
+    if (modo === 'auto') {
+      a.className = 'btn lp-mode-btn'; a.style.cssText = 'background:#ff8c00;color:#000;box-shadow:0 0 20px rgba(255,140,0,.3)';
+      b.className = 'btn btn-secondary lp-mode-btn'; b.style.cssText = '';
+      document.getElementById('limpezaApiKeyWrap').style.display = 'none';
+    } else {
+      b.className = 'btn lp-mode-btn'; b.style.cssText = 'background:var(--purple);color:#fff;box-shadow:0 0 20px rgba(167,139,250,.3)';
+      a.className = 'btn btn-secondary lp-mode-btn'; a.style.cssText = '';
+      document.getElementById('limpezaApiKeyWrap').style.display = 'block';
+    }
+  }
+
+  function limpezaOpt(id) { return document.querySelector('#'+id+' input').checked; }
+
+  function extrairIdDriveInput(v) { const m = v.trim().match(/[-\w]{25,}/); return m ? m[0] : v.trim(); }
+
+  function extrairExt(nome) {
+    const m = nome.match(/(\.[a-z0-9]{1,5})$/i);
+    return m ? { base: nome.slice(0, -m[1].length), ext: m[1] } : { base: nome, ext: '' };
+  }
+
+  function limparNomeLocal(base, opts) {
+    let n = base;
+    if (opts.arroba) n = n.replace(/@\S+/g, ' ');
+    if (opts.chars)  n = n.replace(/[._+\[\]{}()|#$%^&*!?,;:'"`~=<>]/g, ' ').replace(/-/g, ' ');
+    if (opts.datas) {
+      n = n.replace(/\b20\d{6}\b/g, ' ');
+      n = n.replace(/\b20\d{2}[-_]\d{2}[-_]\d{2}\b/g, ' ');
+      n = n.replace(/\b[0-9a-f]{8,}\b/gi, ' ');
+      n = n.replace(/\b\d{6,}\b/g, ' ');
+    }
+    n = n.replace(/\b(stls?|files?|model|models|remix|3mf|print|printable|free)\b/gi, ' ');
+    n = n.replace(/\s+/g, ' ').trim();
+    if (opts.maiusc) n = n.toUpperCase();
+    return n;
+  }
+
+  async function traduzirNomeLimpeza(texto) {
+    try {
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=pt&dt=t&q=${encodeURIComponent(texto.toLowerCase())}`;
+      const data = await (await fetch(url)).json();
+      return data[0].map(x => x[0]).join('').toUpperCase();
+    } catch { return texto.toUpperCase(); }
+  }
+
+  async function limparNomesComIAClaude(itens, apiKey) {
+    const BATCH = 20;
+    const mapa = {};
+    for (let i = 0; i < itens.length; i += BATCH) {
+      if (limpezaStopFlag) break;
+      const lote = itens.slice(i, i + BATCH);
+      const lista = lote.map((it, j) => `${j+1}. "${it.nomeOriginal}"`).join('\n');
+      const prompt = `Você é um organizador de arquivos 3D para impressão. Limpe e renomeie cada nome abaixo seguindo TODAS as regras:
+1. Remova @menções (ex: @Print3DWorld, @stlfree, qualquer @)
+2. Remova caracteres especiais: . _ - + [ ] # $ % & * ! ? = , ; : ~ ( )
+3. Remova hashes/códigos aleatórios (ex: hqjmzs, cl2hp0, sequências sem sentido)
+4. Remova datas (20250418, 2025-04-18, 18-04-2025, etc)
+5. Traduza para português do Brasil (Holder→Suporte, Stand→Suporte, Headphone→Fone de Ouvido, Toothbrush→Escova de Dente, Egg→Ovo, Soap→Sabão, Dish→Prato, Razor→Barbeador, Sink→Pia, etc)
+6. TUDO EM MAIÚSCULAS
+7. Preserve a extensão do arquivo (.zip .stl .jpg .3mf .rar .png) sem alterar
+8. Nomes próprios (Star Wars, Darth Vader, Spiderman, NASA, Cthulhu, etc) podem ficar em inglês se não tiverem boa tradução
+
+NOMES:
+${lista}
+
+Responda APENAS com JSON válido (sem markdown):
+[{"original":"nome original exato","novo":"NOME LIMPO"}]`;
+      const body = { model:'claude-sonnet-4-20250514', max_tokens:2000, messages:[{role:'user',content:prompt}] };
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body: JSON.stringify(body)
+      });
+      const data = await resp.json();
+      if (data.error) throw new Error(data.error.message);
+      const txt = data.content[0].text.trim().replace(/^```json\s*/i,'').replace(/\s*```$/,'');
+      const parsed = JSON.parse(txt);
+      parsed.forEach(p => { mapa[p.original] = p.novo; });
+      limpezaProgress(Math.min(i + BATCH, itens.length), itens.length);
+      limpezaLog('info', `  Lote ${Math.floor(i/BATCH)+1}: ${parsed.length} nomes processados`);
+      await sleep(400);
+    }
+    return mapa;
+  }
+
+  async function listarItensRecursivo(parentId, opts, resultado, nivel) {
+    if (limpezaStopFlag) return;
+    const pastas = await listarSubpastas(parentId);
+    const arquivos = opts.arquivos ? await listarArquivos(parentId) : [];
+    if (opts.pastas) pastas.forEach(p => resultado.push({id:p.id, nomeOriginal:p.name, nomeNovo:'', tipo:'pasta', parentId, selecionado:true, nivel}));
+    arquivos.forEach(a => resultado.push({id:a.id, nomeOriginal:a.name, nomeNovo:'', tipo:'arquivo', parentId, selecionado:true, nivel}));
+    if (opts.recursivo) {
+      for (const sp of pastas) {
+        if (limpezaStopFlag) break;
+        await listarItensRecursivo(sp.id, opts, resultado, nivel + 1);
+      }
+    }
+  }
+
+  async function limpezaEscanear() {
+    if (!accessToken) { alert('Conecte ao Google primeiro na aba "Renomear"!'); return; }
+    const rawId = document.getElementById('limpezaFolderId').value.trim();
+    if (!rawId) { alert('Cole o ID ou link da pasta!'); return; }
+    const folderId = extrairIdDriveInput(rawId);
+    const apiKey = limpezaModo === 'ia' ? document.getElementById('anthropicKeyLimpeza').value.trim() : '';
+    if (limpezaModo === 'ia' && !apiKey) { alert('Preencha a chave Anthropic para modo IA!'); return; }
+
+    const opts = {
+      maiusc: limpezaOpt('opt-lp-maiusc'), arroba: limpezaOpt('opt-lp-arroba'),
+      chars: limpezaOpt('opt-lp-chars'), datas: limpezaOpt('opt-lp-datas'),
+      traduzir: limpezaOpt('opt-lp-traduzir'), arquivos: limpezaOpt('opt-lp-arquivos'),
+      pastas: limpezaOpt('opt-lp-pastas'), recursivo: limpezaOpt('opt-lp-recursivo')
+    };
+
+    limpezaStopFlag = false;
+    limpezaItens = [];
+    document.getElementById('limpezaPreview').style.display = 'none';
+    document.getElementById('btnLimpezaEscanear').disabled = true;
+    document.getElementById('btnLimpezaAplicar').disabled = true;
+    document.getElementById('btnLimpezaParar').style.display = 'inline-flex';
+    document.getElementById('logCountLimpeza').textContent = '0 entradas';
+    limpezaSetStatus('running', 'Escaneando...');
+    limpezaLog('info', `📂 Listando itens (modo: ${limpezaModo === 'ia' ? 'IA Claude' : 'automático'})...`);
+
+    try {
+      await listarItensRecursivo(folderId, opts, limpezaItens, 0);
+      if (limpezaStopFlag) { limpezaLog('warn', '⛔ Parado'); limpezaSetStatus('stopped', 'Parado'); document.getElementById('btnLimpezaEscanear').disabled=false; document.getElementById('btnLimpezaParar').style.display='none'; return; }
+      limpezaLog('info', `✅ ${limpezaItens.length} itens encontrados`);
+
+      if (limpezaModo === 'ia') {
+        limpezaLog('info', '🤖 Enviando para Claude (lotes de 20)...');
+        const mapa = await limparNomesComIAClaude(limpezaItens, apiKey);
+        limpezaItens.forEach(it => { it.nomeNovo = mapa[it.nomeOriginal] || it.nomeOriginal; });
+      } else {
+        limpezaLog('info', opts.traduzir ? '⚡ Limpando + traduzindo com Google Translate...' : '⚡ Aplicando limpeza automática...');
+        for (let i = 0; i < limpezaItens.length; i++) {
+          if (limpezaStopFlag) break;
+          const it = limpezaItens[i];
+          const {base, ext} = extrairExt(it.nomeOriginal);
+          let nome = limparNomeLocal(base, opts);
+          if (opts.traduzir && nome) nome = await traduzirNomeLimpeza(nome);
+          else if (opts.maiusc && nome) nome = nome.toUpperCase();
+          it.nomeNovo = nome + ext;
+          if (i % 5 === 0) { limpezaProgress(i+1, limpezaItens.length); await sleep(0); }
+        }
+      }
+
+      limpezaItens.forEach(it => { if (!it.nomeNovo || it.nomeNovo === it.nomeOriginal) it.selecionado = false; });
+      const mudaram = limpezaItens.filter(it => it.nomeNovo && it.nomeNovo !== it.nomeOriginal).length;
+      limpezaLog('info', `✅ ${mudaram} de ${limpezaItens.length} itens com alteração`);
+      limpezaProgress(limpezaItens.length, limpezaItens.length);
+      renderLimpezaPreview();
+      document.getElementById('btnLimpezaAplicar').disabled = mudaram === 0;
+      limpezaSetStatus('done', `${mudaram} para renomear`);
+    } catch(e) {
+      limpezaLog('error', 'Erro: ' + e.message);
+      limpezaSetStatus('error', 'Erro');
+    }
+    document.getElementById('btnLimpezaEscanear').disabled = false;
+    document.getElementById('btnLimpezaParar').style.display = 'none';
+  }
+
+  function renderLimpezaPreview() {
+    const preview = document.getElementById('limpezaPreview');
+    preview.style.display = 'block';
+    const mudaram = limpezaItens.filter(it => it.nomeNovo && it.nomeNovo !== it.nomeOriginal).length;
+    const iguais = limpezaItens.length - mudaram;
+
+    const rows = limpezaItens.map((it, i) => {
+      const mudou = it.nomeNovo && it.nomeNovo !== it.nomeOriginal;
+      const icon = it.tipo === 'pasta' ? '📁' : '📄';
+      const indent = it.nivel > 0 ? `padding-left:${it.nivel * 12 + 6}px` : 'padding-left:6px';
+      return `<tr style="opacity:${mudou ? 1 : 0.3}">
+        <td style="padding:7px 6px;width:30px"><input type="checkbox" ${it.selecionado && mudou ? 'checked':''} ${mudou ? '':'disabled'} onchange="limpezaItens[${i}].selecionado=this.checked" style="accent-color:#ff8c00;width:15px;height:15px;cursor:pointer"/></td>
+        <td style="padding:7px 4px;width:22px;${indent}">${icon}</td>
+        <td style="padding:7px 6px;font-family:'DM Mono',monospace;font-size:11px;color:#666;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(it.nomeOriginal)}">${esc(it.nomeOriginal)}</td>
+        <td style="padding:7px 4px;color:#333;font-size:15px;text-align:center">→</td>
+        <td style="padding:7px 6px;min-width:200px"><input class="lp-nome-input" type="text" value="${esc(it.nomeNovo || it.nomeOriginal)}" onchange="limpezaItens[${i}].nomeNovo=this.value" ${mudou ? '' : 'disabled'}/></td>
+      </tr>`;
+    }).join('');
+
+    preview.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div style="font-size:12px;color:#555">
+          <span style="color:#ff8c00;font-weight:700">${mudaram}</span> para renomear &nbsp;·&nbsp; <span style="color:#333">${iguais}</span> sem mudança
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" style="padding:6px 14px;font-size:11px" onclick="limpezaSelecionarTodos(true)">Selecionar alterados</button>
+          <button class="btn btn-secondary" style="padding:6px 14px;font-size:11px" onclick="limpezaSelecionarTodos(false)">Desmarcar todos</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto;max-height:520px;overflow-y:auto;border:1px solid #111;border-radius:8px">
+        <table class="lp-table">
+          <thead><tr>
+            <th style="width:30px">✓</th><th style="width:22px"></th>
+            <th>Nome original</th><th></th>
+            <th>Novo nome (editável)</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  function limpezaSelecionarTodos(val) {
+    limpezaItens.forEach(it => { if (it.nomeNovo && it.nomeNovo !== it.nomeOriginal) it.selecionado = val; });
+    renderLimpezaPreview();
+  }
+
+  async function limpezaAplicar() {
+    const selecionados = limpezaItens.filter(it => it.selecionado && it.nomeNovo && it.nomeNovo.trim() && it.nomeNovo !== it.nomeOriginal);
+    if (!selecionados.length) { alert('Nenhum item selecionado!'); return; }
+    if (!confirm(`Renomear ${selecionados.length} itens no Google Drive?\n\nEsta ação pode ser desfeita pelo botão "Desfazer".`)) return;
+
+    document.getElementById('btnLimpezaAplicar').disabled = true;
+    document.getElementById('btnLimpezaParar').style.display = 'inline-flex';
+    limpezaStopFlag = false;
+    limpezaSetStatus('running', 'Renomeando...');
+
+    const batch = [];
+    let ok = 0, err = 0;
+
+    for (let i = 0; i < selecionados.length; i++) {
+      if (limpezaStopFlag) { limpezaLog('warn', '⛔ Parado pelo usuário'); break; }
+      const it = selecionados[i];
+      limpezaProgress(i, selecionados.length);
+      try {
+        const novoNome = it.nomeNovo.trim();
+        await renomearItem(it.id, novoNome);
+        batch.push({ id: it.id, oldName: it.nomeOriginal, newName: novoNome });
+        limpezaLog('rename', it.nomeOriginal, novoNome);
+        it.nomeOriginal = novoNome;
+        ok++;
+      } catch(e) {
+        limpezaLog('error', `${it.nomeOriginal}: ${e.message}`);
+        err++;
+      }
+      await sleep(100);
+    }
+
+    if (batch.length) { limpezaUndoStack.push(batch); limpezaRedoStack = []; limpezaUpdateUndoRedo(); }
+    limpezaProgress(selecionados.length, selecionados.length);
+    limpezaSetStatus(err > 0 ? 'warn' : 'done', `${ok} renomeados${err ? ', '+err+' erros' : ''}`);
+    limpezaLog('info', `✅ ${ok} renomeados, ${err} erros`);
+    document.getElementById('btnLimpezaAplicar').disabled = false;
+    document.getElementById('btnLimpezaParar').style.display = 'none';
+    renderLimpezaPreview();
+  }
+
+  async function limpezaDesfazer() {
+    if (!limpezaUndoStack.length) return;
+    const batch = limpezaUndoStack.pop();
+    limpezaSetStatus('running', `Desfazendo ${batch.length} itens...`);
+    document.getElementById('btnLimpezaDesfazer').disabled = true;
+    let ok = 0;
+    for (const op of batch) {
+      try {
+        await renomearItem(op.id, op.oldName);
+        const item = limpezaItens.find(it => it.id === op.id);
+        if (item) { item.nomeOriginal = op.oldName; item.nomeNovo = op.newName; item.selecionado = true; }
+        limpezaLog('warn', `↩ ${op.newName} → ${op.oldName}`);
+        ok++;
+      } catch(e) { limpezaLog('error', `Erro ao desfazer: ${e.message}`); }
+      await sleep(80);
+    }
+    limpezaRedoStack.push(batch);
+    limpezaUpdateUndoRedo();
+    limpezaSetStatus('done', `${ok} revertidos`);
+    if (limpezaItens.length) renderLimpezaPreview();
+  }
+
+  async function limpezaRefazer() {
+    if (!limpezaRedoStack.length) return;
+    const batch = limpezaRedoStack.pop();
+    limpezaSetStatus('running', `Refazendo ${batch.length} itens...`);
+    document.getElementById('btnLimpezaRefazer').disabled = true;
+    let ok = 0;
+    for (const op of batch) {
+      try {
+        await renomearItem(op.id, op.newName);
+        const item = limpezaItens.find(it => it.id === op.id);
+        if (item) { item.nomeOriginal = op.newName; item.nomeNovo = op.newName; }
+        limpezaLog('info', `↪ ${op.oldName} → ${op.newName}`);
+        ok++;
+      } catch(e) { limpezaLog('error', `Erro ao refazer: ${e.message}`); }
+      await sleep(80);
+    }
+    limpezaUndoStack.push(batch);
+    limpezaUpdateUndoRedo();
+    limpezaSetStatus('done', `${ok} refeitos`);
+    if (limpezaItens.length) renderLimpezaPreview();
+  }
+
+  function limpezaUpdateUndoRedo() {
+    const d = document.getElementById('btnLimpezaDesfazer');
+    const r = document.getElementById('btnLimpezaRefazer');
+    const u = limpezaUndoStack.length, re = limpezaRedoStack.length;
+    d.disabled = u === 0; d.textContent = u > 0 ? `↩ Desfazer (${u})` : '↩ Desfazer';
+    r.disabled = re === 0; r.textContent = re > 0 ? `↪ Refazer (${re})` : '↪ Refazer';
   }
 
   // ─── VINCULAR CAPAS ─────────────────────────────────────────────────────────
