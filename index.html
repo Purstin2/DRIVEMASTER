@@ -899,6 +899,7 @@
       <div class="btn-row">
         <button class="btn btn-purple" id="btnVincularAnalisar" onclick="vincularAnalisar()">🔍 Analisar com IA</button>
         <button class="btn" id="btnVincularAplicar" style="background:#00bcd4;color:#000;box-shadow:0 0 20px rgba(0,188,212,.3)" onclick="vincularAplicar()" disabled>✅ Renomear selecionados</button>
+        <button class="btn btn-secondary" id="btnVincularDesfazer" onclick="vincularDesfazer()" disabled>↩ Desfazer</button>
         <button class="btn btn-secondary" onclick="limparLog('logVincular')">Limpar log</button>
       </div>
       <div id="vincularTabela" style="display:none;margin-top:24px"></div>
@@ -3681,7 +3682,12 @@ Responda APENAS com JSON válido (sem markdown):
         const parsed = JSON.parse(txt);
         const mapaIA = {};
         parsed.forEach(p => { mapaIA[p.original] = p.novo; });
-        lote.forEach(p => { p.nomeNovo = mapaIA[p.baseOriginal] || p.baseOriginal.toUpperCase(); p.sel2 = true; });
+        lote.forEach(p => {
+          const base = mapaIA[p.baseOriginal] || p.baseOriginal.toUpperCase();
+          const uid = Math.random().toString(36).slice(2,6).toUpperCase();
+          p.nomeNovo = base + ' ' + uid;
+          p.sel2 = true;
+        });
         matchLog('info', `  Lote ${Math.floor(i/BATCH)+1}: ${parsed.length} nomes processados`);
         matchProgress(Math.min(i+BATCH, selecionados.length), selecionados.length);
         await sleep(400);
@@ -3822,6 +3828,7 @@ Responda APENAS com JSON válido (sem markdown):
 
   // ─── VINCULAR CAPAS ─────────────────────────────────────────────────────────
   let vincularPares = [];
+  let vincularUndoStack = [];
 
   function logVincular(tipo, texto) {
     log('logVincular', tipo, texto);
@@ -4026,11 +4033,12 @@ Responda APENAS com JSON válido (sem markdown):
     const selecionados = vincularPares.filter(p => p.selected && p.confidence > 0 && p.folderName);
     if (!selecionados.length) { alert('Nenhum par selecionado!'); return; }
     const alvo = modo === 'imagens' ? 'imagens' : 'pastas';
-    if (!confirm(`Renomear ${selecionados.length} ${alvo}? Esta ação não pode ser desfeita.`)) return;
+    if (!confirm(`Renomear ${selecionados.length} ${alvo}?`)) return;
 
     document.getElementById('btnVincularAplicar').disabled = true;
     setStatusVincular('running', 'Renomeando...');
     let ok = 0, err = 0;
+    const batch = [];
 
     for (let i = 0; i < selecionados.length; i++) {
       const par = selecionados[i];
@@ -4039,12 +4047,16 @@ Responda APENAS com JSON válido (sem markdown):
         if (modo === 'imagens') {
           const novoNome = par.folderName + extOf(par.imageFile.name);
           await renomearItem(par.imageFile.id, novoNome);
+          batch.push({ id: par.imageFile.id, oldName: par.imageFile.name, newName: novoNome });
           logVincular('info', `✅ ${par.imageFile.name} → ${novoNome}`);
+          par.imageFile.name = novoNome;
         } else {
           if (!par.folderMatch) throw new Error('Pasta não encontrada para renomear');
           const novoNome = par.imageFile.name.replace(/\.[^.]+$/, '');
           await renomearItem(par.folderMatch.id, novoNome);
+          batch.push({ id: par.folderMatch.id, oldName: par.folderMatch.name, newName: novoNome });
           logVincular('info', `✅ Pasta: ${par.folderMatch.name} → ${novoNome}`);
+          par.folderMatch.name = novoNome;
         }
         ok++;
       } catch (e) {
@@ -4054,10 +4066,36 @@ Responda APENAS com JSON válido (sem markdown):
       await sleep(150);
     }
 
+    if (batch.length) { vincularUndoStack.push(batch); vincularUpdateDesfazer(); }
     updateProgressVincular(selecionados.length, selecionados.length);
     setStatusVincular(err > 0 ? 'warn' : 'done', `${ok} renomeados${err > 0 ? ', ' + err + ' erros' : ''}`);
     logVincular('info', `✅ Concluído! ${ok} renomeados, ${err} erros.`);
     document.getElementById('btnVincularAplicar').disabled = false;
+  }
+
+  async function vincularDesfazer() {
+    if (!vincularUndoStack.length) return;
+    const batch = vincularUndoStack.pop();
+    setStatusVincular('running', `Desfazendo ${batch.length} itens...`);
+    document.getElementById('btnVincularDesfazer').disabled = true;
+    let ok = 0;
+    for (const op of batch) {
+      try {
+        await renomearItem(op.id, op.oldName);
+        logVincular('warn', `↩ ${op.newName} → ${op.oldName}`);
+        ok++;
+      } catch(e) { logVincular('error', `Erro ao desfazer: ${e.message}`); }
+      await sleep(100);
+    }
+    vincularUpdateDesfazer();
+    setStatusVincular('done', `${ok} revertidos`);
+  }
+
+  function vincularUpdateDesfazer() {
+    const btn = document.getElementById('btnVincularDesfazer');
+    const n = vincularUndoStack.length;
+    btn.disabled = n === 0;
+    btn.textContent = n > 0 ? `↩ Desfazer (${n})` : '↩ Desfazer';
   }
 </script>
 </body>
