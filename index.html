@@ -148,6 +148,17 @@
     .lp-table td{padding:7px 6px;border-bottom:1px solid #0d0d0d;vertical-align:middle}
     .lp-nome-input{width:100%;background:#000;border:1px solid #1a1a1a;border-radius:6px;padding:5px 10px;color:#fff;font-family:'DM Mono',monospace;font-size:11px;outline:none;transition:border-color .15s}
     .lp-nome-input:focus{border-color:#ff8c00}
+    .tab.match-tab.active{background:#e040fb;color:#fff}
+    .match-step{background:#000;border:1px solid #1a1a1a;border-radius:10px;padding:16px;margin-bottom:16px}
+    .match-step-title{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#555;margin-bottom:12px}
+    .match-table{width:100%;border-collapse:collapse}
+    .match-table th{padding:8px;text-align:left;font-size:10px;letter-spacing:1px;color:#444;text-transform:uppercase;border-bottom:1px solid #1a1a1a;position:sticky;top:0;background:#000;z-index:1}
+    .match-table td{padding:8px 6px;border-bottom:1px solid #0d0d0d;vertical-align:middle}
+    .match-nome-input{width:100%;background:#0a0a0a;border:1px solid #1a1a1a;border-radius:6px;padding:5px 10px;color:#fff;font-family:'DM Mono',monospace;font-size:11px;outline:none;transition:border-color .15s}
+    .match-nome-input:focus{border-color:#e040fb}
+    .match-badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:100px;letter-spacing:.5px}
+    .match-badge-img{background:rgba(100,181,246,.12);color:#64b5f6}
+    .match-badge-file{background:rgba(255,183,77,.12);color:#ffb74d}
 
     /* ─── AGENTE IA ─── */
     .agente-chat{background:#000;border:1px solid var(--border);border-radius:12px;padding:20px;min-height:220px;max-height:450px;overflow-y:auto;margin-bottom:14px;scroll-behavior:smooth}
@@ -203,6 +214,7 @@
     <div class="tab" onclick="setTab('achatar')">🔀 Achatar</div>
     <div class="tab vincular-tab" onclick="setTab('vincular')">🔗 Vincular Capas</div>
     <div class="tab limpeza-tab" onclick="setTab('limpeza')">🧹 Limpar Nomes</div>
+    <div class="tab match-tab" onclick="setTab('match')">🔁 Match & Limpar</div>
   </div>
 
   <!-- PANEL: RENOMEAR -->
@@ -695,6 +707,105 @@
     </div>
   </div>
 
+  <!-- ═══════════════════════════════════════════ MATCH & LIMPAR ═══ -->
+  <div class="panel" id="panel-match">
+    <div class="card">
+      <div class="info-box" style="background:rgba(224,64,251,.05);border-color:rgba(224,64,251,.2)">
+        <strong style="color:#e040fb">🔁 Match & Limpar em Par</strong><br/>
+        Encontra pares imagem+arquivo com o mesmo nome base (ex: <code style="color:#aaa">goku54.jpg</code> ↔ <code style="color:#aaa">goku54.zip</code>). A IA limpa o nome dos <strong>dois juntos</strong> — se um falhar, o outro é revertido. Você vê a prévia completa antes de qualquer mudança.
+      </div>
+
+      <label>Chave API Anthropic</label>
+      <input type="password" id="anthropicKeyMatch" placeholder="sk-ant-..." style="margin-bottom:16px"/>
+
+      <div class="row2">
+        <div>
+          <label>📷 Pasta das IMAGENS (capas)</label>
+          <input type="text" id="matchFolderImagens" placeholder="ID do Google Drive"/>
+        </div>
+        <div>
+          <label>📦 Pasta dos ARQUIVOS (zip/stl/rar/3mf)</label>
+          <input type="text" id="matchFolderArquivos" placeholder="ID do Google Drive"/>
+        </div>
+      </div>
+
+      <!-- ETAPA 1: encontrar pares -->
+      <div class="btn-row" style="margin-bottom:0">
+        <button class="btn" id="btnMatchEscanear" onclick="matchEscanear()" style="background:#e040fb;color:#fff;box-shadow:0 0 20px rgba(224,64,251,.3)">🔍 Encontrar Pares</button>
+        <button class="btn btn-purple" id="btnMatchLimpar" onclick="matchLimparComIA()" disabled>🤖 Limpar com IA</button>
+        <button class="btn btn-primary" id="btnMatchAplicar" onclick="matchAplicar()" disabled>✅ Renomear pares</button>
+        <button class="btn btn-secondary" id="btnMatchDesfazer" onclick="matchDesfazer()" disabled>↩ Desfazer</button>
+        <button class="btn btn-danger" id="btnMatchParar" onclick="matchStopFlag=true" style="display:none">⛔ Parar</button>
+        <button class="btn btn-secondary" onclick="limparLog('logMatch')">Limpar log</button>
+      </div>
+
+      <!-- STEP 1: preview de pares encontrados -->
+      <div id="matchStep1" style="display:none;margin-top:24px">
+        <div class="match-step">
+          <div class="match-step-title">① Pares encontrados — selecione quais enviar para a IA</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+            <div id="matchStep1Resumo" style="font-size:12px;color:#555"></div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-secondary" style="padding:5px 12px;font-size:11px" onclick="matchSelecionarTodos('step1',true)">Selecionar todos</button>
+              <button class="btn btn-secondary" style="padding:5px 12px;font-size:11px" onclick="matchSelecionarTodos('step1',false)">Desmarcar todos</button>
+            </div>
+          </div>
+          <div style="overflow-x:auto;max-height:400px;overflow-y:auto;border:1px solid #111;border-radius:8px">
+            <table class="match-table">
+              <thead><tr>
+                <th style="width:30px">✓</th>
+                <th>📷 Imagem</th>
+                <th>📦 Arquivo</th>
+                <th style="width:80px;text-align:center">Status</th>
+              </tr></thead>
+              <tbody id="matchStep1Body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2: preview dos nomes limpos pela IA -->
+      <div id="matchStep2" style="display:none;margin-top:8px">
+        <div class="match-step">
+          <div class="match-step-title">② Nomes limpos pela IA — confira e edite antes de aplicar</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+            <div id="matchStep2Resumo" style="font-size:12px;color:#555"></div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-secondary" style="padding:5px 12px;font-size:11px" onclick="matchSelecionarTodos('step2',true)">Selecionar todos</button>
+              <button class="btn btn-secondary" style="padding:5px 12px;font-size:11px" onclick="matchSelecionarTodos('step2',false)">Desmarcar todos</button>
+            </div>
+          </div>
+          <div style="overflow-x:auto;max-height:400px;overflow-y:auto;border:1px solid #111;border-radius:8px">
+            <table class="match-table">
+              <thead><tr>
+                <th style="width:30px">✓</th>
+                <th>Original (base)</th>
+                <th>→</th>
+                <th>Novo nome base (editável)</th>
+                <th>Extensões</th>
+              </tr></thead>
+              <tbody id="matchStep2Body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="log-card">
+      <div class="log-header">
+        <span>Log de execução</span>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="log-count" id="logCountMatch">0 entradas</span>
+          <span class="status-badge status-idle" id="statusMatch"><span class="dot"></span> Aguardando</span>
+        </div>
+      </div>
+      <div class="progress-wrap" id="progressWrapMatch">
+        <div class="progress-bar-bg"><div class="progress-bar" id="progressBarMatch" style="width:0%;background:#e040fb;box-shadow:0 0 8px rgba(224,64,251,.5)"></div></div>
+      </div>
+      <div class="log-body" id="logMatch"><div class="log-empty">Cole os IDs das pastas e clique em "Encontrar Pares".</div></div>
+    </div>
+  </div>
+
   <!-- ══════════════════════════════════════════════ LIMPAR NOMES ═══ -->
   <div class="panel" id="panel-limpeza">
     <div class="card">
@@ -1090,7 +1201,7 @@
   }
 
   // ─── PERSISTÊNCIA LOCAL ────────────────────────────────────────────
-  const FIELDS_TO_SAVE = ['clientId','anthropicKey','anthropicKeyAI','anthropicKeyAgente','anthropicKeyVincular','anthropicKeyLimpeza'];
+  const FIELDS_TO_SAVE = ['clientId','anthropicKey','anthropicKeyAI','anthropicKeyAgente','anthropicKeyVincular','anthropicKeyLimpeza','anthropicKeyMatch'];
   function saveFields() {
     FIELDS_TO_SAVE.forEach(id => {
       const el = document.getElementById(id);
@@ -1121,7 +1232,7 @@
 
   // ─── TABS ──────────────────────────────────────────
   function setTab(tab) {
-    const tabs = ['renomear','categorizar','ai','limpar','limpar-arquivos','preview','catalogo','agente','achatar','vincular','limpeza'];
+    const tabs = ['renomear','categorizar','ai','limpar','limpar-arquivos','preview','catalogo','agente','achatar','vincular','limpeza','match'];
     document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', tabs[i] === tab));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-' + tab).classList.add('active');
@@ -3425,6 +3536,288 @@ Responda APENAS com JSON válido (sem markdown):
     const u = limpezaUndoStack.length, re = limpezaRedoStack.length;
     d.disabled = u === 0; d.textContent = u > 0 ? `↩ Desfazer (${u})` : '↩ Desfazer';
     r.disabled = re === 0; r.textContent = re > 0 ? `↪ Refazer (${re})` : '↪ Refazer';
+  }
+
+  // ─── MATCH & LIMPAR ──────────────────────────────────────────────────────────
+  let matchPares = [];     // [{imgFile, arcFile, baseOriginal, nomeNovo, sel1, sel2}]
+  let matchUndoStack = []; // [{imgId, arcId, oldBase, newBase, imgExt, arcExt}]
+  let matchStopFlag = false;
+
+  function matchLog(tipo, txt, b) { log('logMatch', tipo, txt, b); const c=document.getElementById('logCountMatch'); c.textContent=(parseInt(c.textContent)||0)+1+' entradas'; }
+  function matchSetStatus(t,txt){setStatus('statusMatch',t,txt);}
+  function matchProgress(done,total){document.getElementById('progressWrapMatch').style.display='block';document.getElementById('progressBarMatch').style.width=total>0?Math.round(done/total*100)+'%':'0%';}
+
+  function baseNomeMatch(nome) { return nome.replace(/\.[^.]+$/, ''); }
+
+  async function listarArquivosMatch(parentId) {
+    let files = [], tok = null;
+    do {
+      let url = `https://www.googleapis.com/drive/v3/files?q='${parentId}'+in+parents+and+mimeType!='application/vnd.google-apps.folder'+and+trashed=false&fields=files(id,name,mimeType),nextPageToken&pageSize=1000&orderBy=name`;
+      if (tok) url += '&pageToken=' + tok;
+      const data = await driveGet(url);
+      files = files.concat(data.files || []);
+      tok = data.nextPageToken || null;
+    } while (tok);
+    return files;
+  }
+
+  async function matchEscanear() {
+    if (!accessToken) { alert('Conecte ao Google primeiro!'); return; }
+    const folderImg = document.getElementById('matchFolderImagens').value.trim();
+    const folderArc = document.getElementById('matchFolderArquivos').value.trim();
+    if (!folderImg || !folderArc) { alert('Preencha os dois IDs de pasta!'); return; }
+
+    matchPares = [];
+    matchStopFlag = false;
+    document.getElementById('matchStep1').style.display = 'none';
+    document.getElementById('matchStep2').style.display = 'none';
+    document.getElementById('btnMatchEscanear').disabled = true;
+    document.getElementById('btnMatchLimpar').disabled = true;
+    document.getElementById('btnMatchAplicar').disabled = true;
+    document.getElementById('btnMatchParar').style.display = 'inline-flex';
+    document.getElementById('logCountMatch').textContent = '0 entradas';
+    matchSetStatus('running', 'Escaneando...');
+    matchLog('info', '📷 Listando imagens...');
+
+    try {
+      const imagens = await listarArquivosMatch(folderImg);
+      matchLog('info', `✅ ${imagens.length} imagens`);
+      matchLog('info', '📦 Listando arquivos...');
+      const arquivos = await listarArquivosMatch(folderArc);
+      matchLog('info', `✅ ${arquivos.length} arquivos`);
+
+      // Build lookup by base name (case-insensitive)
+      const arcMap = {};
+      arquivos.forEach(a => {
+        const base = baseNomeMatch(a.name).toLowerCase();
+        if (!arcMap[base]) arcMap[base] = [];
+        arcMap[base].push(a);
+      });
+
+      let semMatch = 0;
+      imagens.forEach(img => {
+        const base = baseNomeMatch(img.name).toLowerCase();
+        const candidatos = arcMap[base] || [];
+        if (candidatos.length > 0) {
+          candidatos.forEach(arc => {
+            matchPares.push({ imgFile: img, arcFile: arc, baseOriginal: baseNomeMatch(img.name), nomeNovo: '', sel1: true, sel2: true });
+          });
+        } else {
+          semMatch++;
+        }
+      });
+
+      matchLog('info', `✅ ${matchPares.length} pares encontrados, ${semMatch} imagens sem par`);
+      renderMatchStep1();
+      document.getElementById('btnMatchLimpar').disabled = matchPares.length === 0;
+      matchSetStatus('done', `${matchPares.length} pares`);
+      matchProgress(1, 1);
+    } catch(e) {
+      matchLog('error', 'Erro: ' + e.message);
+      matchSetStatus('error', 'Erro');
+    }
+    document.getElementById('btnMatchEscanear').disabled = false;
+    document.getElementById('btnMatchParar').style.display = 'none';
+  }
+
+  function renderMatchStep1() {
+    const tbody = document.getElementById('matchStep1Body');
+    document.getElementById('matchStep1').style.display = 'block';
+    document.getElementById('matchStep1Resumo').textContent = `${matchPares.length} pares encontrados — selecione quais a IA deve limpar`;
+    tbody.innerHTML = matchPares.map((p, i) => `<tr>
+      <td><input type="checkbox" ${p.sel1 ? 'checked' : ''} onchange="matchPares[${i}].sel1=this.checked" style="accent-color:#e040fb;width:15px;height:15px;cursor:pointer"/></td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px;color:#64b5f6;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(p.imgFile.name)}">${esc(p.imgFile.name)}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px;color:#ffb74d;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(p.arcFile.name)}">${esc(p.arcFile.name)}</td>
+      <td style="text-align:center"><span class="match-badge" style="background:rgba(0,230,118,.1);color:#00e676">✓ PAR</span></td>
+    </tr>`).join('');
+  }
+
+  async function matchLimparComIA() {
+    const apiKey = document.getElementById('anthropicKeyMatch').value.trim();
+    if (!apiKey) { alert('Preencha a chave da API Anthropic!'); return; }
+    const selecionados = matchPares.filter(p => p.sel1);
+    if (!selecionados.length) { alert('Nenhum par selecionado!'); return; }
+
+    document.getElementById('btnMatchLimpar').disabled = true;
+    document.getElementById('btnMatchAplicar').disabled = true;
+    document.getElementById('matchStep2').style.display = 'none';
+    document.getElementById('btnMatchParar').style.display = 'inline-flex';
+    matchStopFlag = false;
+    matchSetStatus('running', 'Limpando com IA...');
+    matchLog('info', `🤖 Enviando ${selecionados.length} nomes para o Claude...`);
+
+    const BATCH = 20;
+    try {
+      for (let i = 0; i < selecionados.length; i += BATCH) {
+        if (matchStopFlag) { matchLog('warn', '⛔ Parado'); break; }
+        const lote = selecionados.slice(i, i + BATCH);
+        const lista = lote.map((p, j) => `${j+1}. "${p.baseOriginal}"`).join('\n');
+        const prompt = `Você é um organizador de arquivos 3D para impressão 3D. Cada item abaixo é o nome base (sem extensão) de um par de arquivos (imagem + arquivo 3D). Limpe e melhore cada nome seguindo TODAS as regras:
+
+1. Remova @menções completas (ex: @Print3DWorld, @stlfree, @qualquer)
+2. Remova caracteres especiais: . _ - + [ ] # $ % & * ! ? = , ; : ~ ( ) @ ´ \` ^
+3. Remova hashes/códigos aleatórios (sequências sem sentido como: hqjmzs, cl2hp0, 4641, 20250418)
+4. Remova datas (20250418, 2025-04-18, etc)
+5. Traduza para português do Brasil onde fizer sentido (Holder→Suporte, Stand→Suporte, Headphone→Fone de Ouvido, Toothbrush→Escova de Dente, etc)
+6. TUDO EM MAIÚSCULAS
+7. Nomes próprios reconhecíveis (Goku, Star Wars, Darth Vader, Spiderman, etc) podem ficar como são
+8. O resultado deve ser um nome limpo e legível, sem ruído
+
+NOMES BASE (sem extensão):
+${lista}
+
+Responda APENAS com JSON válido (sem markdown):
+[{"original":"nome base original exato","novo":"NOME LIMPO"}]`;
+
+        const body = { model:'claude-sonnet-4-20250514', max_tokens:2000, messages:[{role:'user',content:prompt}] };
+        const resp = await fetch('https://api.anthropic.com/v1/messages', {
+          method:'POST',
+          headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+          body:JSON.stringify(body)
+        });
+        const data = await resp.json();
+        if (data.error) throw new Error(data.error.message);
+        const txt = data.content[0].text.trim().replace(/^```json\s*/i,'').replace(/\s*```$/,'');
+        const parsed = JSON.parse(txt);
+        const mapaIA = {};
+        parsed.forEach(p => { mapaIA[p.original] = p.novo; });
+        lote.forEach(p => { p.nomeNovo = mapaIA[p.baseOriginal] || p.baseOriginal.toUpperCase(); p.sel2 = true; });
+        matchLog('info', `  Lote ${Math.floor(i/BATCH)+1}: ${parsed.length} nomes processados`);
+        matchProgress(Math.min(i+BATCH, selecionados.length), selecionados.length);
+        await sleep(400);
+      }
+
+      renderMatchStep2(selecionados);
+      document.getElementById('btnMatchAplicar').disabled = false;
+      matchSetStatus('done', 'Prévia pronta — confira e aplique');
+      matchLog('info', '✅ Limpeza concluída — confira os nomes na tabela abaixo e clique em "Renomear pares"');
+    } catch(e) {
+      matchLog('error', 'Erro IA: ' + e.message);
+      matchSetStatus('error', 'Erro');
+    }
+    document.getElementById('btnMatchLimpar').disabled = false;
+    document.getElementById('btnMatchParar').style.display = 'none';
+  }
+
+  function renderMatchStep2(selecionados) {
+    document.getElementById('matchStep2').style.display = 'block';
+    document.getElementById('matchStep2Resumo').innerHTML = `<span style="color:#e040fb;font-weight:700">${selecionados.length}</span> pares prontos — os dois arquivos de cada par serão renomeados juntos`;
+    const idxMap = {};
+    selecionados.forEach(p => { idxMap[matchPares.indexOf(p)] = true; });
+
+    const tbody = document.getElementById('matchStep2Body');
+    tbody.innerHTML = selecionados.map((p) => {
+      const gi = matchPares.indexOf(p);
+      const imgExt = p.imgFile.name.match(/\.[^.]+$/)?.[0] || '';
+      const arcExt = p.arcFile.name.match(/\.[^.]+$/)?.[0] || '';
+      return `<tr>
+        <td><input type="checkbox" ${p.sel2 ? 'checked' : ''} onchange="matchPares[${gi}].sel2=this.checked" style="accent-color:#e040fb;width:15px;height:15px;cursor:pointer"/></td>
+        <td style="font-family:'DM Mono',monospace;font-size:11px;color:#666;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(p.baseOriginal)}">${esc(p.baseOriginal)}</td>
+        <td style="color:#333;font-size:16px;text-align:center;padding:0 4px">→</td>
+        <td style="min-width:200px"><input class="match-nome-input" type="text" value="${esc(p.nomeNovo)}" onchange="matchPares[${gi}].nomeNovo=this.value"/></td>
+        <td style="white-space:nowrap">
+          <span class="match-badge match-badge-img">${esc(imgExt)}</span>
+          <span class="match-badge match-badge-file" style="margin-left:4px">${esc(arcExt)}</span>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  function matchSelecionarTodos(step, val) {
+    if (step === 'step1') matchPares.forEach(p => { p.sel1 = val; });
+    else matchPares.forEach(p => { if (p.nomeNovo) p.sel2 = val; });
+    if (step === 'step1') renderMatchStep1();
+    else renderMatchStep2(matchPares.filter(p => p.nomeNovo));
+  }
+
+  async function matchAplicar() {
+    const selecionados = matchPares.filter(p => p.sel2 && p.nomeNovo && p.nomeNovo.trim() && p.nomeNovo !== p.baseOriginal);
+    if (!selecionados.length) { alert('Nenhum par selecionado!'); return; }
+    if (!confirm(`Renomear ${selecionados.length} pares (${selecionados.length * 2} arquivos) no Google Drive?\n\nAmbos os arquivos de cada par serão renomeados juntos. Se um falhar, o outro é revertido.`)) return;
+
+    document.getElementById('btnMatchAplicar').disabled = true;
+    document.getElementById('btnMatchParar').style.display = 'inline-flex';
+    matchStopFlag = false;
+    matchSetStatus('running', 'Renomeando pares...');
+
+    const batchUndo = [];
+    let ok = 0, err = 0;
+
+    for (let i = 0; i < selecionados.length; i++) {
+      if (matchStopFlag) { matchLog('warn', '⛔ Parado'); break; }
+      const p = selecionados[i];
+      matchProgress(i, selecionados.length);
+      const nomeBase = p.nomeNovo.trim();
+      const imgExt = p.imgFile.name.match(/\.[^.]+$/)?.[0] || '';
+      const arcExt = p.arcFile.name.match(/\.[^.]+$/)?.[0] || '';
+      const novoImg = nomeBase + imgExt;
+      const novoArc = nomeBase + arcExt;
+
+      try {
+        // Rename image first
+        await renomearItem(p.imgFile.id, novoImg);
+        try {
+          // Rename archive
+          await renomearItem(p.arcFile.id, novoArc);
+          // Both succeeded
+          batchUndo.push({ imgId: p.imgFile.id, arcId: p.arcFile.id, oldBase: p.baseOriginal, newBase: nomeBase, imgExt, arcExt });
+          matchLog('rename', p.baseOriginal + ' (ambos)', nomeBase);
+          p.imgFile.name = novoImg;
+          p.arcFile.name = novoArc;
+          p.baseOriginal = nomeBase;
+          ok++;
+        } catch(e2) {
+          // Archive failed — revert image to keep them in sync
+          matchLog('warn', `⚠ Arquivo falhou (${e2.message}), revertendo imagem...`);
+          try { await renomearItem(p.imgFile.id, p.imgFile.name); } catch(_) {}
+          matchLog('error', `❌ Par revertido: ${p.baseOriginal}`);
+          err++;
+        }
+      } catch(e) {
+        matchLog('error', `❌ Imagem falhou: ${p.baseOriginal} — ${e.message}`);
+        err++;
+      }
+      await sleep(150);
+    }
+
+    if (batchUndo.length) {
+      matchUndoStack.push(batchUndo);
+      matchUpdateDesfazer();
+    }
+    matchProgress(selecionados.length, selecionados.length);
+    matchSetStatus(err > 0 ? 'warn' : 'done', `${ok} pares OK${err ? ', '+err+' erros' : ''}`);
+    matchLog('info', `✅ ${ok} pares renomeados, ${err} erros`);
+    document.getElementById('btnMatchAplicar').disabled = false;
+    document.getElementById('btnMatchParar').style.display = 'none';
+    if (matchPares.filter(p => p.nomeNovo).length) renderMatchStep2(matchPares.filter(p => p.nomeNovo));
+  }
+
+  async function matchDesfazer() {
+    if (!matchUndoStack.length) return;
+    const batch = matchUndoStack.pop();
+    matchSetStatus('running', `Desfazendo ${batch.length} pares...`);
+    document.getElementById('btnMatchDesfazer').disabled = true;
+    let ok = 0;
+    for (const op of batch) {
+      const oldImg = op.oldBase + op.imgExt;
+      const oldArc = op.oldBase + op.arcExt;
+      try {
+        await renomearItem(op.imgId, oldImg);
+        await renomearItem(op.arcId, oldArc);
+        matchLog('warn', `↩ ${op.newBase} → ${op.oldBase} (ambos)`);
+        ok++;
+      } catch(e) { matchLog('error', `Erro ao desfazer: ${e.message}`); }
+      await sleep(100);
+    }
+    matchUpdateDesfazer();
+    matchSetStatus('done', `${ok} pares revertidos`);
+  }
+
+  function matchUpdateDesfazer() {
+    const btn = document.getElementById('btnMatchDesfazer');
+    const n = matchUndoStack.length;
+    btn.disabled = n === 0;
+    btn.textContent = n > 0 ? `↩ Desfazer (${n})` : '↩ Desfazer';
   }
 
   // ─── VINCULAR CAPAS ─────────────────────────────────────────────────────────
