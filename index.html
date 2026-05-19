@@ -3592,34 +3592,27 @@ JSON APENAS:
         mapa[base].files.push(f);
       });
     });
-    const grupos = Object.entries(mapa).filter(([,g]) => g.files.length >= 1);
-    // Só compacta quando há 2+ arquivos 3D com nome idêntico (ex: .stl + .3mf)
-    const gruposMulti = grupos.filter(([,g]) => g.files.length >= 2);
-    const gruposSolo  = grupos.filter(([,g]) => g.files.length === 1);
+    const grupos = Object.entries(mapa);
 
-    if (!gruposMulti.length) {
-      cpLog('warn', `Nenhum grupo com 2+ arquivos 3D com nome idêntico. ${gruposSolo.length} grupos com só 1 arquivo (não serão zipados).`);
-      cpStatus('warn', 'Nenhum grupo para zipar');
-      return;
-    }
+    if (!grupos.length) { cpLog('warn','Nenhum arquivo 3D encontrado nos pares selecionados.'); cpStatus('warn','Nenhum arquivo'); return; }
 
     const deletar = cpOpt('opt-cp-deletar');
-    if (!confirm(`Criar ${gruposMulti.length} ZIPs com os arquivos 3D de mesmo nome idêntico?${deletar?'\n\nOs originais serão APAGADOS após zipar!':''}`)) return;
+    if (!confirm(`Criar ${grupos.length} ZIPs?${deletar?'\n\nOs originais serão APAGADOS após zipar!':''}`)) return;
 
     document.getElementById('btnPipeCompactar').disabled = true;
     document.getElementById('btnPipeParar').style.display = 'inline-flex';
     pipeStopFlag = false;
     cpStatus('running', 'Compactando...');
-    cpLog('info', `📦 ${gruposMulti.length} grupos para zipar, ${gruposSolo.length} com só 1 arquivo 3D (ignorados)`);
+    cpLog('info', `📦 ${grupos.length} grupos para zipar`);
 
     let ok = 0, err = 0;
 
-    for (let i = 0; i < gruposMulti.length; i++) {
+    for (let i = 0; i < grupos.length; i++) {
       if (pipeStopFlag) { cpLog('warn','⛔ Parado'); break; }
-      const [base, g] = gruposMulti[i];
+      const [base, g] = grupos[i];
       const zipName = base + '.zip';
-      cpProgress(i, gruposMulti.length);
-      cpLog('info', `📦 [${i+1}/${gruposMulti.length}] ${zipName}...`);
+      cpProgress(i, grupos.length);
+      cpLog('info', `📦 [${i+1}/${grupos.length}] ${zipName}...`);
 
       try {
         const zip = new JSZip();
@@ -3646,7 +3639,7 @@ JSON APENAS:
       await sleep(200);
     }
 
-    cpProgress(gruposMulti.length, gruposMulti.length);
+    cpProgress(grupos.length, grupos.length);
     pipeStepUI(4);
     cpStatus(err>0?'warn':'done', `${ok} ZIPs criados${err?', '+err+' erros':''}`);
     cpLog('info', `🏁 Pipeline concluído! ${ok} ZIPs criados. Imagens estão com os mesmos nomes limpos nas pastas originais.`);
