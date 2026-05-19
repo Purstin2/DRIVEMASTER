@@ -159,6 +159,13 @@
     .match-badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:100px;letter-spacing:.5px}
     .match-badge-img{background:rgba(100,181,246,.12);color:#64b5f6}
     .match-badge-file{background:rgba(255,183,77,.12);color:#ffb74d}
+    .tab.compactar-tab.active{background:#66bb6a;color:#000}
+    .cp-table{width:100%;border-collapse:collapse}
+    .cp-table th{padding:8px;text-align:left;font-size:10px;letter-spacing:1px;color:#444;text-transform:uppercase;border-bottom:1px solid #1a1a1a;position:sticky;top:0;background:#0a0a0a;z-index:1}
+    .cp-table td{padding:8px 6px;border-bottom:1px solid #0d0d0d;vertical-align:middle}
+    .cp-ext{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:100px;letter-spacing:.5px;background:#111;color:#777;margin:1px}
+    .cp-zip-input{width:100%;background:#000;border:1px solid #1a1a1a;border-radius:6px;padding:5px 10px;color:#fff;font-family:'DM Mono',monospace;font-size:11px;outline:none;transition:border-color .15s}
+    .cp-zip-input:focus{border-color:#66bb6a}
 
     /* ─── AGENTE IA ─── */
     .agente-chat{background:#000;border:1px solid var(--border);border-radius:12px;padding:20px;min-height:220px;max-height:450px;overflow-y:auto;margin-bottom:14px;scroll-behavior:smooth}
@@ -215,6 +222,7 @@
     <div class="tab vincular-tab" onclick="setTab('vincular')">🔗 Vincular Capas</div>
     <div class="tab limpeza-tab" onclick="setTab('limpeza')">🧹 Limpar Nomes</div>
     <div class="tab match-tab" onclick="setTab('match')">🔁 Match & Limpar</div>
+    <div class="tab compactar-tab" onclick="setTab('compactar')">📦 Compactar Pares</div>
   </div>
 
   <!-- PANEL: RENOMEAR -->
@@ -707,6 +715,73 @@
     </div>
   </div>
 
+  <!-- ══════════════════════════════════════════ COMPACTAR PARES ═══ -->
+  <div class="panel" id="panel-compactar">
+    <div class="card">
+      <div class="info-box" style="background:rgba(102,187,106,.05);border-color:rgba(102,187,106,.25)">
+        <strong style="color:#66bb6a">📦 Pipeline: Renomear + Compactar</strong><br/>
+        <strong>1.</strong> Detecta pares imagem ↔ arquivo 3D pelo mesmo nome base &nbsp;·&nbsp;
+        <strong>2.</strong> IA limpa e renomeia <em>ambos</em> juntos &nbsp;·&nbsp;
+        <strong>3.</strong> Compacta só os arquivos 3D com nome idêntico em ZIP &nbsp;·&nbsp;
+        Imagens ficam separadas com o mesmo nome limpo — prontas para o servidor.
+      </div>
+
+      <label>Chave API Anthropic</label>
+      <input type="password" id="anthropicKeyCompactar" placeholder="sk-ant-..." style="margin-bottom:16px"/>
+
+      <div class="row2">
+        <div>
+          <label>📷 Pasta das IMAGENS (png/jpg)</label>
+          <input type="text" id="compactarFolderImg" placeholder="ID do Google Drive"/>
+        </div>
+        <div>
+          <label>📦 Pasta dos ARQUIVOS 3D (stl/3mf/obj)</label>
+          <input type="text" id="compactarFolderArq" placeholder="ID do Google Drive"/>
+        </div>
+      </div>
+
+      <label>Opções</label>
+      <div class="options">
+        <label class="opt" id="opt-cp-deletar"><input type="checkbox" onchange="toggleOpt(this,'opt-cp-deletar')"/> Apagar originais 3D após zipar</label>
+        <label class="opt" id="opt-cp-subpastas"><input type="checkbox" onchange="toggleOpt(this,'opt-cp-subpastas')"/> Entrar em subpastas</label>
+      </div>
+
+      <!-- Step bar -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:20px">
+        <div id="pipeStepEl1" style="text-align:center;padding:10px 4px;border-radius:8px;background:#111;border:1px solid #1a1a1a;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#444;transition:all .3s">1 · Detectar</div>
+        <div id="pipeStepEl2" style="text-align:center;padding:10px 4px;border-radius:8px;background:#111;border:1px solid #1a1a1a;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#444;transition:all .3s">2 · IA Limpar</div>
+        <div id="pipeStepEl3" style="text-align:center;padding:10px 4px;border-radius:8px;background:#111;border:1px solid #1a1a1a;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#444;transition:all .3s">3 · Renomear</div>
+        <div id="pipeStepEl4" style="text-align:center;padding:10px 4px;border-radius:8px;background:#111;border:1px solid #1a1a1a;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#444;transition:all .3s">4 · Compactar</div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn" id="btnPipeDetectar" onclick="pipeDetectar()" style="background:#66bb6a;color:#000;box-shadow:0 0 20px rgba(102,187,106,.3)">🔍 1. Detectar Pares</button>
+        <button class="btn btn-purple" id="btnPipeIA" onclick="pipeIA()" disabled>🤖 2. Limpar com IA</button>
+        <button class="btn btn-primary" id="btnPipeRenomear" onclick="pipeRenomear()" disabled>✏️ 3. Renomear Pares</button>
+        <button class="btn" id="btnPipeCompactar" onclick="pipeCompactar()" disabled style="background:#ff8c00;color:#000">📦 4. Compactar 3D</button>
+        <button class="btn btn-secondary" id="btnPipeDesfazer" onclick="pipeDesfazer()" disabled>↩ Desfazer</button>
+        <button class="btn btn-danger" id="btnPipeParar" onclick="pipeStopFlag=true" style="display:none">⛔ Parar</button>
+        <button class="btn btn-secondary" onclick="limparLog('logCompactar')">Limpar log</button>
+      </div>
+
+      <div id="compactarPreview" style="display:none;margin-top:24px"></div>
+    </div>
+
+    <div class="log-card">
+      <div class="log-header">
+        <span>Log de execução</span>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="log-count" id="logCountCompactar">0 entradas</span>
+          <span class="status-badge status-idle" id="statusCompactar"><span class="dot"></span> Aguardando</span>
+        </div>
+      </div>
+      <div class="progress-wrap" id="progressWrapCompactar">
+        <div class="progress-bar-bg"><div class="progress-bar" id="progressBarCompactar" style="width:0%;background:#66bb6a;box-shadow:0 0 8px rgba(102,187,106,.5)"></div></div>
+      </div>
+      <div class="log-body" id="logCompactar"><div class="log-empty">Preencha as pastas e clique em "1. Detectar Pares".</div></div>
+    </div>
+  </div>
+
   <!-- ═══════════════════════════════════════════ MATCH & LIMPAR ═══ -->
   <div class="panel" id="panel-match">
     <div class="card">
@@ -971,6 +1046,7 @@
 </div>
 
 <script src="https://accounts.google.com/gsi/client"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
   let accessToken = null;
   let _tokenClient = null;
@@ -1202,7 +1278,7 @@
   }
 
   // ─── PERSISTÊNCIA LOCAL ────────────────────────────────────────────
-  const FIELDS_TO_SAVE = ['clientId','anthropicKey','anthropicKeyAI','anthropicKeyAgente','anthropicKeyVincular','anthropicKeyLimpeza','anthropicKeyMatch'];
+  const FIELDS_TO_SAVE = ['clientId','anthropicKey','anthropicKeyAI','anthropicKeyAgente','anthropicKeyVincular','anthropicKeyLimpeza','anthropicKeyMatch','anthropicKeyCompactar'];
   function saveFields() {
     FIELDS_TO_SAVE.forEach(id => {
       const el = document.getElementById(id);
@@ -1233,7 +1309,7 @@
 
   // ─── TABS ──────────────────────────────────────────
   function setTab(tab) {
-    const tabs = ['renomear','categorizar','ai','limpar','limpar-arquivos','preview','catalogo','agente','achatar','vincular','limpeza','match'];
+    const tabs = ['renomear','categorizar','ai','limpar','limpar-arquivos','preview','catalogo','agente','achatar','vincular','limpeza','match','compactar'];
     document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', tabs[i] === tab));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-' + tab).classList.add('active');
@@ -3224,6 +3300,377 @@ Regras: explore antes de agir. Quando terminar, responda SEM <TOOLS>. Seja conci
     document.getElementById('achatarLista').style.display = 'none';
     document.getElementById('btnAchatarScan').disabled = false;
   }
+
+  // ─── PIPELINE: DETECTAR → IA → RENOMEAR → COMPACTAR ─────────────────────────
+  const PIPE_EXTS_IMG = /\.(jpe?g|png|gif|webp|bmp|tiff?)$/i;
+  const PIPE_EXTS_3D  = /\.(stl|3mf|obj|step|stp|amf|f3d|gcode|ply)$/i;
+
+  let pipePares = [];     // {imgFiles[], files3d[], baseOriginal, nomeNovo, sel}
+  let pipeUndoStack = []; // [{id, oldName, newName}]
+  let pipeStopFlag = false;
+  let pipeFase = 0;       // 0=idle 1=detected 2=ia-done 3=renamed
+
+  function cpLog(tipo, txt, b) { log('logCompactar', tipo, txt, b); const c=document.getElementById('logCountCompactar'); c.textContent=(parseInt(c.textContent)||0)+1+' entradas'; }
+  function cpStatus(t,txt){setStatus('statusCompactar',t,txt);}
+  function cpProgress(done,total){document.getElementById('progressWrapCompactar').style.display='block';document.getElementById('progressBarCompactar').style.width=total>0?Math.round(done/total*100)+'%':'0%';}
+  function cpOpt(id){ return document.querySelector('#'+id+' input').checked; }
+
+  function pipeStepUI(n) {
+    pipeFase = n;
+    [1,2,3,4].forEach(i => {
+      const el = document.getElementById('pipeStepEl'+i);
+      if (i < n)  { el.style.background='rgba(102,187,106,.15)'; el.style.borderColor='rgba(102,187,106,.4)'; el.style.color='#66bb6a'; }
+      else if (i===n){ el.style.background='rgba(102,187,106,.08)'; el.style.borderColor='rgba(102,187,106,.6)'; el.style.color='#fff'; el.style.fontWeight='700'; }
+      else { el.style.background='#111'; el.style.borderColor='#1a1a1a'; el.style.color='#444'; el.style.fontWeight=''; }
+    });
+    document.getElementById('btnPipeIA').disabled       = n < 1;
+    document.getElementById('btnPipeRenomear').disabled = n < 2;
+    document.getElementById('btnPipeCompactar').disabled= n < 3;
+    document.getElementById('btnPipeDesfazer').disabled = pipeUndoStack.length === 0;
+  }
+
+  async function listarArquivosPipe(parentId, resultado) {
+    const todos = await listarArquivos(parentId);
+    todos.forEach(f => resultado.push({...f, parentId}));
+    if (cpOpt('opt-cp-subpastas')) {
+      const subs = await listarSubpastas(parentId);
+      for (const s of subs) {
+        if (pipeStopFlag) break;
+        await listarArquivosPipe(s.id, resultado);
+      }
+    }
+  }
+
+  async function pipeDetectar() {
+    if (!accessToken) { alert('Conecte ao Google primeiro!'); return; }
+    const folderImg = document.getElementById('compactarFolderImg').value.trim();
+    const folderArq = document.getElementById('compactarFolderArq').value.trim();
+    if (!folderImg || !folderArq) { alert('Preencha os dois IDs de pasta!'); return; }
+
+    pipePares = []; pipeStopFlag = false; pipeFase = 0;
+    document.getElementById('compactarPreview').style.display = 'none';
+    document.getElementById('btnPipeDetectar').disabled = true;
+    document.getElementById('btnPipeParar').style.display = 'inline-flex';
+    document.getElementById('logCountCompactar').textContent = '0 entradas';
+    cpStatus('running', 'Detectando...');
+    pipeStepUI(0);
+    cpLog('info', '📷 Listando imagens...');
+
+    try {
+      const imagens = [], arqs = [];
+      await listarArquivosPipe(folderImg, imagens);
+      cpLog('info', `  ${imagens.length} imagens`);
+      cpLog('info', '📦 Listando arquivos 3D...');
+      await listarArquivosPipe(folderArq, arqs);
+      cpLog('info', `  ${arqs.length} arquivos 3D`);
+
+      // Separar por tipo
+      const imgs3d    = imagens.filter(f => PIPE_EXTS_IMG.test(f.name));
+      const arqs3d    = arqs.filter(f => PIPE_EXTS_3D.test(f.name));
+      const soloImg   = imagens.filter(f => !PIPE_EXTS_IMG.test(f.name));
+      if (soloImg.length) cpLog('warn', `  ${soloImg.length} arquivos na pasta de imagens não são imagens (ignorados)`);
+
+      // Mapear arquivos 3D por nome base
+      const mapa3d = {};
+      arqs3d.forEach(f => {
+        const base = f.name.replace(/\.[^.]+$/, '').toLowerCase();
+        if (!mapa3d[base]) mapa3d[base] = [];
+        mapa3d[base].push(f);
+      });
+
+      // Criar pares: imagem → lista de 3D com mesmo nome base
+      let semPar = 0;
+      imgs3d.forEach(img => {
+        const base = img.name.replace(/\.[^.]+$/, '');
+        const key  = base.toLowerCase();
+        const f3d  = mapa3d[key] || [];
+        if (f3d.length > 0) {
+          pipePares.push({ imgFiles:[img], files3d:f3d, baseOriginal:base, nomeNovo:'', sel:true });
+        } else { semPar++; }
+      });
+
+      cpLog('info', `✅ ${pipePares.length} pares encontrados, ${semPar} imagens sem par 3D`);
+      if (!pipePares.length) { cpStatus('warn', 'Nenhum par'); document.getElementById('btnPipeDetectar').disabled=false; document.getElementById('btnPipeParar').style.display='none'; return; }
+
+      renderPipePreview(1);
+      pipeStepUI(1);
+      cpStatus('done', `${pipePares.length} pares`);
+      cpProgress(1,1);
+    } catch(e) { cpLog('error', 'Erro: '+e.message); cpStatus('error','Erro'); }
+    document.getElementById('btnPipeDetectar').disabled = false;
+    document.getElementById('btnPipeParar').style.display = 'none';
+  }
+
+  async function pipeIA() {
+    const apiKey = document.getElementById('anthropicKeyCompactar').value.trim();
+    if (!apiKey) { alert('Preencha a chave Anthropic!'); return; }
+    const selecionados = pipePares.filter(p => p.sel);
+    if (!selecionados.length) { alert('Nenhum par selecionado!'); return; }
+
+    document.getElementById('btnPipeIA').disabled = true;
+    document.getElementById('btnPipeParar').style.display = 'inline-flex';
+    pipeStopFlag = false;
+    cpStatus('running', 'IA limpando nomes...');
+    cpLog('info', `🤖 Enviando ${selecionados.length} nomes para Claude (lotes de 20)...`);
+
+    const BATCH = 20;
+    try {
+      for (let i = 0; i < selecionados.length; i += BATCH) {
+        if (pipeStopFlag) { cpLog('warn','⛔ Parado'); break; }
+        const lote = selecionados.slice(i, i+BATCH);
+        const lista = lote.map((p,j) => `${j+1}. "${p.baseOriginal}"`).join('\n');
+        const prompt = `Você é um organizador de arquivos 3D para impressão. Limpe os nomes abaixo:
+1. Remova @menções (@Print3DWorld, @stlfree, etc)
+2. Remova caracteres especiais: . _ - + [ ] # $ % & * ! ? = , ; : ~ ( )
+3. Remova hashes/códigos sem sentido e datas (20250418, etc)
+4. Traduza para português do Brasil (Holder→Suporte, Stand→Suporte, Organizer→Organizador, etc)
+5. TUDO EM MAIÚSCULAS
+6. Nomes próprios (Goku, Star Wars, NASA, etc) podem ficar como estão
+
+NOMES BASE (sem extensão):
+${lista}
+
+JSON APENAS:
+[{"original":"nome exato","novo":"NOME LIMPO"}]`;
+        const body = {model:'claude-sonnet-4-20250514',max_tokens:2000,messages:[{role:'user',content:prompt}]};
+        const resp = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)});
+        const data = await resp.json();
+        if (data.error) throw new Error(data.error.message);
+        const txt = data.content[0].text.trim().replace(/^```json\s*/i,'').replace(/\s*```$/,'');
+        const parsed = JSON.parse(txt);
+        const mapa = {};
+        parsed.forEach(p => { mapa[p.original] = p.novo; });
+        lote.forEach(p => {
+          const base = mapa[p.baseOriginal] || p.baseOriginal.toUpperCase();
+          const uid  = Math.random().toString(36).slice(2,6).toUpperCase();
+          p.nomeNovo = base + ' ' + uid;
+        });
+        cpLog('info', `  Lote ${Math.floor(i/BATCH)+1}: ${parsed.length} nomes processados`);
+        cpProgress(Math.min(i+BATCH, selecionados.length), selecionados.length);
+        await sleep(400);
+      }
+
+      renderPipePreview(2);
+      pipeStepUI(2);
+      cpStatus('done', 'Nomes limpos — confira e renomeie');
+      cpLog('info', '✅ Limpeza concluída! Confira os nomes e clique em "3. Renomear Pares"');
+    } catch(e) { cpLog('error','Erro IA: '+e.message); cpStatus('error','Erro'); }
+    document.getElementById('btnPipeIA').disabled = false;
+    document.getElementById('btnPipeParar').style.display = 'none';
+  }
+
+  function renderPipePreview(fase) {
+    const preview = document.getElementById('compactarPreview');
+    preview.style.display = 'block';
+
+    if (fase === 1) {
+      // Fase 1: mostrar pares detectados
+      const rows = pipePares.map((p,i) => {
+        const imgNames = p.imgFiles.map(f => `<span style="color:#64b5f6;font-size:10px;font-family:'DM Mono',monospace">${esc(f.name)}</span>`).join('<br>');
+        const arcNames = p.files3d.map(f => `<span style="color:#ffb74d;font-size:10px;font-family:'DM Mono',monospace">${esc(f.name)}</span>`).join('<br>');
+        return `<tr>
+          <td><input type="checkbox" ${p.sel?'checked':''} onchange="pipePares[${i}].sel=this.checked" style="accent-color:#66bb6a;width:15px;height:15px;cursor:pointer"/></td>
+          <td style="padding:8px 6px">${imgNames}</td>
+          <td style="padding:8px 6px">${arcNames}</td>
+        </tr>`;
+      }).join('');
+      preview.innerHTML = `
+        <div style="font-size:11px;color:#555;margin-bottom:10px"><span style="color:#66bb6a;font-weight:700">${pipePares.length}</span> pares detectados — selecione quais a IA deve limpar</div>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <button class="btn btn-secondary" style="padding:5px 12px;font-size:11px" onclick="pipePares.forEach(p=>p.sel=true);renderPipePreview(1)">Selecionar todos</button>
+          <button class="btn btn-secondary" style="padding:5px 12px;font-size:11px" onclick="pipePares.forEach(p=>p.sel=false);renderPipePreview(1)">Desmarcar todos</button>
+        </div>
+        <div style="overflow-x:auto;max-height:400px;overflow-y:auto;border:1px solid #111;border-radius:8px">
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr style="border-bottom:1px solid #1a1a1a">
+              <th style="padding:8px;width:30px"></th>
+              <th style="padding:8px;text-align:left;font-size:10px;color:#444;text-transform:uppercase;letter-spacing:1px">📷 Imagem</th>
+              <th style="padding:8px;text-align:left;font-size:10px;color:#444;text-transform:uppercase;letter-spacing:1px">📦 Arquivos 3D</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    } else {
+      // Fase 2+: mostrar nomes originais → novos (editáveis)
+      const selecionados = pipePares.filter(p => p.nomeNovo);
+      const rows = selecionados.map(p => {
+        const gi = pipePares.indexOf(p);
+        const imgExts = p.imgFiles.map(f => { const m=f.name.match(/\.[^.]+$/); return m?`<span class="cp-ext">${esc(m[0])}</span>`:''; }).join('');
+        const arcExts = p.files3d.map(f => { const m=f.name.match(/\.[^.]+$/); return m?`<span class="cp-ext" style="color:#ffb74d">${esc(m[0])}</span>`:''; }).join('');
+        return `<tr>
+          <td><input type="checkbox" ${p.sel?'checked':''} onchange="pipePares[${gi}].sel=this.checked" style="accent-color:#66bb6a;width:15px;height:15px;cursor:pointer"/></td>
+          <td style="padding:8px 6px;font-family:'DM Mono',monospace;font-size:11px;color:#555;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.baseOriginal)}</td>
+          <td style="padding:8px 4px;color:#333;font-size:15px">→</td>
+          <td style="padding:8px 6px;min-width:220px"><input class="cp-zip-input" type="text" value="${esc(p.nomeNovo)}" onchange="pipePares[${gi}].nomeNovo=this.value"/></td>
+          <td style="padding:8px 6px;white-space:nowrap">${imgExts} ${arcExts}</td>
+        </tr>`;
+      }).join('');
+      preview.innerHTML = `
+        <div style="font-size:11px;color:#555;margin-bottom:10px"><span style="color:#66bb6a;font-weight:700">${selecionados.length}</span> pares com novos nomes — edite se necessário, depois clique em "3. Renomear Pares"</div>
+        <div style="overflow-x:auto;max-height:450px;overflow-y:auto;border:1px solid #111;border-radius:8px">
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr style="border-bottom:1px solid #1a1a1a">
+              <th style="padding:8px;width:30px"></th>
+              <th style="padding:8px;text-align:left;font-size:10px;color:#444;text-transform:uppercase;letter-spacing:1px">Original</th>
+              <th></th>
+              <th style="padding:8px;text-align:left;font-size:10px;color:#444;text-transform:uppercase;letter-spacing:1px">Novo nome (editável)</th>
+              <th style="padding:8px;text-align:left;font-size:10px;color:#444;text-transform:uppercase;letter-spacing:1px">Exts</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    }
+  }
+
+  async function pipeRenomear() {
+    const selecionados = pipePares.filter(p => p.sel && p.nomeNovo && p.nomeNovo.trim());
+    if (!selecionados.length) { alert('Nenhum par selecionado com nome limpo!'); return; }
+    if (!confirm(`Renomear ${selecionados.length} pares (imagens + arquivos 3D)?`)) return;
+
+    document.getElementById('btnPipeRenomear').disabled = true;
+    document.getElementById('btnPipeParar').style.display = 'inline-flex';
+    pipeStopFlag = false;
+    cpStatus('running', 'Renomeando...');
+    let ok = 0, err = 0;
+    const batch = [];
+
+    for (let i = 0; i < selecionados.length; i++) {
+      if (pipeStopFlag) { cpLog('warn','⛔ Parado'); break; }
+      const p = selecionados[i];
+      cpProgress(i, selecionados.length);
+      const nomeBase = p.nomeNovo.trim();
+
+      // Renomear imagens
+      for (const img of p.imgFiles) {
+        const ext = img.name.match(/\.[^.]+$/)?.[0] || '';
+        const novoNome = nomeBase + ext;
+        try {
+          await renomearItem(img.id, novoNome);
+          batch.push({id:img.id, oldName:img.name, newName:novoNome});
+          cpLog('rename', img.name, novoNome);
+          img.name = novoNome; ok++;
+        } catch(e) { cpLog('error', `❌ ${img.name}: ${e.message}`); err++; }
+        await sleep(80);
+      }
+      // Renomear arquivos 3D
+      for (const f3d of p.files3d) {
+        if (pipeStopFlag) break;
+        const ext = f3d.name.match(/\.[^.]+$/)?.[0] || '';
+        const novoNome = nomeBase + ext;
+        try {
+          await renomearItem(f3d.id, novoNome);
+          batch.push({id:f3d.id, oldName:f3d.name, newName:novoNome});
+          cpLog('rename', f3d.name, novoNome);
+          f3d.name = novoNome; ok++;
+        } catch(e) { cpLog('error', `❌ ${f3d.name}: ${e.message}`); err++; }
+        await sleep(80);
+      }
+      p.baseOriginal = nomeBase;
+    }
+
+    if (batch.length) { pipeUndoStack.push(batch); }
+    cpProgress(selecionados.length, selecionados.length);
+    cpStatus(err > 0 ? 'warn' : 'done', `${ok} renomeados${err?', '+err+' erros':''}`);
+    cpLog('info', `✅ ${ok} arquivos renomeados, ${err} erros. Agora clique em "4. Compactar 3D"`);
+    pipeStepUI(3);
+    document.getElementById('btnPipeRenomear').disabled = false;
+    document.getElementById('btnPipeParar').style.display = 'none';
+  }
+
+  async function pipeCompactar() {
+    if (typeof JSZip === 'undefined') { alert('JSZip não carregou. Verifique a conexão.'); return; }
+    // Agrupar arquivos 3D selecionados por nome base IDÊNTICO
+    const selecionados = pipePares.filter(p => p.sel && p.files3d.length > 0);
+    if (!selecionados.length) { alert('Nenhum par selecionado!'); return; }
+
+    // Construir grupos: base → [arquivos 3D]
+    const mapa = {};
+    selecionados.forEach(p => {
+      p.files3d.forEach(f => {
+        const base = f.name.replace(/\.[^.]+$/, '');
+        if (!mapa[base]) mapa[base] = {files:[], parentId:f.parentId};
+        mapa[base].files.push(f);
+      });
+    });
+    const grupos = Object.entries(mapa).filter(([,g]) => g.files.length >= 1);
+    // Só compacta quando há 2+ arquivos 3D com nome idêntico (ex: .stl + .3mf)
+    const gruposMulti = grupos.filter(([,g]) => g.files.length >= 2);
+    const gruposSolo  = grupos.filter(([,g]) => g.files.length === 1);
+
+    if (!gruposMulti.length) {
+      cpLog('warn', `Nenhum grupo com 2+ arquivos 3D com nome idêntico. ${gruposSolo.length} grupos com só 1 arquivo (não serão zipados).`);
+      cpStatus('warn', 'Nenhum grupo para zipar');
+      return;
+    }
+
+    const deletar = cpOpt('opt-cp-deletar');
+    if (!confirm(`Criar ${gruposMulti.length} ZIPs com os arquivos 3D de mesmo nome idêntico?${deletar?'\n\nOs originais serão APAGADOS após zipar!':''}`)) return;
+
+    document.getElementById('btnPipeCompactar').disabled = true;
+    document.getElementById('btnPipeParar').style.display = 'inline-flex';
+    pipeStopFlag = false;
+    cpStatus('running', 'Compactando...');
+    cpLog('info', `📦 ${gruposMulti.length} grupos para zipar, ${gruposSolo.length} com só 1 arquivo 3D (ignorados)`);
+
+    let ok = 0, err = 0;
+
+    for (let i = 0; i < gruposMulti.length; i++) {
+      if (pipeStopFlag) { cpLog('warn','⛔ Parado'); break; }
+      const [base, g] = gruposMulti[i];
+      const zipName = base + '.zip';
+      cpProgress(i, gruposMulti.length);
+      cpLog('info', `📦 [${i+1}/${gruposMulti.length}] ${zipName}...`);
+
+      try {
+        const zip = new JSZip();
+        for (const f of g.files) {
+          if (pipeStopFlag) break;
+          cpLog('info', `  ↓ ${f.name}`);
+          const resp = await driveAuthFetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`);
+          zip.file(f.name, await resp.arrayBuffer());
+        }
+        if (pipeStopFlag) break;
+        const zipBlob = await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}});
+        cpLog('info', `  ↑ Enviando ${zipName} (${(zipBlob.size/1024/1024).toFixed(1)} MB)...`);
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify({name:zipName,parents:[g.parentId]})],{type:'application/json'}));
+        form.append('file', zipBlob, zipName);
+        const upResp = await driveAuthFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',body:form});
+        if (!upResp.ok) throw new Error(`Upload falhou: ${upResp.status}`);
+        if (deletar) {
+          for (const f of g.files) { await driveAuthFetch(`https://www.googleapis.com/drive/v3/files/${f.id}`,{method:'DELETE'}); cpLog('delete', f.name); }
+        }
+        cpLog('info', `  ✅ ${zipName}`);
+        ok++;
+      } catch(e) { cpLog('error', `❌ ${zipName}: ${e.message}`); err++; }
+      await sleep(200);
+    }
+
+    cpProgress(gruposMulti.length, gruposMulti.length);
+    pipeStepUI(4);
+    cpStatus(err>0?'warn':'done', `${ok} ZIPs criados${err?', '+err+' erros':''}`);
+    cpLog('info', `🏁 Pipeline concluído! ${ok} ZIPs criados. Imagens estão com os mesmos nomes limpos nas pastas originais.`);
+    document.getElementById('btnPipeCompactar').disabled = false;
+    document.getElementById('btnPipeParar').style.display = 'none';
+  }
+
+  async function pipeDesfazer() {
+    if (!pipeUndoStack.length) return;
+    const batch = pipeUndoStack.pop();
+    cpStatus('running', `Desfazendo ${batch.length} renomeações...`);
+    document.getElementById('btnPipeDesfazer').disabled = true;
+    let ok = 0;
+    for (const op of batch) {
+      try { await renomearItem(op.id, op.oldName); cpLog('warn', `↩ ${op.newName} → ${op.oldName}`); ok++; }
+      catch(e) { cpLog('error', `Erro: ${e.message}`); }
+      await sleep(80);
+    }
+    const n = pipeUndoStack.length;
+    document.getElementById('btnPipeDesfazer').disabled = n === 0;
+    document.getElementById('btnPipeDesfazer').textContent = n > 0 ? `↩ Desfazer (${n})` : '↩ Desfazer';
+    cpStatus('done', `${ok} revertidos`);
+  }
+
 
   // ─── LIMPAR NOMES ────────────────────────────────────────────────────────────
   let limpezaItens = [];
