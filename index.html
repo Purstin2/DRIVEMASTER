@@ -166,6 +166,10 @@
     .cp-ext{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:100px;letter-spacing:.5px;background:#111;color:#777;margin:1px}
     .cp-zip-input{width:100%;background:#000;border:1px solid #1a1a1a;border-radius:6px;padding:5px 10px;color:#fff;font-family:'DM Mono',monospace;font-size:11px;outline:none;transition:border-color .15s}
     .cp-zip-input:focus{border-color:#66bb6a}
+    .tab.figu-tab.active{background:#ec4899;color:#fff}
+    .figu-thumb{width:48px;height:48px;border-radius:6px;object-fit:cover;background:#111;border:1px solid #1a1a1a}
+    .figu-input{width:100%;background:#000;border:1px solid #1a1a1a;border-radius:6px;padding:5px 10px;color:#fff;font-family:'DM Mono',monospace;font-size:11px;outline:none;transition:border-color .15s}
+    .figu-input:focus{border-color:#ec4899}
 
     /* ─── AGENTE IA ─── */
     .agente-chat{background:#000;border:1px solid var(--border);border-radius:12px;padding:20px;min-height:220px;max-height:450px;overflow-y:auto;margin-bottom:14px;scroll-behavior:smooth}
@@ -223,6 +227,7 @@
     <div class="tab limpeza-tab" onclick="setTab('limpeza')">🧹 Limpar Nomes</div>
     <div class="tab match-tab" onclick="setTab('match')">🔁 Match & Limpar</div>
     <div class="tab compactar-tab" onclick="setTab('compactar')">📦 Compactar Pares</div>
+    <div class="tab figu-tab" onclick="setTab('figu')">🏷️ Nomear Figurinhas</div>
   </div>
 
   <!-- PANEL: RENOMEAR -->
@@ -712,6 +717,53 @@
         <div class="progress-bar-bg"><div class="progress-bar" id="progressBarAchatar" style="width:0%"></div></div>
       </div>
       <div class="log-body" id="logAchatar"><div class="log-empty">Cole o ID da pasta raiz e clique em "Escanear".</div></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ NOMEAR FIGURINHAS ═══ -->
+  <div class="panel" id="panel-figu">
+    <div class="card">
+      <div class="info-box" style="background:rgba(236,72,153,.05);border-color:rgba(236,72,153,.25)">
+        <strong style="color:#ec4899">🏷️ Nomear Figurinhas com IA</strong><br/>
+        A IA <strong>lê o texto escrito</strong> em cada figurinha (ou descreve a imagem quando não tem texto) e usa como nome do arquivo — assim seus clientes encontram digitando a palavra na busca. Renomeia <code style="color:#aaa">1.png</code> → <code style="color:#aaa">ORAÇÃO.png</code>. Você confere tudo antes de aplicar.
+      </div>
+
+      <label>Chave API Anthropic</label>
+      <input type="password" id="anthropicKeyFigu" placeholder="sk-ant-..." style="margin-bottom:16px"/>
+
+      <label>ID ou Link da Pasta das Figurinhas</label>
+      <input type="text" id="figuFolderId" placeholder="ID do Google Drive (pasta com as figurinhas)"/>
+
+      <label>Opções</label>
+      <div class="options">
+        <label class="opt active" id="opt-figu-maiusc"><input type="checkbox" checked onchange="toggleOpt(this,'opt-figu-maiusc')"/> Tudo maiúsculo</label>
+        <label class="opt active" id="opt-figu-uid"><input type="checkbox" checked onchange="toggleOpt(this,'opt-figu-uid')"/> Código único anti-duplicado</label>
+        <label class="opt" id="opt-figu-subpastas"><input type="checkbox" onchange="toggleOpt(this,'opt-figu-subpastas')"/> Entrar em subpastas</label>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn" id="btnFiguAnalisar" onclick="figuAnalisar()" style="background:#ec4899;color:#fff;box-shadow:0 0 20px rgba(236,72,153,.3)">🔍 Analisar Figurinhas</button>
+        <button class="btn btn-primary" id="btnFiguAplicar" onclick="figuAplicar()" disabled>✅ Renomear selecionadas</button>
+        <button class="btn btn-secondary" id="btnFiguDesfazer" onclick="figuDesfazer()" disabled>↩ Desfazer</button>
+        <button class="btn btn-danger" id="btnFiguParar" onclick="figuStopFlag=true" style="display:none">⛔ Parar</button>
+        <button class="btn btn-secondary" onclick="limparLog('logFigu')">Limpar log</button>
+      </div>
+
+      <div id="figuPreview" style="display:none;margin-top:24px"></div>
+    </div>
+
+    <div class="log-card">
+      <div class="log-header">
+        <span>Log de execução</span>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="log-count" id="logCountFigu">0 entradas</span>
+          <span class="status-badge status-idle" id="statusFigu"><span class="dot"></span> Aguardando</span>
+        </div>
+      </div>
+      <div class="progress-wrap" id="progressWrapFigu">
+        <div class="progress-bar-bg"><div class="progress-bar" id="progressBarFigu" style="width:0%;background:#ec4899;box-shadow:0 0 8px rgba(236,72,153,.5)"></div></div>
+      </div>
+      <div class="log-body" id="logFigu"><div class="log-empty">Cole o ID da pasta e clique em "Analisar Figurinhas".</div></div>
     </div>
   </div>
 
@@ -1278,7 +1330,7 @@
   }
 
   // ─── PERSISTÊNCIA LOCAL ────────────────────────────────────────────
-  const FIELDS_TO_SAVE = ['clientId','anthropicKey','anthropicKeyAI','anthropicKeyAgente','anthropicKeyVincular','anthropicKeyLimpeza','anthropicKeyMatch','anthropicKeyCompactar'];
+  const FIELDS_TO_SAVE = ['clientId','anthropicKey','anthropicKeyAI','anthropicKeyAgente','anthropicKeyVincular','anthropicKeyLimpeza','anthropicKeyMatch','anthropicKeyCompactar','anthropicKeyFigu'];
   function saveFields() {
     FIELDS_TO_SAVE.forEach(id => {
       const el = document.getElementById(id);
@@ -1309,7 +1361,7 @@
 
   // ─── TABS ──────────────────────────────────────────
   function setTab(tab) {
-    const tabs = ['renomear','categorizar','ai','limpar','limpar-arquivos','preview','catalogo','agente','achatar','vincular','limpeza','match','compactar'];
+    const tabs = ['renomear','categorizar','ai','limpar','limpar-arquivos','preview','catalogo','agente','achatar','vincular','limpeza','match','compactar','figu'];
     document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', tabs[i] === tab));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-' + tab).classList.add('active');
@@ -4262,6 +4314,253 @@ Responda APENAS com JSON válido (sem markdown):
   function matchUpdateDesfazer() {
     const btn = document.getElementById('btnMatchDesfazer');
     const n = matchUndoStack.length;
+    btn.disabled = n === 0;
+    btn.textContent = n > 0 ? `↩ Desfazer (${n})` : '↩ Desfazer';
+  }
+
+  // ─── NOMEAR FIGURINHAS ───────────────────────────────────────────────────────
+  let figuItens = [];      // {file, dataUrl, nomeNovo, textoLido, temTexto, selecionado}
+  let figuUndoStack = [];
+  let figuStopFlag = false;
+
+  function figuLog(tipo, txt, b) { log('logFigu', tipo, txt, b); const c=document.getElementById('logCountFigu'); c.textContent=(parseInt(c.textContent)||0)+1+' entradas'; }
+  function figuStatus(t,txt){setStatus('statusFigu',t,txt);}
+  function figuProgress(done,total){document.getElementById('progressWrapFigu').style.display='block';document.getElementById('progressBarFigu').style.width=total>0?Math.round(done/total*100)+'%':'0%';}
+  function figuOpt(id){ return document.querySelector('#'+id+' input').checked; }
+
+  function figuSanitizar(nome) {
+    return nome.replace(/[\/\\:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  async function listarImagensRecursivoFigu(parentId, resultado) {
+    const imgs = await listarArquivosImagem(parentId);
+    imgs.forEach(f => resultado.push({...f, parentId}));
+    if (figuOpt('opt-figu-subpastas')) {
+      const subs = await listarSubpastas(parentId);
+      for (const s of subs) {
+        if (figuStopFlag) break;
+        await listarImagensRecursivoFigu(s.id, resultado);
+      }
+    }
+  }
+
+  async function callClaudeVisionFigu(apiKey, b64, mime) {
+    const prompt = `Você está analisando uma FIGURINHA (sticker) de WhatsApp/Telegram. Seu trabalho é gerar um NOME DE ARQUIVO que sirva como palavra-chave de busca — o cliente vai digitar essa palavra para encontrar a figurinha.
+
+REGRAS:
+1. Se houver TEXTO escrito na figurinha, use a palavra ou frase de DESTAQUE como nome (ex: "ORAÇÃO", "BOM DIA", "LAVANDA").
+2. Se NÃO houver texto, descreva o tema principal em 1 a 3 palavras (ex: "CORAÇÃO VERMELHO", "GATINHO FOFO").
+3. Seja curto e direto — máximo 4 palavras. Sem emoji, sem aspas, sem pontuação especial.
+4. Português do Brasil.
+
+Responda APENAS com JSON válido, sem markdown:
+{"nome": "PALAVRA CHAVE", "texto_lido": "o texto que você leu na figurinha, ou vazio se não tiver", "tem_texto": true}`;
+    const body = {
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 200,
+      messages: [{ role:'user', content:[
+        { type:'image', source:{ type:'base64', media_type: mime || 'image/png', data: b64 } },
+        { type:'text', text: prompt }
+      ]}]
+    };
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body: JSON.stringify(body)
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error.message);
+    const text = data.content[0].text.trim().replace(/^```json\s*/i,'').replace(/\s*```$/,'');
+    return JSON.parse(text);
+  }
+
+  async function figuAnalisar() {
+    if (!accessToken) { alert('Conecte ao Google primeiro na aba "Renomear"!'); return; }
+    const apiKey = document.getElementById('anthropicKeyFigu').value.trim();
+    const rawId = document.getElementById('figuFolderId').value.trim();
+    if (!apiKey) { alert('Preencha a chave da API Anthropic!'); return; }
+    if (!rawId) { alert('Cole o ID ou link da pasta!'); return; }
+    const folderId = extrairIdDriveInput(rawId);
+
+    figuItens = []; figuStopFlag = false;
+    document.getElementById('figuPreview').style.display = 'none';
+    document.getElementById('btnFiguAnalisar').disabled = true;
+    document.getElementById('btnFiguAplicar').disabled = true;
+    document.getElementById('btnFiguParar').style.display = 'inline-flex';
+    document.getElementById('logCountFigu').textContent = '0 entradas';
+    figuStatus('running', 'Analisando...');
+    figuLog('info', '📂 Listando figurinhas...');
+
+    try {
+      const imgs = [];
+      await listarImagensRecursivoFigu(folderId, imgs);
+      figuLog('info', `✅ ${imgs.length} figurinhas encontradas`);
+      if (!imgs.length) { figuLog('warn','Nenhuma imagem na pasta!'); figuStatus('warn','Vazio'); document.getElementById('btnFiguAnalisar').disabled=false; document.getElementById('btnFiguParar').style.display='none'; return; }
+
+      const maiusc = figuOpt('opt-figu-maiusc');
+      for (let i = 0; i < imgs.length; i++) {
+        if (figuStopFlag) { figuLog('warn','⛔ Parado'); break; }
+        const f = imgs[i];
+        figuLog('info', `🔍 [${i+1}/${imgs.length}] ${f.name}`);
+        figuProgress(i, imgs.length);
+        try {
+          const resp = await driveAuthFetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`);
+          const blob = await resp.blob();
+          const b64 = await blobToBase64(blob);
+          const r = await callClaudeVisionFigu(apiKey, b64, blob.type || 'image/png');
+          let nome = figuSanitizar(r.nome || '');
+          if (maiusc) nome = nome.toUpperCase();
+          figuItens.push({
+            file: f,
+            dataUrl: imgs.length <= 400 ? `data:${blob.type||'image/png'};base64,${b64}` : null,
+            nomeNovo: nome,
+            textoLido: r.texto_lido || '',
+            temTexto: !!r.tem_texto,
+            selecionado: !!nome
+          });
+          figuLog(r.tem_texto ? 'info' : 'warn', `  → ${nome || '(vazio)'}${r.tem_texto ? '' : ' (sem texto, descrição)'}`);
+        } catch(e) {
+          figuLog('error', `  Erro: ${e.message}`);
+          figuItens.push({ file:f, dataUrl:null, nomeNovo:'', textoLido:'Erro: '+e.message, temTexto:false, selecionado:false });
+        }
+        await sleep(250);
+      }
+
+      figuProgress(imgs.length, imgs.length);
+      renderFiguPreview();
+      const bons = figuItens.filter(it => it.nomeNovo).length;
+      figuStatus('done', `${bons} nomeadas`);
+      figuLog('info', `✅ Análise concluída! ${bons} figurinhas com nome sugerido.`);
+      document.getElementById('btnFiguAplicar').disabled = bons === 0;
+    } catch(e) {
+      figuLog('error', 'Erro geral: '+e.message);
+      figuStatus('error', 'Erro');
+    }
+    document.getElementById('btnFiguAnalisar').disabled = false;
+    document.getElementById('btnFiguParar').style.display = 'none';
+  }
+
+  function renderFiguPreview() {
+    const preview = document.getElementById('figuPreview');
+    preview.style.display = 'block';
+    const sel = figuItens.filter(it => it.selecionado && it.nomeNovo).length;
+
+    const rows = figuItens.map((it, i) => {
+      const thumb = it.dataUrl
+        ? `<img class="figu-thumb" src="${it.dataUrl}" loading="lazy"/>`
+        : `<div class="figu-thumb" style="display:flex;align-items:center;justify-content:center;font-size:18px">🏷️</div>`;
+      const podeRenomear = !!it.nomeNovo;
+      const lido = it.textoLido ? `<span style="font-size:10px;color:#555">📖 ${esc(it.textoLido)}</span>` : `<span style="font-size:10px;color:#444">— sem texto —</span>`;
+      return `<tr style="opacity:${podeRenomear?1:.4}">
+        <td style="width:30px"><input type="checkbox" ${it.selecionado&&podeRenomear?'checked':''} ${podeRenomear?'':'disabled'} onchange="figuItens[${i}].selecionado=this.checked" style="accent-color:#ec4899;width:15px;height:15px;cursor:pointer"/></td>
+        <td style="width:56px">${thumb}</td>
+        <td style="font-family:'DM Mono',monospace;font-size:11px;color:#555;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(it.file.name)}">${esc(it.file.name)}</td>
+        <td style="color:#333;font-size:15px;text-align:center;padding:0 4px">→</td>
+        <td style="min-width:180px"><input class="figu-input" type="text" value="${esc(it.nomeNovo)}" onchange="figuItens[${i}].nomeNovo=this.value"/><br>${lido}</td>
+      </tr>`;
+    }).join('');
+
+    preview.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div style="font-size:12px;color:#555"><span style="color:#ec4899;font-weight:700">${sel}</span> de ${figuItens.length} selecionadas para renomear</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" style="padding:5px 12px;font-size:11px" onclick="figuSelecionarTodos(true)">Selecionar todas</button>
+          <button class="btn btn-secondary" style="padding:5px 12px;font-size:11px" onclick="figuSelecionarTodos(false)">Desmarcar todas</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto;max-height:520px;overflow-y:auto;border:1px solid #111;border-radius:8px">
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="border-bottom:1px solid #1a1a1a">
+            <th style="padding:8px;width:30px">✓</th>
+            <th style="padding:8px;width:56px"></th>
+            <th style="padding:8px;text-align:left;font-size:10px;color:#444;text-transform:uppercase;letter-spacing:1px">Atual</th>
+            <th></th>
+            <th style="padding:8px;text-align:left;font-size:10px;color:#444;text-transform:uppercase;letter-spacing:1px">Nome novo (editável)</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  function figuSelecionarTodos(val) {
+    figuItens.forEach(it => { if (it.nomeNovo) it.selecionado = val; });
+    renderFiguPreview();
+  }
+
+  async function figuAplicar() {
+    const selecionados = figuItens.filter(it => it.selecionado && it.nomeNovo && it.nomeNovo.trim());
+    if (!selecionados.length) { alert('Nenhuma figurinha selecionada!'); return; }
+    if (!confirm(`Renomear ${selecionados.length} figurinhas no Google Drive?\n\nPode ser desfeito pelo botão "Desfazer".`)) return;
+
+    document.getElementById('btnFiguAplicar').disabled = true;
+    document.getElementById('btnFiguParar').style.display = 'inline-flex';
+    figuStopFlag = false;
+    figuStatus('running', 'Renomeando...');
+
+    const usarUid = figuOpt('opt-figu-uid');
+    const usados = {}; // controla duplicados dentro do lote quando sem uid
+    const batch = [];
+    let ok = 0, err = 0;
+
+    for (let i = 0; i < selecionados.length; i++) {
+      if (figuStopFlag) { figuLog('warn','⛔ Parado'); break; }
+      const it = selecionados[i];
+      figuProgress(i, selecionados.length);
+      const ext = extOf(it.file.name) || '.png';
+      let base = figuSanitizar(it.nomeNovo.trim());
+
+      if (usarUid) {
+        base += ' ' + Math.random().toString(36).slice(2,6).toUpperCase();
+      } else {
+        const key = base.toLowerCase();
+        usados[key] = (usados[key] || 0) + 1;
+        if (usados[key] > 1) base += ' ' + usados[key];
+      }
+      const novoNome = base + ext;
+
+      try {
+        await renomearItem(it.file.id, novoNome);
+        batch.push({ id: it.file.id, oldName: it.file.name, newName: novoNome });
+        figuLog('rename', it.file.name, novoNome);
+        it.file.name = novoNome;
+        ok++;
+      } catch(e) { figuLog('error', `❌ ${it.file.name}: ${e.message}`); err++; }
+      await sleep(120);
+    }
+
+    if (batch.length) { figuUndoStack.push(batch); figuUpdateDesfazer(); }
+    figuProgress(selecionados.length, selecionados.length);
+    figuStatus(err>0?'warn':'done', `${ok} renomeadas${err?', '+err+' erros':''}`);
+    figuLog('info', `✅ ${ok} figurinhas renomeadas, ${err} erros.`);
+    document.getElementById('btnFiguAplicar').disabled = false;
+    document.getElementById('btnFiguParar').style.display = 'none';
+    renderFiguPreview();
+  }
+
+  async function figuDesfazer() {
+    if (!figuUndoStack.length) return;
+    const batch = figuUndoStack.pop();
+    figuStatus('running', `Desfazendo ${batch.length}...`);
+    document.getElementById('btnFiguDesfazer').disabled = true;
+    let ok = 0;
+    for (const op of batch) {
+      try {
+        await renomearItem(op.id, op.oldName);
+        const it = figuItens.find(x => x.file.id === op.id);
+        if (it) it.file.name = op.oldName;
+        figuLog('warn', `↩ ${op.newName} → ${op.oldName}`);
+        ok++;
+      } catch(e) { figuLog('error', `Erro ao desfazer: ${e.message}`); }
+      await sleep(100);
+    }
+    figuUpdateDesfazer();
+    figuStatus('done', `${ok} revertidas`);
+    if (figuItens.length) renderFiguPreview();
+  }
+
+  function figuUpdateDesfazer() {
+    const btn = document.getElementById('btnFiguDesfazer');
+    const n = figuUndoStack.length;
     btn.disabled = n === 0;
     btn.textContent = n > 0 ? `↩ Desfazer (${n})` : '↩ Desfazer';
   }
