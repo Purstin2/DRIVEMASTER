@@ -4345,14 +4345,49 @@ Responda APENAS com JSON válido (sem markdown):
     return nome.replace(/[\/\\:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
   }
 
-  async function listarImagensRecursivoFigu(parentId, resultado) {
-    const imgs = await listarArquivosImagem(parentId);
-    imgs.forEach(f => resultado.push({...f, parentId}));
-    if (figuOpt('opt-figu-subpastas')) {
-      const subs = await listarSubpastas(parentId);
-      for (const s of subs) {
+  // Lista TODOS os filhos (1 query) com mimeType + atalhos, p/ classificar imagens/pastas/shortcuts
+  async function figuListarTodos(parentId) {
+    let todos = [], token = null;
+    do {
+      let url = `https://www.googleapis.com/drive/v3/files?q='${parentId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType,shortcutDetails),nextPageToken&pageSize=1000&orderBy=name`;
+      if (token) url += '&pageToken=' + token;
+      const data = await driveGet(url);
+      todos = todos.concat(data.files || []);
+      token = data.nextPageToken || null;
+    } while (token);
+    return todos;
+  }
+
+  function figuResolve(f) {
+    // resolve atalho → {mime, id} reais
+    if (f.mimeType === 'application/vnd.google-apps.shortcut' && f.shortcutDetails) {
+      return { mime: f.shortcutDetails.targetMimeType || '', id: f.shortcutDetails.targetId || f.id };
+    }
+    return { mime: f.mimeType, id: f.id };
+  }
+
+  async function listarImagensRecursivoFigu(parentId, resultado, nivel) {
+    nivel = nivel || 0;
+    const recursivo = figuOpt('opt-figu-subpastas');
+    const FOLDER = 'application/vnd.google-apps.folder';
+    let filhos;
+    try { filhos = await figuListarTodos(parentId); }
+    catch(e) { figuLog('error', `  Erro ao listar pasta: ${e.message}`); return; }
+
+    const subpastas = [];
+    let nImg = 0;
+    for (const f of filhos) {
+      if (figuStopFlag) break;
+      const { mime, id } = figuResolve(f);
+      if (mime.startsWith('image/')) { resultado.push({ id, name: f.name, mimeType: mime, parentId }); nImg++; }
+      else if (mime === FOLDER) { subpastas.push({ id, name: f.name }); }
+    }
+    if (nImg || subpastas.length) figuLog('info', `  📁 ${'·'.repeat(nivel)} ${nImg} imagens, ${subpastas.length} subpastas`);
+
+    if (recursivo) {
+      for (const sp of subpastas) {
         if (figuStopFlag) break;
-        await listarImagensRecursivoFigu(s.id, resultado);
+        await listarImagensRecursivoFigu(sp.id, resultado, nivel + 1);
       }
     }
   }
