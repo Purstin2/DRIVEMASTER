@@ -739,6 +739,11 @@
         <label class="opt active" id="opt-figu-maiusc"><input type="checkbox" checked onchange="toggleOpt(this,'opt-figu-maiusc')"/> Tudo maiúsculo</label>
         <label class="opt active" id="opt-figu-uid"><input type="checkbox" checked onchange="toggleOpt(this,'opt-figu-uid')"/> Código único anti-duplicado</label>
         <label class="opt" id="opt-figu-subpastas"><input type="checkbox" onchange="toggleOpt(this,'opt-figu-subpastas')"/> Entrar em subpastas</label>
+        <label class="opt" id="opt-figu-direto"><input type="checkbox" onchange="toggleOpt(this,'opt-figu-direto')"/> ⚡ Modo direto (renomeia na hora — p/ lotes grandes)</label>
+        <label class="opt active" id="opt-figu-pular"><input type="checkbox" checked onchange="toggleOpt(this,'opt-figu-pular')"/> ↻ Pular já renomeadas (retomar)</label>
+      </div>
+      <div class="info-box" style="background:rgba(255,167,0,.05);border-color:rgba(255,167,0,.25);font-size:12px;margin-top:-4px">
+        <strong style="color:#ffa700">Lotes grandes (milhares):</strong> ligue o <strong>Modo direto</strong> — ele renomeia cada figurinha na hora, salvando o progresso no próprio Drive. Se a aba fechar, der erro de limite ou acabar o crédito, é só clicar de novo: com <strong>Pular já renomeadas</strong> ligado, ele continua de onde parou. Mantenha a aba aberta enquanto roda.
       </div>
 
       <div class="btn-row">
@@ -4336,7 +4341,14 @@ Responda APENAS com JSON válido (sem markdown):
   let figuUndoStack = [];
   let figuStopFlag = false;
 
-  function figuLog(tipo, txt, b) { log('logFigu', tipo, txt, b); const c=document.getElementById('logCountFigu'); c.textContent=(parseInt(c.textContent)||0)+1+' entradas'; }
+  let _figuLogN = 0;
+  function figuLog(tipo, txt, b) {
+    log('logFigu', tipo, txt, b);
+    const body = document.getElementById('logFigu');
+    while (body.childElementCount > 400) body.removeChild(body.firstChild); // evita travar com milhares de linhas
+    _figuLogN++;
+    document.getElementById('logCountFigu').textContent = _figuLogN + ' entradas';
+  }
   function figuStatus(t,txt){setStatus('statusFigu',t,txt);}
   function figuProgress(done,total){document.getElementById('progressWrapFigu').style.display='block';document.getElementById('progressBarFigu').style.width=total>0?Math.round(done/total*100)+'%':'0%';}
   function figuOpt(id){ return document.querySelector('#'+id+' input').checked; }
@@ -4411,15 +4423,48 @@ Responda APENAS com JSON válido, sem markdown:
         { type:'text', text: prompt }
       ]}]
     };
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body: JSON.stringify(body)
-    });
+    return await _figuFetchClaude(apiKey, body, 0);
+  }
+
+  // Chamada à API com retry/backoff p/ rate limit (429), sobrecarga (529) e erros 5xx
+  async function _figuFetchClaude(apiKey, body, tentativa) {
+    let resp;
+    try {
+      resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body: JSON.stringify(body)
+      });
+    } catch(netErr) {
+      if (tentativa >= 5) throw new Error('Falha de rede: ' + netErr.message);
+      await sleep(3000 * (tentativa + 1));
+      return _figuFetchClaude(apiKey, body, tentativa + 1);
+    }
+
+    if (resp.status === 429 || resp.status === 529 || resp.status >= 500) {
+      if (tentativa >= 6) { const e = new Error('Limite de requisições persistente (HTTP ' + resp.status + ')'); e.rateLimit = true; throw e; }
+      const ra = parseInt(resp.headers.get('retry-after')) || Math.min(60, 5 * Math.pow(2, tentativa));
+      figuLog('warn', `  ⏳ Limite/sobrecarga (HTTP ${resp.status}) — aguardando ${ra}s e tentando de novo (${tentativa+1}/6)...`);
+      await sleep(ra * 1000);
+      return _figuFetchClaude(apiKey, body, tentativa + 1);
+    }
+
     const data = await resp.json();
-    if (data.error) throw new Error(data.error.message);
+    if (data.error) {
+      const msg = data.error.message || JSON.stringify(data.error);
+      const e = new Error(msg);
+      if (data.error.type === 'rate_limit_error') e.rateLimit = true;
+      if (/credit|quota|billing|insufficient|balance|payment/i.test(msg)) e.fatal = true;
+      throw e;
+    }
     const text = data.content[0].text.trim().replace(/^```json\s*/i,'').replace(/\s*```$/,'');
     return JSON.parse(text);
+  }
+
+  function figuPareceOriginal(name) {
+    const base = name.replace(/\.[^.]+$/, '').trim();
+    return /^\d+$/.test(base)
+        || /^(img|image|imagem|sticker|figurinha|photo|foto|pic|untitled|sem[\s_-]?titulo)[\s_-]*\d*$/i.test(base);
   }
 
   async function figuAnalisar() {
@@ -4430,27 +4475,45 @@ Responda APENAS com JSON válido, sem markdown:
     if (!rawId) { alert('Cole o ID ou link da pasta!'); return; }
     const folderId = extrairIdDriveInput(rawId);
 
-    figuItens = []; figuStopFlag = false;
+    const maiusc  = figuOpt('opt-figu-maiusc');
+    const usarUid = figuOpt('opt-figu-uid');
+    const direto  = figuOpt('opt-figu-direto');
+    const pular   = figuOpt('opt-figu-pular');
+
+    figuItens = []; figuStopFlag = false; _figuLogN = 0;
     document.getElementById('figuPreview').style.display = 'none';
     document.getElementById('btnFiguAnalisar').disabled = true;
     document.getElementById('btnFiguAplicar').disabled = true;
     document.getElementById('btnFiguParar').style.display = 'inline-flex';
     document.getElementById('logCountFigu').textContent = '0 entradas';
-    figuStatus('running', 'Analisando...');
-    figuLog('info', '📂 Listando figurinhas...');
+    figuStatus('running', 'Listando...');
+    figuLog('info', `📂 Listando figurinhas... (modo: ${direto ? 'DIRETO — renomeia na hora' : 'prévia'})`);
 
     try {
-      const imgs = [];
+      let imgs = [];
       await listarImagensRecursivoFigu(folderId, imgs);
       figuLog('info', `✅ ${imgs.length} figurinhas encontradas`);
-      if (!imgs.length) { figuLog('warn','Nenhuma imagem na pasta!'); figuStatus('warn','Vazio'); document.getElementById('btnFiguAnalisar').disabled=false; document.getElementById('btnFiguParar').style.display='none'; return; }
 
-      const maiusc = figuOpt('opt-figu-maiusc');
+      if (pular) {
+        const antes = imgs.length;
+        imgs = imgs.filter(f => figuPareceOriginal(f.name));
+        figuLog('info', `↻ Retomar: ${antes - imgs.length} já renomeadas ignoradas, ${imgs.length} a processar`);
+      }
+      if (!imgs.length) { figuLog('warn','Nada a processar!'); figuStatus('done','Nada a fazer'); document.getElementById('btnFiguAnalisar').disabled=false; document.getElementById('btnFiguParar').style.display='none'; return; }
+
+      if (direto && !confirm(`MODO DIRETO: vou analisar e renomear ${imgs.length} figurinhas DIRETO no Drive, uma por uma.\n\n• O progresso fica salvo no próprio Drive (cada renomeada já está pronta).\n• Pode parar quando quiser e retomar depois.\n\nContinuar?`)) {
+        document.getElementById('btnFiguAnalisar').disabled=false; document.getElementById('btnFiguParar').style.display='none'; figuStatus('idle','Cancelado'); return;
+      }
+
+      const guardarThumb = !direto && imgs.length <= 400;
+      const batchUndo = [];
+      let ok = 0, falhas = 0, parouPorLimite = false;
+
       for (let i = 0; i < imgs.length; i++) {
-        if (figuStopFlag) { figuLog('warn','⛔ Parado'); break; }
+        if (figuStopFlag) { figuLog('warn','⛔ Parado pelo usuário'); break; }
         const f = imgs[i];
-        figuLog('info', `🔍 [${i+1}/${imgs.length}] ${f.name}`);
         figuProgress(i, imgs.length);
+        if (direto || i % 10 === 0) figuLog('info', `🔍 [${i+1}/${imgs.length}] ${f.name}`);
         try {
           const resp = await driveAuthFetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`);
           const blob = await resp.blob();
@@ -4458,28 +4521,55 @@ Responda APENAS com JSON válido, sem markdown:
           const r = await callClaudeVisionFigu(apiKey, b64, blob.type || 'image/png');
           let nome = figuSanitizar(r.nome || '');
           if (maiusc) nome = nome.toUpperCase();
-          figuItens.push({
-            file: f,
-            dataUrl: imgs.length <= 400 ? `data:${blob.type||'image/png'};base64,${b64}` : null,
-            nomeNovo: nome,
-            textoLido: r.texto_lido || '',
-            temTexto: !!r.tem_texto,
-            selecionado: !!nome
-          });
-          figuLog(r.tem_texto ? 'info' : 'warn', `  → ${nome || '(vazio)'}${r.tem_texto ? '' : ' (sem texto, descrição)'}`);
+
+          if (direto) {
+            if (!nome) { figuLog('warn', `  → (vazio) — pulada`); falhas++; }
+            else {
+              let base = nome;
+              if (usarUid) base += ' ' + Math.random().toString(36).slice(2,6).toUpperCase();
+              const novoNome = base + (extOf(f.name) || '.png');
+              await renomearItem(f.id, novoNome);
+              batchUndo.push({ id: f.id, oldName: f.name, newName: novoNome });
+              figuLog('rename', f.name, novoNome);
+              ok++;
+            }
+          } else {
+            figuItens.push({
+              file: f,
+              dataUrl: guardarThumb ? `data:${blob.type||'image/png'};base64,${b64}` : null,
+              nomeNovo: nome, textoLido: r.texto_lido || '', temTexto: !!r.tem_texto, selecionado: !!nome
+            });
+            if (i % 10 === 0) figuLog(r.tem_texto?'info':'warn', `  → ${nome || '(vazio)'}`);
+            ok++;
+          }
         } catch(e) {
-          figuLog('error', `  Erro: ${e.message}`);
-          figuItens.push({ file:f, dataUrl:null, nomeNovo:'', textoLido:'Erro: '+e.message, temTexto:false, selecionado:false });
+          if (e.fatal || e.rateLimit) {
+            parouPorLimite = true;
+            figuLog('error', `🛑 ${e.message}`);
+            if (direto) figuLog('warn', `✅ ${ok} figurinhas já estão renomeadas e salvas no Drive. ${e.fatal ? 'Resolva o crédito/billing' : 'Espere alguns minutos'} e clique em "Analisar" de novo — com "Pular já renomeadas" ligado, ele RETOMA daqui.`);
+            else figuLog('warn', `As ${ok} já analisadas continuam na lista — você pode aplicar essas.`);
+            break;
+          }
+          figuLog('error', `  Erro em ${f.name}: ${e.message}`);
+          falhas++;
+          if (!direto) figuItens.push({ file:f, dataUrl:null, nomeNovo:'', textoLido:'Erro: '+e.message, temTexto:false, selecionado:false });
         }
-        await sleep(250);
+        await sleep(direto ? 150 : 250);
       }
 
       figuProgress(imgs.length, imgs.length);
-      renderFiguPreview();
-      const bons = figuItens.filter(it => it.nomeNovo).length;
-      figuStatus('done', `${bons} nomeadas`);
-      figuLog('info', `✅ Análise concluída! ${bons} figurinhas com nome sugerido.`);
-      document.getElementById('btnFiguAplicar').disabled = bons === 0;
+
+      if (direto) {
+        if (batchUndo.length) { figuUndoStack.push(batchUndo); figuUpdateDesfazer(); }
+        figuStatus(parouPorLimite ? 'warn' : 'done', `${ok} renomeadas${falhas?', '+falhas+' falhas':''}`);
+        figuLog('info', `🏁 ${ok} renomeadas direto no Drive${falhas?', '+falhas+' vazias/falhas':''}.`);
+      } else {
+        renderFiguPreview();
+        const bons = figuItens.filter(it => it.nomeNovo).length;
+        figuStatus(parouPorLimite ? 'warn' : 'done', `${bons} nomeadas`);
+        figuLog('info', `✅ Análise concluída! ${bons} com nome sugerido.`);
+        document.getElementById('btnFiguAplicar').disabled = bons === 0;
+      }
     } catch(e) {
       figuLog('error', 'Erro geral: '+e.message);
       figuStatus('error', 'Erro');
