@@ -1431,7 +1431,20 @@
     });
   }
 
+  // Adiciona supportsAllDrives/includeItemsFromAllDrives p/ ler pastas compartilhadas e Shared Drives
+  function _augmentDriveUrl(url) {
+    if (!/googleapis\.com\/(upload\/)?drive\/v3\/files/.test(url)) return url;
+    let extra = '';
+    if (!/[?&]supportsAllDrives=/.test(url)) extra += 'supportsAllDrives=true';
+    if (/[?&]q=/.test(url) && !/[?&]includeItemsFromAllDrives=/.test(url)) {
+      extra += (extra ? '&' : '') + 'includeItemsFromAllDrives=true';
+    }
+    if (!extra) return url;
+    return url + (url.includes('?') ? '&' : '?') + extra;
+  }
+
   async function driveAuthFetch(url, options = {}, timeoutMs = 60000) {
+    url = _augmentDriveUrl(url);
     const doFetch = () => {
       const ctrl = new AbortController();
       const tid = setTimeout(() => ctrl.abort(), timeoutMs);
