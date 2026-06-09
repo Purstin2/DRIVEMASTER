@@ -741,9 +741,11 @@
         <label class="opt" id="opt-figu-subpastas"><input type="checkbox" onchange="toggleOpt(this,'opt-figu-subpastas')"/> Entrar em subpastas</label>
         <label class="opt" id="opt-figu-direto"><input type="checkbox" onchange="toggleOpt(this,'opt-figu-direto')"/> ⚡ Modo direto (renomeia na hora — p/ lotes grandes)</label>
         <label class="opt active" id="opt-figu-pular"><input type="checkbox" checked onchange="toggleOpt(this,'opt-figu-pular')"/> ↻ Pular já renomeadas (retomar)</label>
+        <label class="opt" id="opt-figu-batch"><input type="checkbox" onchange="toggleOpt(this,'opt-figu-batch');document.getElementById('figuBatchControls').style.display=this.checked?'flex':'none';document.getElementById('btnFiguAnalisar').textContent=this.checked?'📦 Enviar Batch':'🔍 Analisar Figurinhas'"/> 💰 Modo Batch (50% mais barato — resultado em até 24h)</label>
       </div>
       <div class="info-box" style="background:rgba(255,167,0,.05);border-color:rgba(255,167,0,.25);font-size:12px;margin-top:-4px">
-        <strong style="color:#ffa700">Lotes grandes (milhares):</strong> ligue o <strong>Modo direto</strong> — ele renomeia cada figurinha na hora, salvando o progresso no próprio Drive. Se a aba fechar, der erro de limite ou acabar o crédito, é só clicar de novo: com <strong>Pular já renomeadas</strong> ligado, ele continua de onde parou. Mantenha a aba aberta enquanto roda.
+        <strong style="color:#ffa700">Lotes grandes (milhares):</strong> ligue o <strong>Modo direto</strong> — ele renomeia cada figurinha na hora, salvando o progresso no próprio Drive. Se a aba fechar, der erro de limite ou acabar o crédito, é só clicar de novo: com <strong>Pular já renomeadas</strong> ligado, ele continua de onde parou. Mantenha a aba aberta enquanto roda.<br/><br/>
+        <strong style="color:#4caf50">💰 Modo Batch (50% mais barato):</strong> envia todas de uma vez, resultado fica pronto em até 24h. Clique em "Enviar Batch" e depois em "Verificar/Baixar Resultado" quando pronto. IDs de batch ficam salvos no log.
       </div>
 
       <div class="btn-row">
@@ -752,6 +754,10 @@
         <button class="btn btn-secondary" id="btnFiguDesfazer" onclick="figuDesfazer()" disabled>↩ Desfazer</button>
         <button class="btn btn-danger" id="btnFiguParar" onclick="figuStopFlag=true" style="display:none">⛔ Parar</button>
         <button class="btn btn-secondary" onclick="limparLog('logFigu')">Limpar log</button>
+      </div>
+      <div id="figuBatchControls" style="display:none;margin-top:12px;gap:8px;flex-wrap:wrap" class="btn-row">
+        <input type="text" id="figuBatchId" placeholder="ID do batch (ex: msgbatch_...)" style="flex:1;min-width:200px;margin-bottom:0"/>
+        <button class="btn btn-secondary" onclick="figuBatchVerificar()">🔄 Verificar/Baixar Resultado</button>
       </div>
 
       <div id="figuPreview" style="display:none;margin-top:24px"></div>
@@ -4416,8 +4422,8 @@ REGRAS:
 Responda APENAS com JSON válido, sem markdown:
 {"nome": "PALAVRA CHAVE", "texto_lido": "o texto que você leu na figurinha, ou vazio se não tiver", "tem_texto": true}`;
     const body = {
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 200,
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 30,
       messages: [{ role:'user', content:[
         { type:'image', source:{ type:'base64', media_type: mime || 'image/png', data: b64 } },
         { type:'text', text: prompt }
@@ -4467,6 +4473,144 @@ Responda APENAS com JSON válido, sem markdown:
         || /^(img|image|imagem|sticker|figurinha|photo|foto|pic|untitled|sem[\s_-]?titulo)[\s_-]*\d*$/i.test(base);
   }
 
+  // ─── BATCH API (50% desconto) ─────────────────────────────────────
+  const FIGU_BATCH_PROMPT = `Você está analisando uma FIGURINHA (sticker) de WhatsApp/Telegram. Seu trabalho é gerar um NOME DE ARQUIVO que sirva como palavra-chave de busca — o cliente vai digitar essa palavra para encontrar a figurinha.\n\nREGRAS:\n1. Se houver TEXTO escrito na figurinha, use a palavra ou frase de DESTAQUE como nome (ex: "ORAÇÃO", "BOM DIA", "LAVANDA").\n2. Se NÃO houver texto, descreva o tema principal em 1 a 3 palavras (ex: "CORAÇÃO VERMELHO", "GATINHO FOFO").\n3. Seja curto e direto — máximo 4 palavras. Sem emoji, sem aspas, sem pontuação especial.\n4. Português do Brasil.\n\nResponda APENAS com JSON válido, sem markdown:\n{"nome": "PALAVRA CHAVE", "texto_lido": "o texto que você leu na figurinha, ou vazio se não tiver", "tem_texto": true}`;
+
+  let figuBatchImgsMap = {};
+
+  async function figuEnviarBatch() {
+    if (!accessToken) { alert('Conecte ao Google primeiro!'); return; }
+    const apiKey = document.getElementById('anthropicKeyFigu').value.trim();
+    const rawId = document.getElementById('figuFolderId').value.trim();
+    if (!apiKey) { alert('Preencha a chave da API Anthropic!'); return; }
+    if (!rawId) { alert('Cole o ID ou link da pasta!'); return; }
+    const folderId = extrairIdDriveInput(rawId);
+    const pular = figuOpt('opt-figu-pular');
+
+    figuStatus('running', 'Preparando batch...');
+    figuLog('info', '📦 Coletando figurinhas para batch...');
+    document.getElementById('btnFiguAnalisar').disabled = true;
+
+    try {
+      let imgs = [];
+      await listarImagensRecursivoFigu(folderId, imgs);
+      if (pular) imgs = imgs.filter(f => figuPareceOriginal(f.name));
+      figuLog('info', `✅ ${imgs.length} figurinhas para enviar no batch`);
+      if (!imgs.length) { figuStatus('done','Nada a processar'); document.getElementById('btnFiguAnalisar').disabled=false; return; }
+
+      figuBatchImgsMap = {};
+      const requests = [];
+      let loaded = 0;
+      for (const f of imgs) {
+        const resp = await driveAuthFetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`);
+        const blob = await resp.blob();
+        const b64 = await blobToBase64(blob);
+        const mime = blob.type || 'image/png';
+        const customId = f.id;
+        figuBatchImgsMap[customId] = f;
+        requests.push({
+          custom_id: customId,
+          params: {
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 30,
+            messages: [{ role: 'user', content: [
+              { type: 'image', source: { type: 'base64', media_type: mime, data: b64 } },
+              { type: 'text', text: FIGU_BATCH_PROMPT }
+            ]}]
+          }
+        });
+        loaded++;
+        if (loaded % 50 === 0) figuLog('info', `  Carregadas ${loaded}/${imgs.length}...`);
+        await sleep(30);
+      }
+
+      figuLog('info', `📤 Enviando ${requests.length} requisições para a Batch API...`);
+      const batchResp = await fetch('https://api.anthropic.com/v1/messages/batches', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
+        body: JSON.stringify({ requests })
+      });
+      const batchData = await batchResp.json();
+      if (batchData.error) throw new Error(batchData.error.message);
+
+      const batchId = batchData.id;
+      document.getElementById('figuBatchId').value = batchId;
+      figuLog('info', `✅ Batch enviado! ID: ${batchId}`);
+      figuLog('warn', `⏳ Aguarde até 24h. Cole o ID acima e clique em "Verificar/Baixar Resultado" quando pronto.`);
+      figuStatus('done', `Batch enviado — ID: ${batchId}`);
+    } catch(e) {
+      figuLog('error', 'Erro ao enviar batch: ' + e.message);
+      figuStatus('error', 'Erro');
+    }
+    document.getElementById('btnFiguAnalisar').disabled = false;
+  }
+
+  async function figuBatchVerificar() {
+    const apiKey = document.getElementById('anthropicKeyFigu').value.trim();
+    const batchId = document.getElementById('figuBatchId').value.trim();
+    if (!apiKey) { alert('Preencha a chave da API Anthropic!'); return; }
+    if (!batchId) { alert('Cole o ID do batch!'); return; }
+    const maiusc = figuOpt('opt-figu-maiusc');
+    const usarUid = figuOpt('opt-figu-uid');
+
+    figuLog('info', `🔄 Verificando batch ${batchId}...`);
+    figuStatus('running', 'Verificando...');
+    try {
+      const statusResp = await fetch(`https://api.anthropic.com/v1/messages/batches/${batchId}`, {
+        headers: { 'x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' }
+      });
+      const statusData = await statusResp.json();
+      if (statusData.error) throw new Error(statusData.error.message);
+
+      const proc = statusData.processing_status;
+      const counts = statusData.request_counts || {};
+      figuLog('info', `Status: ${proc} | Processadas: ${counts.processing||0} | Bem-sucedidas: ${counts.succeeded||0} | Erros: ${counts.errored||0}`);
+
+      if (proc !== 'ended') {
+        figuStatus('running', `Aguardando... (${counts.succeeded||0} prontas, ${counts.processing||0} processando)`);
+        return;
+      }
+
+      // Baixar resultados
+      figuLog('info', '📥 Baixando resultados...');
+      const resUrl = statusData.results_url;
+      const resResp = await fetch(resUrl, {
+        headers: { 'x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' }
+      });
+      const resText = await resResp.text();
+      const lines = resText.trim().split('\n').filter(Boolean);
+
+      figuItens = [];
+      for (const line of lines) {
+        const item = JSON.parse(line);
+        const f = figuBatchImgsMap[item.custom_id];
+        if (!f) continue;
+        if (item.result?.type === 'succeeded') {
+          try {
+            const raw = item.result.message.content[0].text.trim().replace(/^```json\s*/i,'').replace(/\s*```$/,'');
+            const r = JSON.parse(raw);
+            let nome = figuSanitizar(r.nome || '');
+            if (maiusc) nome = nome.toUpperCase();
+            if (usarUid && nome) nome += ' ' + Math.random().toString(36).slice(2,6).toUpperCase();
+            figuItens.push({ file:f, dataUrl:null, nomeNovo:nome, textoLido:r.texto_lido||'', temTexto:!!r.tem_texto, selecionado:!!nome });
+          } catch { figuItens.push({ file:f, dataUrl:null, nomeNovo:'', textoLido:'Erro ao parsear', temTexto:false, selecionado:false }); }
+        } else {
+          figuItens.push({ file:f, dataUrl:null, nomeNovo:'', textoLido:'Erro: '+(item.result?.error?.message||'desconhecido'), temTexto:false, selecionado:false });
+        }
+      }
+
+      renderFiguPreview();
+      const bons = figuItens.filter(it => it.nomeNovo).length;
+      figuStatus('done', `${bons} nomeadas (batch concluído)`);
+      figuLog('info', `✅ ${bons} figurinhas prontas para renomear!`);
+      document.getElementById('btnFiguAplicar').disabled = bons === 0;
+    } catch(e) {
+      figuLog('error', 'Erro ao verificar batch: ' + e.message);
+      figuStatus('error', 'Erro');
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────
+
   async function figuAnalisar() {
     if (!accessToken) { alert('Conecte ao Google primeiro na aba "Renomear"!'); return; }
     const apiKey = document.getElementById('anthropicKeyFigu').value.trim();
@@ -4479,6 +4623,8 @@ Responda APENAS com JSON válido, sem markdown:
     const usarUid = figuOpt('opt-figu-uid');
     const direto  = figuOpt('opt-figu-direto');
     const pular   = figuOpt('opt-figu-pular');
+    const batch   = figuOpt('opt-figu-batch');
+    if (batch) { figuEnviarBatch(); return; }
 
     figuItens = []; figuStopFlag = false; _figuLogN = 0;
     document.getElementById('figuPreview').style.display = 'none';
