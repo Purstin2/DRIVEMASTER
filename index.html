@@ -4080,8 +4080,8 @@ Responda APENAS com JSON válido (sem markdown):
 
   async function matchEscanear() {
     if (!accessToken) { alert('Conecte ao Google primeiro!'); return; }
-    const folderImg = document.getElementById('matchFolderImagens').value.trim();
-    const folderArc = document.getElementById('matchFolderArquivos').value.trim();
+    const folderImg = extrairIdDriveInput(document.getElementById('matchFolderImagens').value);
+    const folderArc = extrairIdDriveInput(document.getElementById('matchFolderArquivos').value);
     if (!folderImg || !folderArc) { alert('Preencha os dois IDs de pasta!'); return; }
 
     matchPares = [];
