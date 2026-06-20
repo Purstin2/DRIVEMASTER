@@ -1665,7 +1665,7 @@
   // ─── IA INTELIGENTE ──────────────────────────────────
   async function callClaude(apiKey, userMsg, systemMsg) {
     const body = {
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 4000,
       messages: [{ role: 'user', content: userMsg }]
     };
@@ -3041,7 +3041,7 @@ Regras: explore antes de agir. Quando terminar, responda SEM <TOOLS>. Seja conci
             'anthropic-dangerous-direct-browser-access': 'true'
           },
           body: JSON.stringify({
-            model: 'claude-sonnet-4-20250514',
+            model: 'claude-sonnet-4-6',
             max_tokens: 1500,
             system: SYSTEM,
             messages: histComprimido
@@ -3508,7 +3508,7 @@ ${lista}
 
 JSON APENAS:
 [{"original":"nome exato","novo":"NOME LIMPO"}]`;
-        const body = {model:'claude-sonnet-4-20250514',max_tokens:2000,messages:[{role:'user',content:prompt}]};
+        const body = {model:'claude-sonnet-4-6',max_tokens:2000,messages:[{role:'user',content:prompt}]};
         const resp = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)});
         const data = await resp.json();
         if (data.error) throw new Error(data.error.message);
@@ -3822,7 +3822,7 @@ ${lista}
 
 Responda APENAS com JSON válido (sem markdown):
 [{"original":"nome original exato","novo":"NOME LIMPO"}]`;
-      const body = { model:'claude-sonnet-4-20250514', max_tokens:2000, messages:[{role:'user',content:prompt}] };
+      const body = { model:'claude-sonnet-4-6', max_tokens:2000, messages:[{role:'user',content:prompt}] };
       const resp = await fetch('https://api.anthropic.com/v1/messages', {
         method:'POST',
         headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
@@ -4186,7 +4186,7 @@ ${lista}
 Responda APENAS com JSON válido (sem markdown):
 [{"original":"nome base original exato","novo":"NOME LIMPO"}]`;
 
-        const body = { model:'claude-sonnet-4-20250514', max_tokens:2000, messages:[{role:'user',content:prompt}] };
+        const body = { model:'claude-sonnet-4-6', max_tokens:2000, messages:[{role:'user',content:prompt}] };
         const resp = await fetch('https://api.anthropic.com/v1/messages', {
           method:'POST',
           headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
@@ -4900,7 +4900,7 @@ Responda APENAS com JSON válido, sem markdown:
   async function callClaudeVision(apiKey, imageBase64, mimeType, folderNames) {
     const folderList = folderNames.map((n, i) => `${i + 1}. ${n}`).join('\n');
     const body = {
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 300,
       messages: [{
         role: 'user',
