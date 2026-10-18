@@ -808,6 +808,12 @@
         <label class="opt" id="opt-cp-deletar"><input type="checkbox" onchange="toggleOpt(this,'opt-cp-deletar')"/> Apagar originais 3D após zipar</label>
         <label class="opt" id="opt-cp-subpastas"><input type="checkbox" onchange="toggleOpt(this,'opt-cp-subpastas')"/> Entrar em subpastas</label>
       </div>
+      <label>📂 Capas renomeadas</label>
+      <div class="options" style="margin-bottom:8px">
+        <label class="opt active" id="opt-mover-compactar"><input type="checkbox" checked onchange="toggleOpt(this,'opt-mover-compactar')"/> Mover as capas renomeadas para uma pasta nova</label>
+      </div>
+      <input type="text" id="moverNome-compactar" value="CAPAS RENOMEADAS" placeholder="Nome da pasta nova (criada dentro da pasta das imagens)" style="margin-bottom:6px"/>
+      <div style="font-size:11px;color:#555;margin-bottom:18px">Aplica no passo "3. Renomear Pares". A pasta é criada dentro da pasta das IMAGENS.</div>
 
       <!-- Step bar -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:20px">
@@ -850,7 +856,7 @@
     <div class="card">
       <div class="info-box" style="background:rgba(224,64,251,.05);border-color:rgba(224,64,251,.2)">
         <strong style="color:#e040fb">🔁 Match & Limpar em Par</strong><br/>
-        Encontra pares imagem+arquivo com o mesmo nome base (ex: <code style="color:#aaa">goku54.jpg</code> ↔ <code style="color:#aaa">goku54.zip</code>). A IA limpa o nome dos <strong>dois juntos</strong> — se um falhar, o outro é revertido. Você vê a prévia completa antes de qualquer mudança.
+        Encontra pares capa+modelo pelo nome (ex: <code style="color:#aaa">goku54.jpg</code> ↔ <code style="color:#aaa">goku54.zip</code> <em>ou uma pasta</em> <code style="color:#aaa">goku54</code>). Aceita <strong>pastas</strong> como modelo e nomes parecidos (ignora acento, símbolo e ordem das palavras). A IA limpa o nome dos <strong>dois juntos</strong> — se um falhar, o outro é revertido. Depois de renomear, as capas vão para uma <strong>pasta nova</strong>, separadas das antigas. Você vê a prévia completa antes de qualquer mudança.
       </div>
 
       <label>Chave API Anthropic</label>
@@ -862,10 +868,25 @@
           <input type="text" id="matchFolderImagens" placeholder="ID do Google Drive"/>
         </div>
         <div>
-          <label>📦 Pasta dos ARQUIVOS (zip/stl/rar/3mf)</label>
+          <label>📦 Pasta dos ARQUIVOS (zip/stl ou PASTAS)</label>
           <input type="text" id="matchFolderArquivos" placeholder="ID do Google Drive"/>
         </div>
       </div>
+
+      <label>Opções de busca</label>
+      <div class="options" style="margin-bottom:12px">
+        <label class="opt active" id="opt-match-pastas"><input type="checkbox" checked onchange="toggleOpt(this,'opt-match-pastas')"/> Incluir PASTAS como arquivo (modelo dentro de pasta)</label>
+        <label class="opt active" id="opt-match-aprox"><input type="checkbox" checked onchange="toggleOpt(this,'opt-match-aprox')"/> Nome aproximado (ignora acento, símbolo e ordem)</label>
+      </div>
+      <label>Similaridade mínima p/ nome aproximado (%)</label>
+      <input type="number" id="matchMinScore" value="60" min="30" max="100" style="max-width:140px"/>
+
+      <label>📂 Capas renomeadas</label>
+      <div class="options" style="margin-bottom:8px">
+        <label class="opt active" id="opt-mover-match"><input type="checkbox" checked onchange="toggleOpt(this,'opt-mover-match')"/> Mover as capas renomeadas para uma pasta nova</label>
+      </div>
+      <input type="text" id="moverNome-match" value="CAPAS RENOMEADAS" placeholder="Nome da pasta nova (criada dentro da pasta das imagens)" style="margin-bottom:6px"/>
+      <div style="font-size:11px;color:#555;margin-bottom:18px">A pasta é criada dentro da pasta das IMAGENS (se já existir, é reaproveitada). O "Desfazer" devolve a capa ao nome e à pasta de antes.</div>
 
       <!-- ETAPA 1: encontrar pares -->
       <div class="btn-row" style="margin-bottom:0">
@@ -1034,6 +1055,12 @@
           </label>
         </div>
       </div>
+      <label>📂 Capas renomeadas</label>
+      <div class="options" style="margin-bottom:8px">
+        <label class="opt active" id="opt-mover-vincular"><input type="checkbox" checked onchange="toggleOpt(this,'opt-mover-vincular')"/> Mover as capas renomeadas para uma pasta nova</label>
+      </div>
+      <input type="text" id="moverNome-vincular" value="CAPAS RENOMEADAS" placeholder="Nome da pasta nova (criada dentro da pasta das imagens)" style="margin-bottom:6px"/>
+      <div style="font-size:11px;color:#555;margin-bottom:18px">Vale só no modo "Renomear imagens para casar com pastas". A pasta é criada dentro da pasta das IMAGENS.</div>
       <div class="btn-row">
         <button class="btn btn-purple" id="btnVincularAnalisar" onclick="vincularAnalisar()">🔍 Analisar com IA</button>
         <button class="btn" id="btnVincularAplicar" style="background:#00bcd4;color:#000;box-shadow:0 0 20px rgba(0,188,212,.3)" onclick="vincularAplicar()" disabled>✅ Renomear selecionados</button>
@@ -1506,6 +1533,60 @@
       body: JSON.stringify({ name: novoNome })
     });
   }
+
+  // ─── CAPAS RENOMEADAS → PASTA NOVA ───────────────────
+  const CAPAS_PASTA_PADRAO = 'CAPAS RENOMEADAS';
+  const _capasPastaCache = {};   // "parentId|nome" → id da pasta já criada/encontrada nesta execução
+
+  async function driveErro(r) {
+    let msg = `HTTP ${r.status}`;
+    try { const j = await r.json(); if (j.error && j.error.message) msg += ' — ' + j.error.message; } catch (_) {}
+    return new Error(msg);
+  }
+
+  // Renomeia (e opcionalmente move) num único PATCH. Diferente do renomearItem, LANÇA erro se o Drive recusar.
+  // mover = { add: idPastaNova, remove: idPastaAntiga }  |  novoNome = null mantém o nome
+  async function renomearOuMoverItem(id, novoNome, mover) {
+    let url = `https://www.googleapis.com/drive/v3/files/${id}?fields=id`;
+    if (mover) url += `&addParents=${encodeURIComponent(mover.add)}&removeParents=${encodeURIComponent(mover.remove)}`;
+    const r = await driveAuthFetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(novoNome == null ? {} : { name: novoNome })
+    });
+    if (!r.ok) throw await driveErro(r);
+  }
+
+  // Acha (ou cria) a subpasta `nome` dentro de `parentId`
+  async function garantirPastaDestino(parentId, nome) {
+    nome = (nome || '').trim() || CAPAS_PASTA_PADRAO;
+    const key = parentId + '|' + nome.toLowerCase();
+    if (_capasPastaCache[key]) return _capasPastaCache[key];
+    const nomeQ = nome.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const q = `'${parentId}' in parents and name='${nomeQ}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+    const data = await driveGet(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)&pageSize=1`);
+    if (data.error) throw new Error(data.error.message);
+    let id = data.files && data.files[0] && data.files[0].id;
+    if (!id) {
+      const r = await driveAuthFetch('https://www.googleapis.com/drive/v3/files?fields=id', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: nome, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] })
+      });
+      if (!r.ok) throw await driveErro(r);
+      id = (await r.json()).id;
+    }
+    _capasPastaCache[key] = id;
+    return id;
+  }
+
+  function capasMoverConfig(prefix) {
+    const cb = document.querySelector(`#opt-mover-${prefix} input`);
+    const inp = document.getElementById(`moverNome-${prefix}`);
+    return { ativo: !!(cb && cb.checked), nome: ((inp && inp.value) || '').trim() || CAPAS_PASTA_PADRAO };
+  }
+
+  function capasLimparCache() { Object.keys(_capasPastaCache).forEach(k => delete _capasPastaCache[k]); }
 
   async function contarConteudo(folderId) {
     const data = await driveGet(`https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+trashed=false&fields=files(id)&pageSize=1`);
@@ -3384,6 +3465,7 @@ Regras: explore antes de agir. Quando terminar, responda SEM <TOOLS>. Seja conci
   let pipePares = [];     // {imgFiles[], files3d[], baseOriginal, nomeNovo, sel}
   let pipeUndoStack = []; // [{id, oldName, newName}]
   let pipeStopFlag = false;
+  let pipeCtx = { folderImg: null };   // pasta das imagens do último "Detectar Pares"
   let pipeFase = 0;       // 0=idle 1=detected 2=ia-done 3=renamed
 
   function cpLog(tipo, txt, b) { log('logCompactar', tipo, txt, b); const c=document.getElementById('logCountCompactar'); c.textContent=(parseInt(c.textContent)||0)+1+' entradas'; }
@@ -3424,6 +3506,7 @@ Regras: explore antes de agir. Quando terminar, responda SEM <TOOLS>. Seja conci
     if (!folderImg || !folderArq) { alert('Preencha os dois IDs de pasta!'); return; }
 
     pipePares = []; pipeStopFlag = false; pipeFase = 0;
+    pipeCtx = { folderImg };
     document.getElementById('compactarPreview').style.display = 'none';
     document.getElementById('btnPipeDetectar').disabled = true;
     document.getElementById('btnPipeParar').style.display = 'inline-flex';
@@ -3601,12 +3684,29 @@ JSON APENAS:
   async function pipeRenomear() {
     const selecionados = pipePares.filter(p => p.sel && p.nomeNovo && p.nomeNovo.trim());
     if (!selecionados.length) { alert('Nenhum par selecionado com nome limpo!'); return; }
-    if (!confirm(`Renomear ${selecionados.length} pares (imagens + arquivos 3D)?`)) return;
+    const cfg = capasMoverConfig('compactar');
+    if (!confirm(`Renomear ${selecionados.length} pares (imagens + arquivos 3D)?` + (cfg.ativo ? `\n\nAs capas renomeadas serão MOVIDAS para a pasta "${cfg.nome}" (criada dentro da pasta das imagens).` : ''))) return;
 
     document.getElementById('btnPipeRenomear').disabled = true;
     document.getElementById('btnPipeParar').style.display = 'inline-flex';
     pipeStopFlag = false;
     cpStatus('running', 'Renomeando...');
+
+    // cria (ou reaproveita) a pasta ANTES de renomear — se falhar, nada é alterado
+    let destId = null;
+    if (cfg.ativo) {
+      try {
+        capasLimparCache();
+        destId = await garantirPastaDestino(pipeCtx.folderImg, cfg.nome);
+        cpLog('info', `📂 Capas renomeadas vão para a pasta "${cfg.nome}"`);
+      } catch (e) {
+        cpLog('error', `❌ Não consegui criar a pasta "${cfg.nome}": ${e.message} — nada foi renomeado`);
+        cpStatus('error', 'Erro ao criar pasta');
+        document.getElementById('btnPipeRenomear').disabled = false;
+        document.getElementById('btnPipeParar').style.display = 'none';
+        return;
+      }
+    }
     let ok = 0, err = 0;
     const batch = [];
 
@@ -3621,10 +3721,11 @@ JSON APENAS:
         const ext = img.name.match(/\.[^.]+$/)?.[0] || '';
         const novoNome = nomeBase + ext;
         try {
-          await renomearItem(img.id, novoNome);
-          batch.push({id:img.id, oldName:img.name, newName:novoNome});
-          cpLog('rename', img.name, novoNome);
-          img.name = novoNome; ok++;
+          const mover = destId && img.parentId !== destId ? { add: destId, remove: img.parentId } : null;
+          await renomearOuMoverItem(img.id, novoNome, mover);
+          batch.push({id:img.id, oldName:img.name, newName:novoNome, oldParent: mover ? img.parentId : null, newParent: mover ? destId : null, ref:img});
+          cpLog('rename', img.name, novoNome + (mover ? `   → 📂 ${cfg.nome}` : ''));
+          img.name = novoNome; if (mover) img.parentId = destId; ok++;
         } catch(e) { cpLog('error', `❌ ${img.name}: ${e.message}`); err++; }
         await sleep(80);
       }
@@ -3634,7 +3735,7 @@ JSON APENAS:
         const ext = f3d.name.match(/\.[^.]+$/)?.[0] || '';
         const novoNome = nomeBase + ext;
         try {
-          await renomearItem(f3d.id, novoNome);
+          await renomearOuMoverItem(f3d.id, novoNome);
           batch.push({id:f3d.id, oldName:f3d.name, newName:novoNome});
           cpLog('rename', f3d.name, novoNome);
           f3d.name = novoNome; ok++;
@@ -3718,7 +3819,7 @@ JSON APENAS:
     cpProgress(grupos.length, grupos.length);
     pipeStepUI(4);
     cpStatus(err>0?'warn':'done', `${ok} ZIPs criados${err?', '+err+' erros':''}`);
-    cpLog('info', `🏁 Pipeline concluído! ${ok} ZIPs criados. Imagens estão com os mesmos nomes limpos nas pastas originais.`);
+    cpLog('info', `🏁 Pipeline concluído! ${ok} ZIPs criados. Imagens e arquivos 3D estão com os mesmos nomes limpos.`);
     document.getElementById('btnPipeCompactar').disabled = false;
     document.getElementById('btnPipeParar').style.display = 'none';
   }
@@ -3730,7 +3831,11 @@ JSON APENAS:
     document.getElementById('btnPipeDesfazer').disabled = true;
     let ok = 0;
     for (const op of batch) {
-      try { await renomearItem(op.id, op.oldName); cpLog('warn', `↩ ${op.newName} → ${op.oldName}`); ok++; }
+      try {
+        await renomearOuMoverItem(op.id, op.oldName, op.newParent ? { add: op.oldParent, remove: op.newParent } : null);
+        if (op.ref) { op.ref.name = op.oldName; if (op.newParent) op.ref.parentId = op.oldParent; }
+        cpLog('warn', `↩ ${op.newName} → ${op.oldName}`); ok++;
+      }
       catch(e) { cpLog('error', `Erro: ${e.message}`); }
       await sleep(80);
     }
@@ -4056,26 +4161,123 @@ Responda APENAS com JSON válido (sem markdown):
   }
 
   // ─── MATCH & LIMPAR ──────────────────────────────────────────────────────────
-  let matchPares = [];     // [{imgFile, arcFile, baseOriginal, nomeNovo, sel1, sel2}]
-  let matchUndoStack = []; // [{imgId, arcId, oldBase, newBase, imgExt, arcExt}]
+  let matchPares = [];     // [{imgFile, imgBase, imgExt, arcFiles[], baseOriginal, nomeNovo, score, tipo, sel1, sel2}]
+  let matchUndoStack = []; // [[{p, oldBaseOriginal, newBase, img:{id,oldName,newName,oldParent,newParent}, arcs:[{id,oldName,newName}]}]]
   let matchStopFlag = false;
+  let matchCtx = { folderImg: null, folderArc: null };   // pastas usadas no último "Encontrar Pares"
 
   function matchLog(tipo, txt, b) { log('logMatch', tipo, txt, b); const c=document.getElementById('logCountMatch'); c.textContent=(parseInt(c.textContent)||0)+1+' entradas'; }
   function matchSetStatus(t,txt){setStatus('statusMatch',t,txt);}
   function matchProgress(done,total){document.getElementById('progressWrapMatch').style.display='block';document.getElementById('progressBarMatch').style.width=total>0?Math.round(done/total*100)+'%':'0%';}
 
-  function baseNomeMatch(nome) { return nome.replace(/\.[^.]+$/, ''); }
+  const MIME_FOLDER = 'application/vnd.google-apps.folder';
+  // palavras que não ajudam a identificar o modelo na hora de comparar nomes
+  const MATCH_RUIDO = new Set(['stl','stls','3mf','obj','zip','rar','7z','file','files','model','models','3d','print','printable','pack','remix','studio','studios']);
 
-  async function listarArquivosMatch(parentId) {
-    let files = [], tok = null;
+  function matchOpt(id) { return document.querySelector('#' + id + ' input').checked; }
+
+  // Separa nome/extensão. Pasta NUNCA tem extensão ("Mr. Incredible" não vira "Mr" + ". Incredible")
+  function matchNomeBaseExt(f) {
+    if (f.isFolder) return { base: f.name, ext: '' };
+    const m = f.name.match(/(\.(?=[a-z0-9]*[a-z])[a-z0-9]{1,5})$/i);
+    return m ? { base: f.name.slice(0, -m[1].length), ext: m[1] } : { base: f.name, ext: '' };
+  }
+
+  // Chaves de comparação: k1 = igual ignorando maiúsculas · k2 = igual ignorando acento/símbolos/@menções
+  // k3 = mesmas palavras em qualquer ordem · toks = palavras significativas (p/ similaridade)
+  function matchChaves(base) {
+    const norm = base.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/@\w+/g, ' ');
+    const todos = norm.replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+    let toks = todos.filter(t => !/^\d{4,}$/.test(t) && !MATCH_RUIDO.has(t));
+    if (!toks.length) toks = todos;
+    toks = [...new Set(toks)];
+    return { k1: base.trim().toLowerCase(), k2: todos.join(' '), k3: [...toks].sort().join(' '), toks };
+  }
+
+  // 0-100. Dice sobre palavras; se TODAS as palavras do nome menor (mín. 2) estão no maior, vale no mínimo 85
+  function matchSimilaridade(a, b) {
+    const sb = new Set(b);
+    let inter = 0;
+    a.forEach(t => { if (sb.has(t)) inter++; });
+    if (!inter) return 0;
+    let s = Math.round(200 * inter / (a.length + b.length));
+    const menor = Math.min(a.length, b.length);
+    if (menor >= 2 && inter === menor) s = Math.max(s, 85);
+    return s;
+  }
+
+  // imagens/arcs: [{...item, base, chaves}] → { pares:[{img, group, score, tipo}], semPar:[img] }
+  // Cada imagem fica com no máx. 1 modelo e cada modelo com 1 imagem (a de maior pontuação).
+  // Arquivos com o mesmo nome normalizado (ex.: goku.zip + goku.stl) formam um grupo e são renomeados juntos.
+  function matchPareamento(imagens, arcs, opts) {
+    const aprox = !!opts.aprox, minScore = opts.minScore;
+    const grupos = [], porK1 = new Map(), porK2 = new Map(), porK3 = new Map(), idx = new Map();
+    arcs.forEach(a => {
+      if (!a.chaves.k2) return;
+      let g = porK2.get(a.chaves.k2);
+      if (!g) { g = { i: grupos.length, files: [], chaves: a.chaves }; porK2.set(a.chaves.k2, g); grupos.push(g); }
+      g.files.push(a);
+    });
+    const push = (map, k, v) => { const l = map.get(k); if (l) l.push(v); else map.set(k, [v]); };
+    grupos.forEach(g => {
+      g.files.forEach(a => { if (!porK1.has(a.chaves.k1)) porK1.set(a.chaves.k1, g.i); });
+      push(porK3, g.chaves.k3, g.i);
+      g.chaves.toks.forEach(t => push(idx, t, g.i));
+    });
+    // palavra presente em muitos modelos não serve p/ achar candidatos (só p/ pontuar)
+    const limite = Math.max(50, Math.ceil(grupos.length * 0.2));
+
+    const edges = [];
+    imagens.forEach((img, ii) => {
+      const c = img.chaves;
+      if (!c.k2) return;
+      const exatos = new Map();
+      const put = (gi, score, tipo) => { const v = exatos.get(gi); if (!v || v.score < score) exatos.set(gi, { score, tipo }); };
+      if (porK1.has(c.k1)) put(porK1.get(c.k1), 100, 'exato');
+      if (porK2.has(c.k2)) put(porK2.get(c.k2).i, 98, 'normalizado');
+      (porK3.get(c.k3) || []).forEach(gi => put(gi, 95, 'palavras'));
+      exatos.forEach((v, gi) => edges.push({ ii, gi, score: v.score, tipo: v.tipo }));
+
+      if (aprox) {
+        const cand = new Set();
+        c.toks.forEach(t => { const p = idx.get(t); if (p && p.length <= limite) p.forEach(gi => cand.add(gi)); });
+        const fuzzy = [];
+        cand.forEach(gi => {
+          if (exatos.has(gi)) return;
+          const s = matchSimilaridade(c.toks, grupos[gi].chaves.toks);
+          if (s >= minScore) fuzzy.push({ ii, gi, score: s, tipo: 'aprox' });
+        });
+        fuzzy.sort((x, y) => y.score - x.score).slice(0, 8).forEach(e => edges.push(e));
+      }
+    });
+
+    edges.sort((x, y) => y.score - x.score || x.ii - y.ii || x.gi - y.gi);
+    const imgUsada = new Set(), grpUsado = new Set(), pares = [];
+    edges.forEach(e => {
+      if (imgUsada.has(e.ii) || grpUsado.has(e.gi)) return;
+      imgUsada.add(e.ii); grpUsado.add(e.gi);
+      pares.push({ img: imagens[e.ii], group: grupos[e.gi], score: e.score, tipo: e.tipo });
+    });
+    return { pares, semPar: imagens.filter((_, ii) => !imgUsada.has(ii)) };
+  }
+
+  // Lista TUDO dentro da pasta (arquivos, imagens, PASTAS e atalhos). Lança erro se o Drive responder erro
+  // (antes, erro de API virava "0 arquivos" sem avisar).
+  async function listarFilhosMatch(parentId) {
+    let todos = [], tok = null;
     do {
-      let url = `https://www.googleapis.com/drive/v3/files?q='${parentId}'+in+parents+and+mimeType!='application/vnd.google-apps.folder'+and+trashed=false&fields=files(id,name,mimeType),nextPageToken&pageSize=1000&orderBy=name`;
+      let url = `https://www.googleapis.com/drive/v3/files?q='${parentId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType,parents,shortcutDetails),nextPageToken&pageSize=1000&orderBy=name`;
       if (tok) url += '&pageToken=' + tok;
       const data = await driveGet(url);
-      files = files.concat(data.files || []);
+      if (data.error) throw new Error(`${data.error.message} (pasta ${parentId})`);
+      todos = todos.concat(data.files || []);
       tok = data.nextPageToken || null;
     } while (tok);
-    return files;
+    return todos.map(f => {
+      const atalho = f.mimeType === 'application/vnd.google-apps.shortcut' && f.shortcutDetails;
+      const mime = atalho ? (f.shortcutDetails.targetMimeType || '') : f.mimeType;
+      return { id: f.id, name: f.name, mime, parentId: (f.parents && f.parents[0]) || parentId, isFolder: mime === MIME_FOLDER, isImage: mime.startsWith('image/') };
+    });
   }
 
   async function matchEscanear() {
@@ -4086,6 +4288,7 @@ Responda APENAS com JSON válido (sem markdown):
 
     matchPares = [];
     matchStopFlag = false;
+    matchCtx = { folderImg, folderArc };
     document.getElementById('matchStep1').style.display = 'none';
     document.getElementById('matchStep2').style.display = 'none';
     document.getElementById('btnMatchEscanear').disabled = true;
@@ -4097,34 +4300,43 @@ Responda APENAS com JSON válido (sem markdown):
     matchLog('info', '📷 Listando imagens...');
 
     try {
-      const imagens = await listarArquivosMatch(folderImg);
+      const incluirPastas = matchOpt('opt-match-pastas');
+      const aprox = matchOpt('opt-match-aprox');
+      const minScore = Math.min(100, Math.max(30, parseInt(document.getElementById('matchMinScore').value, 10) || 60));
+      const pastaCapas = capasMoverConfig('match').nome.toLowerCase();
+
+      const filhosImg = await listarFilhosMatch(folderImg);
+      const imagens = filhosImg.filter(f => f.isImage);
       matchLog('info', `✅ ${imagens.length} imagens`);
-      matchLog('info', '📦 Listando arquivos...');
-      const arquivos = await listarArquivosMatch(folderArc);
-      matchLog('info', `✅ ${arquivos.length} arquivos`);
 
-      // Build lookup by base name (case-insensitive)
-      const arcMap = {};
-      arquivos.forEach(a => {
-        const base = baseNomeMatch(a.name).toLowerCase();
-        if (!arcMap[base]) arcMap[base] = [];
-        arcMap[base].push(a);
-      });
+      matchLog('info', '📦 Listando arquivos e pastas...');
+      const filhosArc = await listarFilhosMatch(folderArc);
+      // imagens nunca são "arquivo"; a pasta das capas (e a pasta de capas renomeadas) não é modelo
+      const arcs = filhosArc.filter(f => !f.isImage && (!f.isFolder || (incluirPastas && f.id !== folderImg && f.name.toLowerCase() !== pastaCapas)));
+      const nPastas = arcs.filter(f => f.isFolder).length;
+      matchLog('info', `✅ ${arcs.length} arquivos/pastas (${arcs.length - nPastas} arquivos, ${nPastas} pastas)`);
+      if (!arcs.length) {
+        matchLog('warn', filhosArc.some(f => f.isFolder) && !incluirPastas
+          ? 'A pasta dos ARQUIVOS só tem pastas — marque "Incluir PASTAS como arquivo".'
+          : 'Nada encontrado na pasta dos ARQUIVOS — confira o ID (ou se a conta tem acesso a ela).');
+      }
 
-      let semMatch = 0;
-      imagens.forEach(img => {
-        const base = baseNomeMatch(img.name).toLowerCase();
-        const candidatos = arcMap[base] || [];
-        if (candidatos.length > 0) {
-          candidatos.forEach(arc => {
-            matchPares.push({ imgFile: img, arcFile: arc, baseOriginal: baseNomeMatch(img.name), nomeNovo: '', sel1: true, sel2: true });
-          });
-        } else {
-          semMatch++;
-        }
-      });
+      const prepara = f => { const { base, ext } = matchNomeBaseExt(f); return { ...f, base, ext, chaves: matchChaves(base) }; };
+      const { pares, semPar } = matchPareamento(imagens.map(prepara), arcs.map(prepara), { aprox, minScore });
 
-      matchLog('info', `✅ ${matchPares.length} pares encontrados, ${semMatch} imagens sem par`);
+      matchPares = pares.map(({ img, group, score, tipo }) => ({
+        imgFile: { id: img.id, name: img.name, parentId: img.parentId },
+        imgBase: img.base, imgExt: img.ext,
+        arcFiles: group.files.map(a => ({ id: a.id, name: a.name, base: a.base, ext: a.ext, isFolder: a.isFolder })),
+        baseOriginal: group.files[0].base,   // o nome do ARQUIVO/PASTA é a referência p/ a IA limpar
+        nomeNovo: '', score, tipo, sel1: score >= 80, sel2: true
+      }));
+      // duvidosos primeiro, p/ conferir; depois os exatos
+      matchPares.sort((a, b) => a.score - b.score || a.imgFile.name.localeCompare(b.imgFile.name));
+
+      const nAprox = matchPares.filter(p => p.tipo === 'aprox').length;
+      matchLog('info', `✅ ${matchPares.length} pares (${matchPares.length - nAprox} exatos, ${nAprox} aproximados), ${semPar.length} imagens sem par`);
+      if (semPar.length) matchLog('warn', 'Sem par: ' + semPar.slice(0, 6).map(i => i.name).join(' · ') + (semPar.length > 6 ? ` … (+${semPar.length - 6})` : ''));
       renderMatchStep1();
       document.getElementById('btnMatchLimpar').disabled = matchPares.length === 0;
       matchSetStatus('done', `${matchPares.length} pares`);
@@ -4137,16 +4349,29 @@ Responda APENAS com JSON válido (sem markdown):
     document.getElementById('btnMatchParar').style.display = 'none';
   }
 
+  function matchBadge(p) {
+    if (p.tipo === 'aprox') {
+      const cor = p.score >= 80 ? '#ffb300' : '#ff8c00';
+      return `<span class="match-badge" style="background:rgba(255,179,0,.12);color:${cor}" title="Nomes parecidos, não iguais — confira">≈ ${p.score}%</span>`;
+    }
+    const rot = { exato: '✓ EXATO', normalizado: '✓ IGUAL', palavras: '✓ MESMAS PALAVRAS' }[p.tipo] || '✓ PAR';
+    return `<span class="match-badge" style="background:rgba(0,230,118,.1);color:#00e676">${rot}</span>`;
+  }
+
   function renderMatchStep1() {
     const tbody = document.getElementById('matchStep1Body');
     document.getElementById('matchStep1').style.display = 'block';
-    document.getElementById('matchStep1Resumo').textContent = `${matchPares.length} pares encontrados — selecione quais a IA deve limpar`;
-    tbody.innerHTML = matchPares.map((p, i) => `<tr>
+    const nSel = matchPares.filter(p => p.sel1).length;
+    document.getElementById('matchStep1Resumo').textContent = `${matchPares.length} pares encontrados (${nSel} marcados) — selecione quais a IA deve limpar. Aproximados ≥80% já vêm marcados; abaixo disso, confira antes de marcar.`;
+    tbody.innerHTML = matchPares.map((p, i) => {
+      const arcNome = p.arcFiles.map(a => (a.isFolder ? '📁 ' : '') + a.name).join('  +  ');
+      return `<tr>
       <td><input type="checkbox" ${p.sel1 ? 'checked' : ''} onchange="matchPares[${i}].sel1=this.checked" style="accent-color:#e040fb;width:15px;height:15px;cursor:pointer"/></td>
       <td style="font-family:'DM Mono',monospace;font-size:11px;color:#64b5f6;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(p.imgFile.name)}">${esc(p.imgFile.name)}</td>
-      <td style="font-family:'DM Mono',monospace;font-size:11px;color:#ffb74d;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(p.arcFile.name)}">${esc(p.arcFile.name)}</td>
-      <td style="text-align:center"><span class="match-badge" style="background:rgba(0,230,118,.1);color:#00e676">✓ PAR</span></td>
-    </tr>`).join('');
+      <td style="font-family:'DM Mono',monospace;font-size:11px;color:#ffb74d;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(arcNome)}">${esc(arcNome)}</td>
+      <td style="text-align:center;white-space:nowrap">${matchBadge(p)}</td>
+    </tr>`;
+    }).join('');
   }
 
   async function matchLimparComIA() {
@@ -4223,23 +4448,21 @@ Responda APENAS com JSON válido (sem markdown):
 
   function renderMatchStep2(selecionados) {
     document.getElementById('matchStep2').style.display = 'block';
-    document.getElementById('matchStep2Resumo').innerHTML = `<span style="color:#e040fb;font-weight:700">${selecionados.length}</span> pares prontos — os dois arquivos de cada par serão renomeados juntos`;
-    const idxMap = {};
-    selecionados.forEach(p => { idxMap[matchPares.indexOf(p)] = true; });
+    document.getElementById('matchStep2Resumo').innerHTML = `<span style="color:#e040fb;font-weight:700">${selecionados.length}</span> pares prontos — a capa e o(s) arquivo(s) de cada par serão renomeados juntos`;
 
     const tbody = document.getElementById('matchStep2Body');
     tbody.innerHTML = selecionados.map((p) => {
       const gi = matchPares.indexOf(p);
-      const imgExt = p.imgFile.name.match(/\.[^.]+$/)?.[0] || '';
-      const arcExt = p.arcFile.name.match(/\.[^.]+$/)?.[0] || '';
+      const arcExts = p.arcFiles.map(a => a.isFolder ? '📁 pasta' : (a.ext || '—')).join(' ');
+      const dica = p.imgBase !== p.baseOriginal ? `${p.baseOriginal}  ·  capa: ${p.imgBase}` : p.baseOriginal;
       return `<tr>
         <td><input type="checkbox" ${p.sel2 ? 'checked' : ''} onchange="matchPares[${gi}].sel2=this.checked" style="accent-color:#e040fb;width:15px;height:15px;cursor:pointer"/></td>
-        <td style="font-family:'DM Mono',monospace;font-size:11px;color:#666;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(p.baseOriginal)}">${esc(p.baseOriginal)}</td>
+        <td style="font-family:'DM Mono',monospace;font-size:11px;color:#666;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(dica)}">${esc(p.baseOriginal)}</td>
         <td style="color:#333;font-size:16px;text-align:center;padding:0 4px">→</td>
         <td style="min-width:200px"><input class="match-nome-input" type="text" value="${esc(p.nomeNovo)}" onchange="matchPares[${gi}].nomeNovo=this.value"/></td>
         <td style="white-space:nowrap">
-          <span class="match-badge match-badge-img">${esc(imgExt)}</span>
-          <span class="match-badge match-badge-file" style="margin-left:4px">${esc(arcExt)}</span>
+          <span class="match-badge match-badge-img">${esc(p.imgExt || '—')}</span>
+          <span class="match-badge match-badge-file" style="margin-left:4px">${esc(arcExts)}</span>
         </td>
       </tr>`;
     }).join('');
@@ -4253,14 +4476,33 @@ Responda APENAS com JSON válido (sem markdown):
   }
 
   async function matchAplicar() {
-    const selecionados = matchPares.filter(p => p.sel2 && p.nomeNovo && p.nomeNovo.trim() && p.nomeNovo !== p.baseOriginal);
+    const selecionados = matchPares.filter(p => p.sel2 && p.nomeNovo && p.nomeNovo.trim() && p.nomeNovo.trim() !== p.baseOriginal);
     if (!selecionados.length) { alert('Nenhum par selecionado!'); return; }
-    if (!confirm(`Renomear ${selecionados.length} pares (${selecionados.length * 2} arquivos) no Google Drive?\n\nAmbos os arquivos de cada par serão renomeados juntos. Se um falhar, o outro é revertido.`)) return;
+    const cfg = capasMoverConfig('match');
+    const nItens = selecionados.reduce((n, p) => n + 1 + p.arcFiles.length, 0);
+    if (!confirm(`Renomear ${selecionados.length} pares (${nItens} itens) no Google Drive?\n\nA capa e o(s) arquivo(s) de cada par são renomeados juntos. Se um falhar, o par é revertido.` +
+      (cfg.ativo ? `\n\nAs ${selecionados.length} capas renomeadas serão MOVIDAS para a pasta "${cfg.nome}" (criada dentro da pasta das imagens), separadas das antigas.` : ''))) return;
 
     document.getElementById('btnMatchAplicar').disabled = true;
     document.getElementById('btnMatchParar').style.display = 'inline-flex';
     matchStopFlag = false;
     matchSetStatus('running', 'Renomeando pares...');
+
+    // cria (ou reaproveita) a pasta ANTES de renomear qualquer coisa — se falhar, nada é alterado
+    let destId = null;
+    if (cfg.ativo) {
+      try {
+        capasLimparCache();
+        destId = await garantirPastaDestino(matchCtx.folderImg, cfg.nome);
+        matchLog('info', `📂 Capas renomeadas vão para a pasta "${cfg.nome}"`);
+      } catch (e) {
+        matchLog('error', `❌ Não consegui criar a pasta "${cfg.nome}": ${e.message} — nada foi renomeado`);
+        matchSetStatus('error', 'Erro ao criar pasta');
+        document.getElementById('btnMatchAplicar').disabled = false;
+        document.getElementById('btnMatchParar').style.display = 'none';
+        return;
+      }
+    }
 
     const batchUndo = [];
     let ok = 0, err = 0;
@@ -4270,35 +4512,43 @@ Responda APENAS com JSON válido (sem markdown):
       const p = selecionados[i];
       matchProgress(i, selecionados.length);
       const nomeBase = p.nomeNovo.trim();
-      const imgExt = p.imgFile.name.match(/\.[^.]+$/)?.[0] || '';
-      const arcExt = p.arcFile.name.match(/\.[^.]+$/)?.[0] || '';
-      const novoImg = nomeBase + imgExt;
-      const novoArc = nomeBase + arcExt;
+      const novoImg = nomeBase + p.imgExt;
+      const moverImg = destId && p.imgFile.parentId !== destId ? { add: destId, remove: p.imgFile.parentId } : null;
 
+      // 1) capa (renomeia e já move)
       try {
-        // Rename image first
-        await renomearItem(p.imgFile.id, novoImg);
-        try {
-          // Rename archive
-          await renomearItem(p.arcFile.id, novoArc);
-          // Both succeeded
-          batchUndo.push({ imgId: p.imgFile.id, arcId: p.arcFile.id, oldBase: p.baseOriginal, newBase: nomeBase, imgExt, arcExt });
-          matchLog('rename', p.baseOriginal + ' (ambos)', nomeBase);
-          p.imgFile.name = novoImg;
-          p.arcFile.name = novoArc;
-          p.baseOriginal = nomeBase;
-          ok++;
-        } catch(e2) {
-          // Archive failed — revert image to keep them in sync
-          matchLog('warn', `⚠ Arquivo falhou (${e2.message}), revertendo imagem...`);
-          try { await renomearItem(p.imgFile.id, p.imgFile.name); } catch(_) {}
-          matchLog('error', `❌ Par revertido: ${p.baseOriginal}`);
-          err++;
-        }
+        await renomearOuMoverItem(p.imgFile.id, novoImg, moverImg);
       } catch(e) {
         matchLog('error', `❌ Imagem falhou: ${p.baseOriginal} — ${e.message}`);
-        err++;
+        err++; await sleep(150); continue;
       }
+      // 2) arquivo(s)/pasta(s) do par
+      const feitos = [];
+      try {
+        for (const a of p.arcFiles) {
+          await renomearOuMoverItem(a.id, nomeBase + a.ext);
+          feitos.push(a);
+        }
+      } catch(e2) {
+        matchLog('warn', `⚠ Arquivo falhou (${e2.message}), revertendo o par...`);
+        for (const a of feitos) { try { await renomearOuMoverItem(a.id, a.name); } catch(_) {} }
+        try { await renomearOuMoverItem(p.imgFile.id, p.imgFile.name, moverImg ? { add: moverImg.remove, remove: moverImg.add } : null); } catch(_) {}
+        matchLog('error', `❌ Par revertido: ${p.baseOriginal}`);
+        err++; await sleep(150); continue;
+      }
+
+      const op = {
+        p, oldBaseOriginal: p.baseOriginal, newBase: nomeBase,
+        img: { id: p.imgFile.id, oldName: p.imgFile.name, newName: novoImg, oldParent: moverImg ? p.imgFile.parentId : null, newParent: moverImg ? destId : null },
+        arcs: p.arcFiles.map(a => ({ id: a.id, oldName: a.name, newName: nomeBase + a.ext }))
+      };
+      batchUndo.push(op);
+      matchLog('rename', p.baseOriginal + ' (par)', nomeBase + (moverImg ? `   → 📂 ${cfg.nome}` : ''));
+      p.imgFile.name = novoImg;
+      if (moverImg) p.imgFile.parentId = destId;
+      p.arcFiles.forEach(a => { a.name = nomeBase + a.ext; });
+      p.baseOriginal = nomeBase;
+      ok++;
       await sleep(150);
     }
 
@@ -4320,19 +4570,25 @@ Responda APENAS com JSON válido (sem markdown):
     matchSetStatus('running', `Desfazendo ${batch.length} pares...`);
     document.getElementById('btnMatchDesfazer').disabled = true;
     let ok = 0;
+    const falhas = [];
     for (const op of batch) {
-      const oldImg = op.oldBase + op.imgExt;
-      const oldArc = op.oldBase + op.arcExt;
       try {
-        await renomearItem(op.imgId, oldImg);
-        await renomearItem(op.arcId, oldArc);
-        matchLog('warn', `↩ ${op.newBase} → ${op.oldBase} (ambos)`);
+        for (const a of op.arcs) await renomearOuMoverItem(a.id, a.oldName);
+        // capa volta p/ o nome e a pasta de antes
+        await renomearOuMoverItem(op.img.id, op.img.oldName, op.img.newParent ? { add: op.img.oldParent, remove: op.img.newParent } : null);
+        op.p.imgFile.name = op.img.oldName;
+        if (op.img.newParent) op.p.imgFile.parentId = op.img.oldParent;
+        op.p.arcFiles.forEach((a, i) => { a.name = op.arcs[i].oldName; });
+        op.p.baseOriginal = op.oldBaseOriginal;
+        matchLog('warn', `↩ ${op.newBase} → ${op.oldBaseOriginal} (par)`);
         ok++;
-      } catch(e) { matchLog('error', `Erro ao desfazer: ${e.message}`); }
+      } catch(e) { matchLog('error', `Erro ao desfazer: ${e.message}`); falhas.push(op); }
       await sleep(100);
     }
+    if (falhas.length) matchUndoStack.push(falhas);   // dá p/ tentar de novo
     matchUpdateDesfazer();
-    matchSetStatus('done', `${ok} pares revertidos`);
+    matchSetStatus(falhas.length ? 'warn' : 'done', `${ok} pares revertidos${falhas.length ? ', '+falhas.length+' falharam' : ''}`);
+    if (matchPares.filter(p => p.nomeNovo).length) renderMatchStep2(matchPares.filter(p => p.nomeNovo));
   }
 
   function matchUpdateDesfazer() {
@@ -4852,6 +5108,7 @@ Responda APENAS com JSON válido, sem markdown:
   // ─── VINCULAR CAPAS ─────────────────────────────────────────────────────────
   let vincularPares = [];
   let vincularUndoStack = [];
+  let vincularCtx = { folderImagens: null };   // pasta das imagens da última análise
 
   function logVincular(tipo, texto) {
     log('logVincular', tipo, texto);
@@ -4874,7 +5131,7 @@ Responda APENAS com JSON válido, sem markdown:
   async function listarArquivosImagem(parentId) {
     let files = [], token = null;
     do {
-      let url = `https://www.googleapis.com/drive/v3/files?q='${parentId}'+in+parents+and+mimeType+contains+'image/'+and+trashed=false&fields=files(id,name,mimeType),nextPageToken&pageSize=1000&orderBy=name`;
+      let url = `https://www.googleapis.com/drive/v3/files?q='${parentId}'+in+parents+and+mimeType+contains+'image/'+and+trashed=false&fields=files(id,name,mimeType,parents),nextPageToken&pageSize=1000&orderBy=name`;
       if (token) url += '&pageToken=' + token;
       const data = await driveGet(url);
       files = files.concat(data.files || []);
@@ -4934,6 +5191,7 @@ Responda APENAS com JSON válido, sem markdown:
     if (!apiKey) { alert('Preencha a chave da API Anthropic!'); return; }
     if (!folderPastasId || !folderImagensId) { alert('Preencha os dois IDs de pasta!'); return; }
 
+    vincularCtx = { folderImagens: folderImagensId };
     vincularPares = [];
     document.getElementById('vincularTabela').style.display = 'none';
     document.getElementById('btnVincularAnalisar').disabled = true;
@@ -5056,10 +5314,27 @@ Responda APENAS com JSON válido, sem markdown:
     const selecionados = vincularPares.filter(p => p.selected && p.confidence > 0 && p.folderName);
     if (!selecionados.length) { alert('Nenhum par selecionado!'); return; }
     const alvo = modo === 'imagens' ? 'imagens' : 'pastas';
-    if (!confirm(`Renomear ${selecionados.length} ${alvo}?`)) return;
+    const cfg = modo === 'imagens' ? capasMoverConfig('vincular') : { ativo: false, nome: '' };
+    if (!confirm(`Renomear ${selecionados.length} ${alvo}?` + (cfg.ativo ? `\n\nAs capas renomeadas serão MOVIDAS para a pasta "${cfg.nome}" (criada dentro da pasta das imagens).` : ''))) return;
 
     document.getElementById('btnVincularAplicar').disabled = true;
     setStatusVincular('running', 'Renomeando...');
+
+    // cria (ou reaproveita) a pasta ANTES de renomear — se falhar, nada é alterado
+    let destId = null;
+    if (cfg.ativo) {
+      try {
+        capasLimparCache();
+        destId = await garantirPastaDestino(vincularCtx.folderImagens, cfg.nome);
+        logVincular('info', `📂 Capas renomeadas vão para a pasta "${cfg.nome}"`);
+      } catch (e) {
+        logVincular('error', `❌ Não consegui criar a pasta "${cfg.nome}": ${e.message} — nada foi renomeado`);
+        setStatusVincular('error', 'Erro ao criar pasta');
+        document.getElementById('btnVincularAplicar').disabled = false;
+        return;
+      }
+    }
+
     let ok = 0, err = 0;
     const batch = [];
 
@@ -5069,14 +5344,17 @@ Responda APENAS com JSON válido, sem markdown:
       try {
         if (modo === 'imagens') {
           const novoNome = par.folderName + extOf(par.imageFile.name);
-          await renomearItem(par.imageFile.id, novoNome);
-          batch.push({ id: par.imageFile.id, oldName: par.imageFile.name, newName: novoNome });
-          logVincular('info', `✅ ${par.imageFile.name} → ${novoNome}`);
+          const paiAntigo = (par.imageFile.parents && par.imageFile.parents[0]) || vincularCtx.folderImagens;
+          const mover = destId && paiAntigo !== destId ? { add: destId, remove: paiAntigo } : null;
+          await renomearOuMoverItem(par.imageFile.id, novoNome, mover);
+          batch.push({ id: par.imageFile.id, oldName: par.imageFile.name, newName: novoNome, oldParent: mover ? paiAntigo : null, newParent: mover ? destId : null, ref: par.imageFile });
+          logVincular('info', `✅ ${par.imageFile.name} → ${novoNome}${mover ? `  (📂 ${cfg.nome})` : ''}`);
           par.imageFile.name = novoNome;
+          if (mover) par.imageFile.parents = [destId];
         } else {
           if (!par.folderMatch) throw new Error('Pasta não encontrada para renomear');
           const novoNome = par.imageFile.name.replace(/\.[^.]+$/, '');
-          await renomearItem(par.folderMatch.id, novoNome);
+          await renomearOuMoverItem(par.folderMatch.id, novoNome);
           batch.push({ id: par.folderMatch.id, oldName: par.folderMatch.name, newName: novoNome });
           logVincular('info', `✅ Pasta: ${par.folderMatch.name} → ${novoNome}`);
           par.folderMatch.name = novoNome;
@@ -5102,16 +5380,19 @@ Responda APENAS com JSON válido, sem markdown:
     setStatusVincular('running', `Desfazendo ${batch.length} itens...`);
     document.getElementById('btnVincularDesfazer').disabled = true;
     let ok = 0;
+    const falhas = [];
     for (const op of batch) {
       try {
-        await renomearItem(op.id, op.oldName);
+        await renomearOuMoverItem(op.id, op.oldName, op.newParent ? { add: op.oldParent, remove: op.newParent } : null);
+        if (op.ref) { op.ref.name = op.oldName; if (op.newParent) op.ref.parents = [op.oldParent]; }
         logVincular('warn', `↩ ${op.newName} → ${op.oldName}`);
         ok++;
-      } catch(e) { logVincular('error', `Erro ao desfazer: ${e.message}`); }
+      } catch(e) { logVincular('error', `Erro ao desfazer: ${e.message}`); falhas.push(op); }
       await sleep(100);
     }
+    if (falhas.length) vincularUndoStack.push(falhas);   // dá p/ tentar de novo
     vincularUpdateDesfazer();
-    setStatusVincular('done', `${ok} revertidos`);
+    setStatusVincular(falhas.length ? 'warn' : 'done', `${ok} revertidos${falhas.length ? ', ' + falhas.length + ' falharam' : ''}`);
   }
 
   function vincularUpdateDesfazer() {
