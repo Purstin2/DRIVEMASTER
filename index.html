@@ -872,6 +872,56 @@
       </div>
       <div id="historicoLista" style="margin-top:8px"></div>
     </div>
+    <div class="card">
+      <div class="info-box" style="background:rgba(255,167,0,.05);border-color:rgba(255,167,0,.25)">
+        <strong style="color:#ffa700">🛟 Recuperar nomes originais das pastas</strong><br/>
+        Já renomeou e perdeu os nomes antigos? Escolha no seu PC a pasta que ainda tem os <strong>nomes originais</strong> (ex.: a cópia baixada do Drive). O app compara o <strong>conteúdo</strong> (nome + tamanho dos arquivos) de cada pasta do Drive com a cópia local e propõe voltar cada uma ao nome de antes. <strong>Nada é enviado</strong> — o navegador só lê os nomes e tamanhos. Depois você revisa a tabela e confirma; tudo vai pro Histórico (dá pra desfazer).
+      </div>
+      <div class="row2">
+        <div>
+          <label>☁ Link ou ID da pasta no Drive</label>
+          <input type="text" id="recFolderDrive" placeholder="https://drive.google.com/drive/folders/..."/>
+        </div>
+        <div>
+          <label>💻 Pasta LOCAL com os nomes originais</label>
+          <input type="file" id="recLocal" webkitdirectory multiple onchange="recLocalResumo()"/>
+        </div>
+      </div>
+      <div id="recLocalResumo" style="font-size:11px;color:#666;font-family:'DM Mono',monospace;margin:-8px 0 14px"></div>
+      <div class="btn-row">
+        <button class="btn" id="btnRecComparar" onclick="recComparar()" style="background:#ffa700;color:#000;box-shadow:0 0 20px rgba(255,167,0,.3)">🔍 Comparar</button>
+        <button class="btn btn-primary" id="btnRecAplicar" onclick="recAplicar()">↩ Voltar ao nome original (marcadas)</button>
+        <button class="btn btn-danger" id="btnRecParar" onclick="recStop=true" style="display:none">⛔ Parar</button>
+      </div>
+      <div class="progress-wrap" id="progressWrapRec">
+        <div class="progress-bar-bg"><div class="progress-bar" id="progressBarRec" style="width:0%;background:#ffa700;box-shadow:0 0 8px rgba(255,167,0,.5)"></div></div>
+      </div>
+      <div id="recResultado" style="display:none;margin-top:18px">
+        <div class="match-step">
+          <div class="match-step-title">Pastas do Drive → nome original</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+            <div id="recResumo" style="font-size:12px;color:#777"></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-secondary" style="padding:5px 12px;font-size:11px" onclick="recSelecionar('ok')">Só as seguras</button>
+              <button class="btn btn-secondary" style="padding:5px 12px;font-size:11px" onclick="recSelecionar('todos')">Todas com nome</button>
+              <button class="btn btn-secondary" style="padding:5px 12px;font-size:11px" onclick="recSelecionar('nenhuma')">Desmarcar</button>
+            </div>
+          </div>
+          <div style="overflow-x:auto;max-height:480px;overflow-y:auto;border:1px solid #111;border-radius:8px">
+            <table class="match-table">
+              <thead><tr>
+                <th style="width:30px">✓</th>
+                <th>Nome atual no Drive</th>
+                <th>→</th>
+                <th>Nome original (editável)</th>
+                <th style="text-align:center">Arquivos iguais</th>
+              </tr></thead>
+              <tbody id="recBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="log-card">
       <div class="log-header">
         <span>Log de execução</span>
@@ -1648,7 +1698,7 @@
   // Cada lote (um "Renomear" de Match/Vincular/Compactar) guarda id, nome/pasta antes e depois de cada item.
   // Fica no navegador (localStorage) e também é baixado como .json ao final — o arquivo pode ser importado de volta.
   const HIST_KEY = 'dm_historico_ops';
-  const HIST_FERR = { match: 'Match & Limpar', vincular: 'Vincular Capas', compactar: 'Compactar Pares' };
+  const HIST_FERR = { match: 'Match & Limpar', vincular: 'Vincular Capas', compactar: 'Compactar Pares', recuperar: 'Recuperar nomes originais' };
 
   function historicoLer() {
     try { const l = JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); return Array.isArray(l) ? l : []; }
@@ -1812,6 +1862,224 @@
     const bp = document.getElementById('btnPipeDesfazer'); if (bp) bp.disabled = pipeUndoStack.length === 0;
     setStatus('statusHistorico', erros ? 'warn' : 'done', `${feitos.size} revertidos${erros ? ', ' + erros + ' erros' : ''}`);
     log('logHistorico', 'info', `✅ ${feitos.size} itens revertidos${erros ? `, ${erros} falharam (dá pra tentar de novo)` : ''}. Rode "Encontrar Pares" de novo se for refazer.`);
+  }
+
+  // ─── RECUPERAR NOMES ORIGINAIS DAS PASTAS ────────────────────────────────────
+  // Compara o CONTEÚDO (nome+tamanho dos arquivos) de cada pasta do Drive com uma cópia local que ainda tem os
+  // nomes antigos. Nada é enviado: o navegador só lê os nomes e tamanhos dos arquivos da pasta escolhida.
+  let recProps = [];   // [{id, atual, original, score, arqs, tipo:'ok'|'dup'|'revisar'|'sugestao'|'igual', sel}]
+  let recStop = false;
+
+  function recLog(tipo, txt, b) { log('logHistorico', tipo, txt, b); }
+  function recProgress(done, total) {
+    document.getElementById('progressWrapRec').style.display = 'block';
+    document.getElementById('progressBarRec').style.width = total > 0 ? Math.round(done / total * 100) + '%' : '0%';
+  }
+  function recChave(nome, tam) { return String(nome).toLowerCase() + '|' + (tam == null ? '' : String(tam)); }
+
+  // arquivos = FileList do <input webkitdirectory>: "raiz/PASTA/.../arquivo" → { PASTA → Set(chaves) }
+  function recLerLocal(arquivos) {
+    const pastas = new Map();
+    for (const f of arquivos) {
+      const partes = String(f.webkitRelativePath || '').split('/');
+      if (partes.length < 3) continue;   // arquivo solto direto na raiz
+      let set = pastas.get(partes[1]);
+      if (!set) { set = new Set(); pastas.set(partes[1], set); }
+      set.add(recChave(partes[partes.length - 1], f.size));
+    }
+    return pastas;
+  }
+
+  function recLocalResumo() {
+    const a = document.getElementById('recLocal').files;
+    const el = document.getElementById('recLocalResumo');
+    if (!a || !a.length) { el.textContent = ''; return; }
+    el.textContent = `${a.length} arquivos em ${recLerLocal(a).size} pastas lidos (só nomes e tamanhos — nada é enviado)`;
+  }
+
+  async function recGet(url) {
+    for (let t = 0; ; t++) {
+      const data = await driveGet(url);
+      if (!data.error) return data;
+      const c = data.error.code;
+      if (t >= 3 || !(c === 429 || c >= 500 || /rate/i.test(data.error.message || ''))) throw new Error(data.error.message);
+      await sleep(800 * (t + 1));
+    }
+  }
+
+  // nome+tamanho de TODOS os arquivos dentro da pasta (recursivo). Google Docs/Sheets ficam de fora: não têm tamanho
+  // e muitas vezes são um .txt que o Drive converteu no upload. subs = nomes das subpastas do 1º nível.
+  async function recAssinaturaDrive(pastaId) {
+    const chaves = [], subs = [], fila = [{ id: pastaId, prof: 0 }];
+    while (fila.length) {
+      const { id, prof } = fila.shift();
+      let tok = null;
+      do {
+        let url = `https://www.googleapis.com/drive/v3/files?q='${id}'+in+parents+and+trashed=false&fields=files(id,name,mimeType,size),nextPageToken&pageSize=1000`;
+        if (tok) url += '&pageToken=' + tok;
+        const data = await recGet(url);
+        for (const f of data.files || []) {
+          if (f.mimeType === MIME_FOLDER) { if (prof === 0) subs.push(f.name); if (prof < 6) fila.push({ id: f.id, prof: prof + 1 }); }
+          else if (!String(f.mimeType).startsWith('application/vnd.google-apps.')) chaves.push(recChave(f.name, f.size));
+        }
+        tok = data.nextPageToken || null;
+      } while (tok);
+    }
+    return { chaves, subs };
+  }
+
+  async function recPool(itens, n, fn) {
+    let i = 0;
+    await Promise.all(Array.from({ length: Math.min(n, itens.length) }, async () => {
+      while (i < itens.length && !recStop) { const k = i++; await fn(itens[k], k); }
+    }));
+  }
+
+  // pontuação: fração (ponderada) dos arquivos da pasta do Drive que existem, com o mesmo nome e tamanho,
+  // numa pasta local. Arquivos raros pesam mais que "Info.txt"; atribuição 1 pasta local ↔ 1 pasta do Drive.
+  function recPareamento(filhos, sigs, local) {
+    const df = new Map(), idx = new Map();
+    local.forEach((set, nome) => set.forEach(k => {
+      df.set(k, (df.get(k) || 0) + 1);
+      const l = idx.get(k); if (l) l.push(nome); else idx.set(k, [nome]);
+    }));
+    const edges = [];
+    filhos.forEach((f, k) => {
+      const chaves = sigs[k] ? sigs[k].chaves : [];
+      if (!chaves.length) return;
+      const acc = new Map();
+      let total = 0;
+      chaves.forEach(c => {
+        const d = df.get(c), w = d ? 1 / d : 1;
+        total += w;
+        if (d) idx.get(c).forEach(nome => { const a = acc.get(nome) || { w: 0, n: 0 }; a.w += w; a.n++; acc.set(nome, a); });
+      });
+      const tk = matchChaves(f.name.replace(/\s[A-Z0-9]{4}$/, '')).toks;   // tira o código aleatório que o app pôs
+      acc.forEach((a, nome) => {
+        const score = Math.round(a.w / total * 1000) / 1000;
+        if (score < 0.5) return;
+        edges.push({ k, nome, score, rec: a.n / local.get(nome).size, nSim: matchSimilaridade(tk, matchChaves(nome).toks), n: a.n, total: chaves.length });
+      });
+    });
+    edges.sort((x, y) => y.score - x.score || y.nSim - x.nSim || y.rec - x.rec || x.k - y.k || x.nome.localeCompare(y.nome));
+    const usadoD = new Set(), usadoL = new Set(), atrib = new Map(), porK = new Map();
+    edges.forEach(e => { const l = porK.get(e.k); if (l) l.push(e); else porK.set(e.k, [e]); });
+    edges.forEach(e => {
+      if (usadoD.has(e.k) || usadoL.has(e.nome)) return;
+      usadoD.add(e.k); usadoL.add(e.nome);
+      e.empate = porK.get(e.k).some(x => x.nome !== e.nome && Math.abs(x.score - e.score) < 0.001);
+      atrib.set(e.k, e);
+    });
+    return filhos.map((f, k) => {
+      const e = atrib.get(k);
+      if (e) {
+        const igual = e.nome === f.name;
+        return { id: f.id, atual: f.name, original: e.nome, score: e.score, arqs: `${e.n}/${e.total}`, empate: e.empate,
+          tipo: igual ? 'igual' : (e.score >= 0.9 ? (e.empate ? 'dup' : 'ok') : 'revisar'), sel: !igual && e.score >= 0.9 };
+      }
+      const subs = sigs[k] ? sigs[k].subs : [];
+      return { id: f.id, atual: f.name, original: subs.length === 1 ? subs[0] : '', score: 0, arqs: '', tipo: 'sugestao', sel: false };
+    });
+  }
+
+  async function recComparar() {
+    if (!accessToken) { alert('Conecte ao Google primeiro na aba "Renomear"!'); return; }
+    const raiz = extrairIdDriveInput(document.getElementById('recFolderDrive').value);
+    const arquivos = document.getElementById('recLocal').files;
+    if (!raiz) { alert('Cole o link ou ID da pasta do Drive!'); return; }
+    if (!arquivos || !arquivos.length) { alert('Escolha a pasta LOCAL com os nomes originais!'); return; }
+    recStop = false; recProps = [];
+    document.getElementById('recResultado').style.display = 'none';
+    document.getElementById('btnRecComparar').disabled = true;
+    document.getElementById('btnRecParar').style.display = 'inline-flex';
+    setStatus('statusHistorico', 'running', 'Comparando...');
+    try {
+      const local = recLerLocal(arquivos);
+      if (!local.size) throw new Error('Não achei pastas dentro da pasta local — escolha a pasta que CONTÉM as pastas dos modelos.');
+      recLog('info', `💻 Pasta local: ${local.size} pastas com nome original`);
+      const filhos = (await listarFilhosMatch(raiz)).filter(f => f.isFolder && f.name.toLowerCase() !== CAPAS_PASTA_PADRAO.toLowerCase());
+      recLog('info', `☁ Drive: ${filhos.length} pastas — lendo o conteúdo de cada uma...`);
+      const sigs = new Array(filhos.length);
+      let feitos = 0;
+      await recPool(filhos, 4, async (f, k) => {
+        try { sigs[k] = await recAssinaturaDrive(f.id); }
+        catch (e) { recLog('error', `Erro lendo "${f.name}": ${e.message}`); sigs[k] = { chaves: [], subs: [] }; }
+        recProgress(++feitos, filhos.length);
+      });
+      if (recStop) { recLog('warn', '⛔ Parado'); setStatus('statusHistorico', 'stopped', 'Parado'); return; }
+      recProps = recPareamento(filhos, sigs, local);
+      const n = t => recProps.filter(p => p.tipo === t).length;
+      recLog('info', `✅ ${n('ok') + n('dup')} com conteúdo igual a uma pasta local (${n('dup')} duplicadas), ${n('revisar')} para revisar, ${n('igual')} já com o nome original, ${n('sugestao')} sem correspondência local`);
+      recRender();
+      setStatus('statusHistorico', 'done', `${recProps.filter(p => p.sel).length} prontas para renomear`);
+    } catch (e) {
+      recLog('error', 'Erro: ' + e.message);
+      setStatus('statusHistorico', 'error', 'Erro');
+    }
+    document.getElementById('btnRecComparar').disabled = false;
+    document.getElementById('btnRecParar').style.display = 'none';
+  }
+
+  function recBadge(p) {
+    if (p.tipo === 'ok') return `<span class="match-badge" style="background:rgba(0,230,118,.1);color:#00e676" title="arquivos iguais (nome e tamanho)">✓ ${p.arqs}</span>`;
+    if (p.tipo === 'dup') return `<span class="match-badge" style="background:rgba(255,179,0,.12);color:#ffb300" title="Existe outra pasta local com o mesmo conteúdo (cópia). O nome pode ser o de uma das duas.">≈ ${p.arqs} · duplicata</span>`;
+    if (p.tipo === 'revisar') return `<span class="match-badge" style="background:rgba(255,140,0,.12);color:#ff8c00" title="Só parte dos arquivos bate — confira">≈ ${Math.round(p.score * 100)}% · ${p.arqs}</span>`;
+    if (p.tipo === 'igual') return `<span class="match-badge" style="background:#111;color:#555">já está igual</span>`;
+    return `<span class="match-badge" style="background:#111;color:#777" title="Sem pasta local parecida. A sugestão é o nome da subpasta de dentro.">sem correspondência${p.original ? ' · sugestão' : ''}</span>`;
+  }
+
+  function recRender() {
+    const ordem = { revisar: 0, dup: 1, sugestao: 2, ok: 3, igual: 4 };
+    recProps.sort((a, b) => ordem[a.tipo] - ordem[b.tipo] || a.atual.localeCompare(b.atual));
+    document.getElementById('recResultado').style.display = 'block';
+    document.getElementById('recResumo').textContent = `${recProps.length} pastas do Drive · ${recProps.filter(p => p.sel).length} marcadas para voltar ao nome original`;
+    document.getElementById('recBody').innerHTML = recProps.map((p, i) => `<tr>
+      <td><input type="checkbox" ${p.sel ? 'checked' : ''} ${p.tipo === 'igual' ? 'disabled' : ''} onchange="recProps[${i}].sel=this.checked" style="accent-color:#00e676;width:15px;height:15px;cursor:pointer"/></td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px;color:#888;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(p.atual)}">${esc(p.atual)}</td>
+      <td style="color:#333;font-size:16px;text-align:center;padding:0 4px">→</td>
+      <td style="min-width:240px"><input class="match-nome-input" type="text" value="${esc(p.original)}" placeholder="(digite o nome original)" onchange="recProps[${i}].original=this.value"/></td>
+      <td style="text-align:center;white-space:nowrap">${recBadge(p)}</td>
+    </tr>`).join('');
+  }
+
+  function recSelecionar(tipo) {
+    recProps.forEach(p => { if (p.tipo !== 'igual') p.sel = tipo === 'todos' ? !!p.original : tipo === 'ok' ? (p.tipo === 'ok' || p.tipo === 'dup') : false; });
+    recRender();
+  }
+
+  async function recAplicar() {
+    const sel = recProps.filter(p => p.sel && p.original && p.original.trim() && p.original.trim() !== p.atual);
+    if (!sel.length) { alert('Nenhuma pasta marcada com um nome original diferente do atual!'); return; }
+    if (!confirm(`Renomear ${sel.length} pastas de volta para o nome original?\n\nTudo fica registrado no Histórico (dá pra desfazer).`)) return;
+    recStop = false;
+    document.getElementById('btnRecAplicar').disabled = true;
+    document.getElementById('btnRecComparar').disabled = true;
+    document.getElementById('btnRecParar').style.display = 'inline-flex';
+    setStatus('statusHistorico', 'running', 'Renomeando...');
+    const lote = historicoIniciar('recuperar');
+    let ok = 0, err = 0;
+    for (let i = 0; i < sel.length; i++) {
+      if (recStop) { recLog('warn', '⛔ Parado'); break; }
+      const p = sel[i], novo = p.original.trim();
+      recProgress(i, sel.length);
+      try {
+        await renomearOuMoverItem(p.id, novo);
+        historicoAdd(lote, [{ id: p.id, tipo: 'pasta', oldName: p.atual, newName: novo }]);
+        recLog('rename', p.atual, novo);
+        p.atual = novo; p.tipo = 'igual'; p.sel = false;
+        ok++;
+      } catch (e) { recLog('error', `❌ ${p.atual}: ${e.message}`); err++; }
+      await sleep(120);
+    }
+    recProgress(sel.length, sel.length);
+    const gravou = historicoFinalizar(lote);
+    if (gravou === false) recLog('warn', '⚠ O histórico não coube no navegador — guarde o arquivo .json que foi baixado.');
+    recLog('info', `✅ ${ok} pastas renomeadas para o nome original, ${err} erros${ok ? ' — registrado no Histórico (dá pra desfazer)' : ''}`);
+    setStatus('statusHistorico', err ? 'warn' : 'done', `${ok} renomeadas${err ? ', ' + err + ' erros' : ''}`);
+    recRender();
+    document.getElementById('btnRecAplicar').disabled = false;
+    document.getElementById('btnRecComparar').disabled = false;
+    document.getElementById('btnRecParar').style.display = 'none';
   }
 
   async function contarConteudo(folderId) {
