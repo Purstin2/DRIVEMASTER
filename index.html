@@ -228,6 +228,7 @@
     <div class="tab match-tab" onclick="setTab('match')">🔁 Match & Limpar</div>
     <div class="tab compactar-tab" onclick="setTab('compactar')">📦 Compactar Pares</div>
     <div class="tab figu-tab" onclick="setTab('figu')">🏷️ Nomear Figurinhas</div>
+    <div class="tab" onclick="setTab('historico')">📜 Histórico</div>
   </div>
 
   <!-- PANEL: RENOMEAR -->
@@ -410,14 +411,15 @@
   <div class="panel" id="panel-limpar-arquivos">
     <div class="card">
       <div class="warn-box">
-        <strong>🗂 Como funciona:</strong> Varre todas as subpastas recursivamente e lista arquivos pelos tipos selecionados. <strong style="color:#ff4444">Nunca apaga</strong> STL, 3MF, OBJ, AMF, STEP, GCODE, imagens (PNG/JPG/WEBP), vídeos nem arquivos compactados (ZIP/RAR).
+        <strong>🗂 Como funciona:</strong> Varre todas as subpastas recursivamente e lista arquivos pelos tipos selecionados (inclusive <strong>Google Docs</strong> nativos — cole o link da pasta e use "Só Google Docs"). <strong style="color:#ff4444">Nunca apaga</strong> STL, 3MF, OBJ, AMF, STEP, GCODE, imagens (PNG/JPG/WEBP), vídeos nem arquivos compactados (ZIP/RAR).
       </div>
       <div>
-        <label>ID da Pasta Raiz do Drive</label>
-        <input type="text" id="folderIdLimparArq" placeholder="Cole o ID da pasta raiz aqui"/>
+        <label>ID ou LINK da Pasta Raiz do Drive</label>
+        <input type="text" id="folderIdLimparArq" placeholder="Cole o link (ou o ID) da pasta raiz aqui"/>
       </div>
       <label style="display:block;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;margin-top:4px">Tipos de arquivo alvo</label>
       <div class="options" id="arqOpcoes" style="margin-bottom:12px">
+        <label class="opt active" id="opt-arq-gdoc"><input type="checkbox" checked value="gdoc" onchange="toggleOpt(this,'opt-arq-gdoc')"/> 📄 Google Docs (nativo)</label>
         <label class="opt active" id="opt-arq-pdf"><input type="checkbox" checked value="pdf" onchange="toggleOpt(this,'opt-arq-pdf')"/> PDF</label>
         <label class="opt active" id="opt-arq-txt"><input type="checkbox" checked value="txt" onchange="toggleOpt(this,'opt-arq-txt')"/> TXT</label>
         <label class="opt active" id="opt-arq-md"><input type="checkbox" checked value="md" onchange="toggleOpt(this,'opt-arq-md')"/> MD</label>
@@ -428,9 +430,13 @@
         <label class="opt" id="opt-arq-xml"><input type="checkbox" value="xml" onchange="toggleOpt(this,'opt-arq-xml')"/> XML</label>
         <label class="opt" id="opt-arq-json"><input type="checkbox" value="json" onchange="toggleOpt(this,'opt-arq-json')"/> JSON</label>
       </div>
-      <div style="margin-bottom:20px">
+      <div style="margin-bottom:12px">
         <label>Extensões personalizadas (separadas por vírgula)</label>
         <input type="text" id="arqExtCustom" placeholder=".psd, .ai, .sketch, .lys"/>
+      </div>
+      <div class="options" style="margin-bottom:12px">
+        <button class="btn btn-secondary" style="padding:8px 14px;font-size:11px" onclick="arqSoGoogleDocs()">📄 Só Google Docs (desmarca o resto)</button>
+        <label class="opt active" id="opt-arq-lixeira"><input type="checkbox" checked onchange="toggleOpt(this,'opt-arq-lixeira')"/> Mandar para a LIXEIRA do Drive (dá pra recuperar) em vez de apagar de vez</label>
       </div>
       <div class="btn-row">
         <button class="btn btn-primary" id="btnArqScan" onclick="escanearArquivosLixo()">🔍 Escanear</button>
@@ -851,6 +857,32 @@
     </div>
   </div>
 
+  <!-- ═══════════════════════════════════════════ HISTÓRICO ═══ -->
+  <div class="panel" id="panel-historico">
+    <div class="card">
+      <div class="info-box" style="background:rgba(0,230,118,.04);border-color:rgba(0,230,118,.2)">
+        <strong style="color:#00e676">📜 Histórico de alterações</strong><br/>
+        Tudo que o Match, o Vincular e o Compactar renomeiam ou movem fica registrado aqui (nome e pasta de ANTES e DEPOIS de cada item) e também é baixado como arquivo <strong>.json</strong> no fim de cada rodada. Dá pra <strong>desfazer um lote inteiro</strong> mesmo depois de recarregar a página, ou importar um .json salvo.
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="historicoBaixarTudo('json')">⬇ Baixar tudo (.json)</button>
+        <button class="btn btn-secondary" onclick="historicoBaixarTudo('csv')">⬇ Baixar tudo (.csv)</button>
+        <label class="btn btn-secondary" style="cursor:pointer;margin:0">📂 Importar log (.json)<input type="file" accept=".json,application/json" style="display:none" onchange="historicoImportar(this)"/></label>
+        <button class="btn btn-secondary" onclick="limparLog('logHistorico')">Limpar log</button>
+      </div>
+      <div id="historicoLista" style="margin-top:8px"></div>
+    </div>
+    <div class="log-card">
+      <div class="log-header">
+        <span>Log de execução</span>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="status-badge status-idle" id="statusHistorico"><span class="dot"></span> Aguardando</span>
+        </div>
+      </div>
+      <div class="log-body" id="logHistorico"><div class="log-empty">Escolha um lote e clique em "Desfazer lote". Precisa estar conectado ao Google (aba "Renomear").</div></div>
+    </div>
+  </div>
+
   <!-- ═══════════════════════════════════════════ MATCH & LIMPAR ═══ -->
   <div class="panel" id="panel-match">
     <div class="card">
@@ -894,6 +926,7 @@
         <button class="btn btn-purple" id="btnMatchLimpar" onclick="matchLimparComIA()" disabled>🤖 Limpar com IA</button>
         <button class="btn btn-primary" id="btnMatchAplicar" onclick="matchAplicar()" disabled>✅ Renomear pares</button>
         <button class="btn btn-secondary" id="btnMatchDesfazer" onclick="matchDesfazer()" disabled>↩ Desfazer</button>
+        <button class="btn btn-secondary" onclick="setTab('historico')" title="Log de tudo que foi renomeado/movido — desfaz mesmo depois de recarregar">📜 Histórico</button>
         <button class="btn btn-danger" id="btnMatchParar" onclick="matchStopFlag=true" style="display:none">⛔ Parar</button>
         <button class="btn btn-secondary" onclick="limparLog('logMatch')">Limpar log</button>
       </div>
@@ -918,6 +951,27 @@
                 <th style="width:80px;text-align:center">Status</th>
               </tr></thead>
               <tbody id="matchStep1Body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEM PAR: o que não casou, com o motivo -->
+      <div id="matchSemPar" style="display:none;margin-top:8px">
+        <div class="match-step">
+          <div class="match-step-title">⚠ Sem par — conferir</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+            <div id="matchSemParResumo" style="font-size:12px;color:#777"></div>
+            <button class="btn btn-secondary" id="btnMatchCopiarSemPar" style="padding:5px 12px;font-size:11px" onclick="matchCopiarSemPar()">📋 Copiar lista</button>
+          </div>
+          <div style="overflow-x:auto;max-height:320px;overflow-y:auto;border:1px solid #111;border-radius:8px">
+            <table class="match-table">
+              <thead><tr>
+                <th style="width:80px">Tipo</th>
+                <th>Nome</th>
+                <th>Motivo / mais parecido</th>
+              </tr></thead>
+              <tbody id="matchSemParBody"></tbody>
             </table>
           </div>
         </div>
@@ -1391,6 +1445,7 @@
   }
   document.addEventListener('DOMContentLoaded', () => {
     loadFields();
+    historicoRender();
     FIELDS_TO_SAVE.forEach(id => {
       const el = document.getElementById(id);
       if (el) el.addEventListener('input', saveFields);
@@ -1399,10 +1454,11 @@
 
   // ─── TABS ──────────────────────────────────────────
   function setTab(tab) {
-    const tabs = ['renomear','categorizar','ai','limpar','limpar-arquivos','preview','catalogo','agente','achatar','vincular','limpeza','match','compactar','figu'];
+    const tabs = ['renomear','categorizar','ai','limpar','limpar-arquivos','preview','catalogo','agente','achatar','vincular','limpeza','match','compactar','figu','historico'];
     document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', tabs[i] === tab));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-' + tab).classList.add('active');
+    if (tab === 'historico') historicoRender();
   }
 
   function toggleOpt(cb, id) { document.getElementById(id).classList.toggle('active', cb.checked); }
@@ -1587,6 +1643,176 @@
   }
 
   function capasLimparCache() { Object.keys(_capasPastaCache).forEach(k => delete _capasPastaCache[k]); }
+
+  // ─── HISTÓRICO DE ALTERAÇÕES (desfazer mesmo depois de recarregar a página) ───
+  // Cada lote (um "Renomear" de Match/Vincular/Compactar) guarda id, nome/pasta antes e depois de cada item.
+  // Fica no navegador (localStorage) e também é baixado como .json ao final — o arquivo pode ser importado de volta.
+  const HIST_KEY = 'dm_historico_ops';
+  const HIST_FERR = { match: 'Match & Limpar', vincular: 'Vincular Capas', compactar: 'Compactar Pares' };
+
+  function historicoLer() {
+    try { const l = JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); return Array.isArray(l) ? l : []; }
+    catch (_) { return []; }
+  }
+  function historicoGravar(lista) {
+    const l = lista.slice();
+    for (;;) {
+      try { localStorage.setItem(HIST_KEY, JSON.stringify(l)); return true; }
+      catch (_) { if (l.length <= 1) return false; l.shift(); }   // sem espaço: descarta o lote mais antigo
+    }
+  }
+  function historicoSalvarLote(lote) {
+    const lista = historicoLer();
+    const i = lista.findIndex(l => l.id === lote.id);
+    if (i >= 0) lista[i] = lote; else lista.push(lote);
+    return historicoGravar(lista);
+  }
+  function historicoIniciar(ferramenta, extra) {
+    return { id: 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), quando: new Date().toISOString(),
+      ferramenta, status: 'ativo', pastaCapas: (extra && extra.pastaCapas) || null, itens: [] };
+  }
+  // itens: [{id, tipo:'capa'|'arquivo'|'pasta', oldName, newName, oldParent, newParent}] — salva a cada ~20 itens
+  // (se a aba fechar/travar no meio, o que já foi feito está no histórico)
+  function historicoAdd(lote, itens) {
+    const antes = lote.itens.length;
+    itens.forEach(i => lote.itens.push(i));
+    if (antes === 0 || Math.floor(antes / 20) !== Math.floor(lote.itens.length / 20)) historicoSalvarLote(lote);
+  }
+  function historicoFinalizar(lote) {
+    if (!lote.itens.length) return null;
+    const ok = historicoSalvarLote(lote);
+    historicoBaixar([lote], `drivemaster-log-${lote.ferramenta}-${lote.quando.slice(0, 19).replace(/[:T]/g, '-')}.json`);
+    historicoRender();
+    return ok;
+  }
+  // marca itens como desfeitos (ids = Set de ids revertidos)
+  function historicoMarcar(histId, ids) {
+    if (!histId) return;
+    const lista = historicoLer();
+    const l = lista.find(x => x.id === histId);
+    if (!l) return;
+    l.itens.forEach(i => { if (ids.has(i.id)) i.desfeito = true; });
+    l.status = l.itens.every(i => i.desfeito) ? 'desfeito' : (l.itens.some(i => i.desfeito) ? 'parcial' : 'ativo');
+    historicoGravar(lista);
+    historicoRender();
+  }
+
+  function baixarArquivo(nome, texto, mime) {
+    try {
+      const url = URL.createObjectURL(new Blob([texto], { type: mime || 'application/json' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = nome;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      return true;
+    } catch (_) { return false; }
+  }
+  function historicoBaixar(lotes, nome) {
+    return baixarArquivo(nome, JSON.stringify({ app: 'drivemaster', versao: 1, lotes }, null, 1), 'application/json');
+  }
+  function historicoCsv(lotes) {
+    const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+    const linhas = [['data','ferramenta','lote','tipo','id','nome_antigo','nome_novo','pasta_antiga','pasta_nova','desfeito'].map(q).join(',')];
+    lotes.forEach(l => l.itens.forEach(i => linhas.push(
+      [l.quando, HIST_FERR[l.ferramenta] || l.ferramenta, l.id, i.tipo, i.id, i.oldName, i.newName, i.oldParent, i.newParent, i.desfeito ? 'sim' : ''].map(q).join(','))));
+    return '﻿' + linhas.join('\r\n');
+  }
+  function historicoBaixarTudo(formato) {
+    const lotes = historicoLer();
+    if (!lotes.length) { alert('Histórico vazio.'); return; }
+    if (formato === 'csv') baixarArquivo('drivemaster-historico.csv', historicoCsv(lotes), 'text/csv;charset=utf-8');
+    else historicoBaixar(lotes, 'drivemaster-historico.json');
+  }
+  function historicoBaixarLote(id, formato) {
+    const l = historicoLer().find(x => x.id === id);
+    if (!l) return;
+    const base = `drivemaster-log-${l.ferramenta}-${l.quando.slice(0, 19).replace(/[:T]/g, '-')}`;
+    if (formato === 'csv') baixarArquivo(base + '.csv', historicoCsv([l]), 'text/csv;charset=utf-8');
+    else historicoBaixar([l], base + '.json');
+  }
+  function historicoRemover(id) {
+    if (!confirm('Remover este lote do histórico? (Não desfaz nada no Drive — só apaga o registro.)')) return;
+    historicoGravar(historicoLer().filter(l => l.id !== id));
+    historicoRender();
+  }
+  function historicoImportar(input) {
+    const f = input.files && input.files[0];
+    if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      try {
+        const d = JSON.parse(rd.result);
+        const novos = (Array.isArray(d) ? d : (d.lotes || [d])).filter(l => l && l.id && Array.isArray(l.itens));
+        const lista = historicoLer();
+        let n = 0;
+        novos.forEach(l => { if (!lista.some(x => x.id === l.id)) { lista.push(l); n++; } });
+        lista.sort((a, b) => String(a.quando).localeCompare(String(b.quando)));
+        historicoGravar(lista);
+        historicoRender();
+        log('logHistorico', 'info', `📂 ${n} lote(s) importado(s) de ${f.name}${novos.length - n ? ` (${novos.length - n} já existiam)` : ''}`);
+      } catch (e) { log('logHistorico', 'error', 'Arquivo inválido: ' + e.message); }
+      input.value = '';
+    };
+    rd.readAsText(f);
+  }
+
+  function historicoRender() {
+    const el = document.getElementById('historicoLista');
+    if (!el) return;
+    const lotes = historicoLer().slice().reverse();
+    if (!lotes.length) { el.innerHTML = '<div class="log-empty" style="padding:24px 0">Nada registrado ainda. Tudo que o app renomear/mover a partir de agora aparece aqui.</div>'; return; }
+    const cores = { ativo: '#00e676', parcial: '#ffb300', desfeito: '#666' };
+    el.innerHTML = lotes.map(l => {
+      const pend = l.itens.filter(i => !i.desfeito).length;
+      const capas = l.itens.filter(i => i.tipo === 'capa').length;
+      const quando = new Date(l.quando).toLocaleString('pt-BR');
+      return `<div class="match-step" style="margin-bottom:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <div>
+            <div style="font-size:13px;color:#ddd;font-weight:600">${esc(HIST_FERR[l.ferramenta] || l.ferramenta)} <span style="color:#555;font-weight:400">· ${esc(quando)}</span></div>
+            <div style="font-size:11px;color:#666;font-family:'DM Mono',monospace;margin-top:4px">${l.itens.length} itens (${capas} capas) · <span style="color:${cores[l.status] || '#aaa'}">${esc(l.status)}</span>${pend !== l.itens.length ? ` · ${pend} ainda por desfazer` : ''}${l.pastaCapas ? ` · capas na pasta "${esc(l.pastaCapas)}"` : ''}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-primary" style="padding:6px 14px;font-size:11px" ${pend ? '' : 'disabled'} onclick="historicoDesfazer('${l.id}')">↩ Desfazer lote</button>
+            <button class="btn btn-secondary" style="padding:6px 12px;font-size:11px" onclick="historicoBaixarLote('${l.id}','json')">⬇ .json</button>
+            <button class="btn btn-secondary" style="padding:6px 12px;font-size:11px" onclick="historicoBaixarLote('${l.id}','csv')">⬇ .csv</button>
+            <button class="btn btn-secondary" style="padding:6px 12px;font-size:11px" onclick="historicoRemover('${l.id}')">🗑</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Desfaz um lote do histórico (nomes E pastas) — funciona depois de recarregar a página ou de importar o .json
+  async function historicoDesfazer(id) {
+    if (!accessToken) { alert('Conecte ao Google primeiro na aba "Renomear"!'); return; }
+    const lote = historicoLer().find(l => l.id === id);
+    if (!lote) return;
+    const pend = lote.itens.filter(i => !i.desfeito);
+    if (!pend.length) return;
+    if (!confirm(`Desfazer ${pend.length} alterações deste lote (${new Date(lote.quando).toLocaleString('pt-BR')})?\n\nCada item volta ao nome e à pasta de antes.`)) return;
+    setStatus('statusHistorico', 'running', `Desfazendo ${pend.length} itens...`);
+    log('logHistorico', 'info', `↩ Desfazendo lote de ${HIST_FERR[lote.ferramenta] || lote.ferramenta} — ${pend.length} itens`);
+    const feitos = new Set();
+    let erros = 0;
+    for (let k = pend.length - 1; k >= 0; k--) {
+      const it = pend[k];
+      try {
+        await renomearOuMoverItem(it.id, it.oldName, it.newParent ? { add: it.oldParent, remove: it.newParent } : null);
+        feitos.add(it.id);
+        log('logHistorico', 'warn', `↩ ${it.newName} → ${it.oldName}`);
+      } catch (e) { erros++; log('logHistorico', 'error', `Erro em "${it.newName}": ${e.message}`); }
+      await sleep(100);
+    }
+    historicoMarcar(id, feitos);
+    // tira o mesmo lote das pilhas de desfazer em memória (senão o botão "Desfazer" das abas repetiria)
+    matchUndoStack = matchUndoStack.filter(b => b.histId !== id); matchUpdateDesfazer();
+    vincularUndoStack = vincularUndoStack.filter(b => b.histId !== id); vincularUpdateDesfazer();
+    pipeUndoStack = pipeUndoStack.filter(b => b.histId !== id);
+    const bp = document.getElementById('btnPipeDesfazer'); if (bp) bp.disabled = pipeUndoStack.length === 0;
+    setStatus('statusHistorico', erros ? 'warn' : 'done', `${feitos.size} revertidos${erros ? ', ' + erros + ' erros' : ''}`);
+    log('logHistorico', 'info', `✅ ${feitos.size} itens revertidos${erros ? `, ${erros} falharam (dá pra tentar de novo)` : ''}. Rode "Encontrar Pares" de novo se for refazer.`);
+  }
 
   async function contarConteudo(folderId) {
     const data = await driveGet(`https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+trashed=false&fields=files(id)&pageSize=1`);
@@ -2146,11 +2372,16 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
   ]);
 
   const _arqExtColors = {
-    pdf:'#ff6b6b', txt:'#74c0fc', md:'#a9e34b', doc:'#4dabf7', docx:'#4dabf7',
+    gdoc:'#4285f4', pdf:'#ff6b6b', txt:'#74c0fc', md:'#a9e34b', doc:'#4dabf7', docx:'#4dabf7',
     html:'#ff922b', htm:'#ff922b', xlsx:'#69db7c', xls:'#69db7c',
     csv:'#63e6be', xml:'#da77f2', json:'#ffa94d'
   };
   function _arqExtColor(ext) { return _arqExtColors[ext] || '#aaa'; }
+  function _arqExtLabel(ext) { return ext === 'gdoc' ? 'GOOGLE DOC' : '.' + ext.toUpperCase(); }
+  function arqSoGoogleDocs() {
+    document.querySelectorAll('#arqOpcoes input[type=checkbox]').forEach(cb => { cb.checked = cb.value === 'gdoc'; toggleOpt(cb, cb.parentElement.id); });
+    document.getElementById('arqExtCustom').value = '';
+  }
 
   function _getAlvoExts() {
     const s = new Set();
@@ -2165,8 +2396,8 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
 
   async function escanearArquivosLixo() {
     if (!accessToken) { alert('Conecte ao Google primeiro na aba "Renomear"!'); return; }
-    const folderId = document.getElementById('folderIdLimparArq').value.trim();
-    if (!folderId) { alert('Preencha o ID da pasta!'); return; }
+    const folderId = extrairIdDriveInput(document.getElementById('folderIdLimparArq').value);
+    if (!folderId) { alert('Preencha o link ou ID da pasta!'); return; }
     const alvoExts = _getAlvoExts();
     if (!alvoExts.size) { alert('Selecione pelo menos um tipo de arquivo!'); return; }
 
@@ -2221,6 +2452,12 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
         if (stopFlags.limparArq) return;
         if (f.mimeType === 'application/vnd.google-apps.folder') {
           subfolders.push({ id: f.id, name: f.name });
+        } else if (f.mimeType === 'application/vnd.google-apps.document') {
+          // Google Docs nativo não tem extensão no nome — detecta pelo tipo
+          if (alvoExts.has('gdoc')) {
+            _arqEncontrados.push({ id: f.id, name: f.name, ext: 'gdoc', path });
+            document.getElementById('logCountArq').textContent = `${_arqEncontrados.length} encontrados`;
+          }
         } else {
           const ext = f.name.includes('.') ? f.name.split('.').pop().toLowerCase() : '';
           if (ext && !PROTECTED_EXTS_ARQ.has(ext) && alvoExts.has(ext)) {
@@ -2244,13 +2481,13 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     const byExt = {};
     _arqEncontrados.forEach(f => { byExt[f.ext] = (byExt[f.ext] || 0) + 1; });
     document.getElementById('arqResumo').innerHTML =
-      Object.entries(byExt).map(([e,n]) => `<span style="color:${_arqExtColor(e)};font-weight:700">${n}× .${e.toUpperCase()}</span>`).join(' &nbsp;·&nbsp; ');
+      Object.entries(byExt).map(([e,n]) => `<span style="color:${_arqExtColor(e)};font-weight:700">${n}× ${_arqExtLabel(e)}</span>`).join(' &nbsp;·&nbsp; ');
     document.getElementById('arqExtBtns').innerHTML =
       Object.keys(byExt).map(ext =>
         `<button class="btn btn-secondary" style="padding:4px 10px;font-size:10px;border-color:${_arqExtColor(ext)}55;color:${_arqExtColor(ext)}"
-          onclick="arqSelecionarPorExt('${ext}',true)">Todos .${ext.toUpperCase()}</button>
+          onclick="arqSelecionarPorExt('${ext}',true)">Todos ${_arqExtLabel(ext)}</button>
          <button class="btn btn-secondary" style="padding:4px 10px;font-size:10px;border-color:#333;color:#555"
-          onclick="arqSelecionarPorExt('${ext}',false)">Nenhum .${ext.toUpperCase()}</button>`
+          onclick="arqSelecionarPorExt('${ext}',false)">Nenhum ${_arqExtLabel(ext)}</button>`
       ).join('');
     _arqEncontrados.forEach((f, i) => {
       const item = document.createElement('div');
@@ -2261,7 +2498,7 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
           <div style="color:#ccc;font-size:12px;font-family:'DM Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(f.name)}">${esc(f.name)}</div>
           <div style="color:#333;font-size:10px;margin-top:3px;font-family:'DM Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.path)}</div>
         </div>
-        <span style="background:${_arqExtColor(f.ext)}18;color:${_arqExtColor(f.ext)};border:1px solid ${_arqExtColor(f.ext)}44;border-radius:4px;font-size:9px;font-weight:700;padding:2px 8px;letter-spacing:.5px;flex-shrink:0;align-self:center">.${f.ext.toUpperCase()}</span>
+        <span style="background:${_arqExtColor(f.ext)}18;color:${_arqExtColor(f.ext)};border:1px solid ${_arqExtColor(f.ext)}44;border-radius:4px;font-size:9px;font-weight:700;padding:2px 8px;letter-spacing:.5px;flex-shrink:0;align-self:center">${_arqExtLabel(f.ext)}</span>
         <input type="checkbox" class="arq-check" checked data-index="${i}" data-ext="${f.ext}" style="accent-color:var(--red);width:14px;height:14px;cursor:pointer;flex-shrink:0;margin-top:3px"/>
       `;
       container.appendChild(item);
@@ -2274,7 +2511,10 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
   async function apagarArquivosLixo() {
     const selecionados = [...document.querySelectorAll('.arq-check:checked')].map(cb => _arqEncontrados[parseInt(cb.dataset.index)]);
     if (!selecionados.length) { alert('Nenhum arquivo selecionado!'); return; }
-    if (!confirm(`Apagar ${selecionados.length} arquivo(s)? Esta ação não pode ser desfeita.`)) return;
+    const lixeira = document.querySelector('#opt-arq-lixeira input').checked;
+    if (!confirm(lixeira
+      ? `Mandar ${selecionados.length} arquivo(s) para a LIXEIRA do Drive?\n\nDá pra recuperar pela lixeira em até 30 dias.`
+      : `Apagar ${selecionados.length} arquivo(s) DE VEZ? Esta ação não pode ser desfeita.`)) return;
     stopFlags.limparArq = false;
     document.getElementById('btnArqDelete').disabled = true;
     document.getElementById('btnArqScan').disabled = true;
@@ -2286,9 +2526,11 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
     for (const arq of selecionados) {
       if (stopFlags.limparArq) break;
       try {
-        const r = await driveAuthFetch(`https://www.googleapis.com/drive/v3/files/${arq.id}`, { method: 'DELETE' });
+        const r = lixeira
+          ? await driveAuthFetch(`https://www.googleapis.com/drive/v3/files/${arq.id}?fields=id`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: true }) })
+          : await driveAuthFetch(`https://www.googleapis.com/drive/v3/files/${arq.id}`, { method: 'DELETE' });
         if (r.status === 204 || r.ok) {
-          log('logArq', 'delete', arq.path !== '/' ? arq.path + '/' + arq.name : '/' + arq.name);
+          log('logArq', 'delete', (lixeira ? '(lixeira) ' : '') + (arq.path !== '/' ? arq.path + '/' + arq.name : '/' + arq.name));
           deletedIds.add(arq.id);
           feito++;
         } else { throw new Error(`HTTP ${r.status}`); }
@@ -2300,8 +2542,8 @@ Responda APENAS com JSON válido, sem nenhum texto antes ou depois.`;
       setStatus('statusArq', 'stopped', 'Parado');
       log('logArq', 'warn', `⛔ Parado! ${feito} arquivo(s) apagados.`);
     } else {
-      setStatus('statusArq', 'done', `${feito} apagados!`);
-      log('logArq', 'info', `✅ ${feito} arquivo(s) apagados com sucesso!`);
+      setStatus('statusArq', 'done', lixeira ? `${feito} na lixeira!` : `${feito} apagados!`);
+      log('logArq', 'info', lixeira ? `✅ ${feito} arquivo(s) enviados para a lixeira do Drive (recuperáveis em até 30 dias).` : `✅ ${feito} arquivo(s) apagados com sucesso!`);
     }
     _arqEncontrados = _arqEncontrados.filter(a => !deletedIds.has(a.id));
     if (_arqEncontrados.length > 0) { _renderArqLista(); }
@@ -3709,6 +3951,7 @@ JSON APENAS:
     }
     let ok = 0, err = 0;
     const batch = [];
+    const lote = historicoIniciar('compactar', { pastaCapas: destId ? cfg.nome : null });
 
     for (let i = 0; i < selecionados.length; i++) {
       if (pipeStopFlag) { cpLog('warn','⛔ Parado'); break; }
@@ -3724,6 +3967,7 @@ JSON APENAS:
           const mover = destId && img.parentId !== destId ? { add: destId, remove: img.parentId } : null;
           await renomearOuMoverItem(img.id, novoNome, mover);
           batch.push({id:img.id, oldName:img.name, newName:novoNome, oldParent: mover ? img.parentId : null, newParent: mover ? destId : null, ref:img});
+          historicoAdd(lote, [{ id: img.id, tipo: 'capa', oldName: img.name, newName: novoNome, oldParent: mover ? img.parentId : null, newParent: mover ? destId : null }]);
           cpLog('rename', img.name, novoNome + (mover ? `   → 📂 ${cfg.nome}` : ''));
           img.name = novoNome; if (mover) img.parentId = destId; ok++;
         } catch(e) { cpLog('error', `❌ ${img.name}: ${e.message}`); err++; }
@@ -3737,6 +3981,7 @@ JSON APENAS:
         try {
           await renomearOuMoverItem(f3d.id, novoNome);
           batch.push({id:f3d.id, oldName:f3d.name, newName:novoNome});
+          historicoAdd(lote, [{ id: f3d.id, tipo: 'arquivo', oldName: f3d.name, newName: novoNome }]);
           cpLog('rename', f3d.name, novoNome);
           f3d.name = novoNome; ok++;
         } catch(e) { cpLog('error', `❌ ${f3d.name}: ${e.message}`); err++; }
@@ -3745,7 +3990,10 @@ JSON APENAS:
       p.baseOriginal = nomeBase;
     }
 
-    if (batch.length) { pipeUndoStack.push(batch); }
+    if (batch.length) { batch.histId = lote.id; pipeUndoStack.push(batch); }
+    const gravou = historicoFinalizar(lote);
+    if (gravou === false) cpLog('warn', '⚠ O histórico não coube no navegador — guarde o arquivo .json que foi baixado: ele desfaz tudo.');
+    else if (gravou) cpLog('info', '📜 Log salvo na aba Histórico e baixado como .json.');
     cpProgress(selecionados.length, selecionados.length);
     cpStatus(err > 0 ? 'warn' : 'done', `${ok} renomeados${err?', '+err+' erros':''}`);
     cpLog('info', `✅ ${ok} arquivos renomeados, ${err} erros. Agora clique em "4. Compactar 3D"`);
@@ -3830,15 +4078,17 @@ JSON APENAS:
     cpStatus('running', `Desfazendo ${batch.length} renomeações...`);
     document.getElementById('btnPipeDesfazer').disabled = true;
     let ok = 0;
+    const revertidos = new Set();
     for (const op of batch) {
       try {
         await renomearOuMoverItem(op.id, op.oldName, op.newParent ? { add: op.oldParent, remove: op.newParent } : null);
         if (op.ref) { op.ref.name = op.oldName; if (op.newParent) op.ref.parentId = op.oldParent; }
-        cpLog('warn', `↩ ${op.newName} → ${op.oldName}`); ok++;
+        cpLog('warn', `↩ ${op.newName} → ${op.oldName}`); revertidos.add(op.id); ok++;
       }
       catch(e) { cpLog('error', `Erro: ${e.message}`); }
       await sleep(80);
     }
+    historicoMarcar(batch.histId, revertidos);
     const n = pipeUndoStack.length;
     document.getElementById('btnPipeDesfazer').disabled = n === 0;
     document.getElementById('btnPipeDesfazer').textContent = n > 0 ? `↩ Desfazer (${n})` : '↩ Desfazer';
@@ -4185,13 +4435,16 @@ Responda APENAS com JSON válido (sem markdown):
 
   // Chaves de comparação: k1 = igual ignorando maiúsculas · k2 = igual ignorando acento/símbolos/@menções
   // k3 = mesmas palavras em qualquer ordem · toks = palavras significativas (p/ similaridade)
+  // Unicode-aware: nome em japonês/coreano/cirílico/emoji também casa quando é idêntico.
   function matchChaves(base) {
-    const norm = base.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/@\w+/g, ' ');
-    const todos = norm.replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+    const k1 = base.trim().toLowerCase();
+    const norm = base.normalize('NFD').replace(/\p{M}+/gu, '').toLowerCase().replace(/@[\p{L}\p{N}_]+/gu, ' ');
+    const todos = norm.replace(/[^\p{L}\p{N}]+/gu, ' ').trim().split(' ').filter(Boolean);
     let toks = todos.filter(t => !/^\d{4,}$/.test(t) && !MATCH_RUIDO.has(t));
     if (!toks.length) toks = todos;
+    if (!toks.length && k1) toks = [k1];   // nome só de símbolos/emoji: só casa se for idêntico
     toks = [...new Set(toks)];
-    return { k1: base.trim().toLowerCase(), k2: todos.join(' '), k3: [...toks].sort().join(' '), toks };
+    return { k1, k2: todos.join(' ') || k1, k3: [...toks].sort().join(' '), toks };
   }
 
   // 0-100. Dice sobre palavras; se TODAS as palavras do nome menor (mín. 2) estão no maior, vale no mínimo 85
@@ -4206,59 +4459,91 @@ Responda APENAS com JSON válido (sem markdown):
     return s;
   }
 
-  // imagens/arcs: [{...item, base, chaves}] → { pares:[{img, group, score, tipo}], semPar:[img] }
+  // imagens/arcs: [{...item, base, chaves}]
+  // → { pares:[{img, group, score, tipo}], semPar:[{img, melhor}], arcsSemPar:[{group, melhor}] }
   // Cada imagem fica com no máx. 1 modelo e cada modelo com 1 imagem (a de maior pontuação).
-  // Arquivos com o mesmo nome normalizado (ex.: goku.zip + goku.stl) formam um grupo e são renomeados juntos.
+  // Arquivos de extensões DIFERENTES com o mesmo nome (ex.: goku.zip + goku.stl) formam um modelo só e são
+  // renomeados juntos. Pastas/arquivos IDÊNTICOS repetidos viram modelos separados (1 capa p/ cada).
+  // `melhor` explica por que sobrou: { nome, score, tipo, dono } (dono = capa/nome que já ficou com ele).
   function matchPareamento(imagens, arcs, opts) {
     const aprox = !!opts.aprox, minScore = opts.minScore;
-    const grupos = [], porK1 = new Map(), porK2 = new Map(), porK3 = new Map(), idx = new Map();
-    arcs.forEach(a => {
-      if (!a.chaves.k2) return;
-      let g = porK2.get(a.chaves.k2);
-      if (!g) { g = { i: grupos.length, files: [], chaves: a.chaves }; porK2.set(a.chaves.k2, g); grupos.push(g); }
-      g.files.push(a);
-    });
     const push = (map, k, v) => { const l = map.get(k); if (l) l.push(v); else map.set(k, [v]); };
+    const grupos = [], porK1 = new Map(), porK2 = new Map(), porK3 = new Map(), idx = new Map(), baldes = new Map();
+    arcs.forEach(a => { if (a.chaves.k2) push(baldes, a.chaves.k2, a); });
+    baldes.forEach(lista => {
+      const porTipo = new Map();
+      lista.forEach(a => push(porTipo, a.isFolder ? '/pasta' : (a.ext || '').toLowerCase(), a));
+      const n = Math.max(...[...porTipo.values()].map(l => l.length));
+      for (let s = 0; s < n; s++) {
+        const files = [];
+        porTipo.forEach(l => { if (l[s]) files.push(l[s]); });
+        grupos.push({ i: grupos.length, files, chaves: files[0].chaves });
+      }
+    });
     grupos.forEach(g => {
-      g.files.forEach(a => { if (!porK1.has(a.chaves.k1)) porK1.set(a.chaves.k1, g.i); });
+      new Set(g.files.map(a => a.chaves.k1)).forEach(k => push(porK1, k, g.i));
+      push(porK2, g.chaves.k2, g.i);
       push(porK3, g.chaves.k3, g.i);
       g.chaves.toks.forEach(t => push(idx, t, g.i));
     });
     // palavra presente em muitos modelos não serve p/ achar candidatos (só p/ pontuar)
     const limite = Math.max(50, Math.ceil(grupos.length * 0.2));
 
-    const edges = [];
+    const edges = [], melhorDe = new Map();   // ii → melhor candidato (mesmo abaixo do mínimo), p/ explicar sobras
     imagens.forEach((img, ii) => {
       const c = img.chaves;
       if (!c.k2) return;
-      const exatos = new Map();
-      const put = (gi, score, tipo) => { const v = exatos.get(gi); if (!v || v.score < score) exatos.set(gi, { score, tipo }); };
-      if (porK1.has(c.k1)) put(porK1.get(c.k1), 100, 'exato');
-      if (porK2.has(c.k2)) put(porK2.get(c.k2).i, 98, 'normalizado');
+      const vistos = new Map();
+      const put = (gi, score, tipo) => { const v = vistos.get(gi); if (!v || v.score < score) vistos.set(gi, { score, tipo }); };
+      (porK1.get(c.k1) || []).forEach(gi => put(gi, 100, 'exato'));
+      (porK2.get(c.k2) || []).forEach(gi => put(gi, 98, 'normalizado'));
       (porK3.get(c.k3) || []).forEach(gi => put(gi, 95, 'palavras'));
-      exatos.forEach((v, gi) => edges.push({ ii, gi, score: v.score, tipo: v.tipo }));
+      vistos.forEach((v, gi) => edges.push({ ii, gi, score: v.score, tipo: v.tipo }));
 
-      if (aprox) {
-        const cand = new Set();
-        c.toks.forEach(t => { const p = idx.get(t); if (p && p.length <= limite) p.forEach(gi => cand.add(gi)); });
-        const fuzzy = [];
-        cand.forEach(gi => {
-          if (exatos.has(gi)) return;
-          const s = matchSimilaridade(c.toks, grupos[gi].chaves.toks);
-          if (s >= minScore) fuzzy.push({ ii, gi, score: s, tipo: 'aprox' });
-        });
-        fuzzy.sort((x, y) => y.score - x.score).slice(0, 8).forEach(e => edges.push(e));
-      }
+      const cand = new Set();
+      c.toks.forEach(t => { const p = idx.get(t); if (p && p.length <= limite) p.forEach(gi => cand.add(gi)); });
+      const fuzzy = [];
+      cand.forEach(gi => {
+        if (vistos.has(gi)) return;
+        const s = matchSimilaridade(c.toks, grupos[gi].chaves.toks);
+        if (s >= 30) fuzzy.push({ ii, gi, score: s, tipo: 'aprox' });
+      });
+      fuzzy.sort((x, y) => y.score - x.score);
+      if (aprox) fuzzy.filter(e => e.score >= minScore).slice(0, 8).forEach(e => edges.push(e));
+
+      let melhor = null;
+      vistos.forEach((v, gi) => { if (!melhor || v.score > melhor.score) melhor = { gi, score: v.score, tipo: v.tipo }; });
+      if (!melhor && fuzzy.length) melhor = { gi: fuzzy[0].gi, score: fuzzy[0].score, tipo: 'aprox' };
+      if (melhor) melhorDe.set(ii, melhor);
     });
 
     edges.sort((x, y) => y.score - x.score || x.ii - y.ii || x.gi - y.gi);
-    const imgUsada = new Set(), grpUsado = new Set(), pares = [];
+    const imgUsada = new Set(), grpUsado = new Map(), pares = [];
     edges.forEach(e => {
       if (imgUsada.has(e.ii) || grpUsado.has(e.gi)) return;
-      imgUsada.add(e.ii); grpUsado.add(e.gi);
+      imgUsada.add(e.ii); grpUsado.set(e.gi, imagens[e.ii]);
       pares.push({ img: imagens[e.ii], group: grupos[e.gi], score: e.score, tipo: e.tipo });
     });
-    return { pares, semPar: imagens.filter((_, ii) => !imgUsada.has(ii)) };
+
+    const semPar = [];
+    imagens.forEach((img, ii) => {
+      if (imgUsada.has(ii)) return;
+      const m = melhorDe.get(ii);
+      semPar.push({ img, melhor: m ? { nome: grupos[m.gi].files[0].name, score: m.score, tipo: m.tipo, dono: grpUsado.has(m.gi) ? grpUsado.get(m.gi).name : null } : null });
+    });
+    // modelos sem capa: acha a capa sobrada mais parecida (só se a conta for pequena)
+    const arcsSobra = grupos.filter(g => !grpUsado.has(g.i));
+    const olhar = semPar.length * arcsSobra.length <= 2000000;
+    const arcsSemPar = arcsSobra.map(g => {
+      let melhor = null;
+      if (olhar) semPar.forEach(sp => {
+        if (!sp.img.chaves.k2) return;
+        const s = (sp.img.chaves.k3 === g.chaves.k3) ? 95 : matchSimilaridade(sp.img.chaves.toks, g.chaves.toks);
+        if (s >= 30 && (!melhor || s > melhor.score)) melhor = { nome: sp.img.name, score: s };
+      });
+      return { group: g, melhor };
+    });
+    return { pares, semPar, arcsSemPar };
   }
 
   // Lista TUDO dentro da pasta (arquivos, imagens, PASTAS e atalhos). Lança erro se o Drive responder erro
@@ -4276,7 +4561,8 @@ Responda APENAS com JSON válido (sem markdown):
     return todos.map(f => {
       const atalho = f.mimeType === 'application/vnd.google-apps.shortcut' && f.shortcutDetails;
       const mime = atalho ? (f.shortcutDetails.targetMimeType || '') : f.mimeType;
-      return { id: f.id, name: f.name, mime, parentId: (f.parents && f.parents[0]) || parentId, isFolder: mime === MIME_FOLDER, isImage: mime.startsWith('image/') };
+      return { id: f.id, name: f.name, mime, parentId: (f.parents && f.parents[0]) || parentId, isFolder: mime === MIME_FOLDER,
+        isImage: mime !== MIME_FOLDER && (mime.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|avif|heic|heif|jfif|tiff?)$/i.test(f.name)) };
     });
   }
 
@@ -4291,6 +4577,7 @@ Responda APENAS com JSON válido (sem markdown):
     matchCtx = { folderImg, folderArc };
     document.getElementById('matchStep1').style.display = 'none';
     document.getElementById('matchStep2').style.display = 'none';
+    document.getElementById('matchSemPar').style.display = 'none';
     document.getElementById('btnMatchEscanear').disabled = true;
     document.getElementById('btnMatchLimpar').disabled = true;
     document.getElementById('btnMatchAplicar').disabled = true;
@@ -4322,7 +4609,7 @@ Responda APENAS com JSON válido (sem markdown):
       }
 
       const prepara = f => { const { base, ext } = matchNomeBaseExt(f); return { ...f, base, ext, chaves: matchChaves(base) }; };
-      const { pares, semPar } = matchPareamento(imagens.map(prepara), arcs.map(prepara), { aprox, minScore });
+      const { pares, semPar, arcsSemPar } = matchPareamento(imagens.map(prepara), arcs.map(prepara), { aprox, minScore });
 
       matchPares = pares.map(({ img, group, score, tipo }) => ({
         imgFile: { id: img.id, name: img.name, parentId: img.parentId },
@@ -4335,8 +4622,9 @@ Responda APENAS com JSON válido (sem markdown):
       matchPares.sort((a, b) => a.score - b.score || a.imgFile.name.localeCompare(b.imgFile.name));
 
       const nAprox = matchPares.filter(p => p.tipo === 'aprox').length;
-      matchLog('info', `✅ ${matchPares.length} pares (${matchPares.length - nAprox} exatos, ${nAprox} aproximados), ${semPar.length} imagens sem par`);
-      if (semPar.length) matchLog('warn', 'Sem par: ' + semPar.slice(0, 6).map(i => i.name).join(' · ') + (semPar.length > 6 ? ` … (+${semPar.length - 6})` : ''));
+      matchLog('info', `✅ ${matchPares.length} pares (${matchPares.length - nAprox} exatos, ${nAprox} aproximados), ${semPar.length} capas sem modelo, ${arcsSemPar.length} arquivos/pastas sem capa`);
+      renderMatchSemPar(semPar, arcsSemPar, minScore, aprox);
+      if (semPar.length || arcsSemPar.length) matchLog('warn', 'A lista completa do que ficou sem par (com o motivo) está logo abaixo da tabela de pares — dá pra copiar.');
       renderMatchStep1();
       document.getElementById('btnMatchLimpar').disabled = matchPares.length === 0;
       matchSetStatus('done', `${matchPares.length} pares`);
@@ -4349,6 +4637,52 @@ Responda APENAS com JSON válido (sem markdown):
     document.getElementById('btnMatchParar').style.display = 'none';
   }
 
+  let matchSemParLista = [];   // [{tipo, nome, motivo}] — p/ o botão "Copiar lista"
+
+  // Lista TUDO que ficou sem par (capas sem modelo e modelos sem capa), com o motivo e o candidato mais parecido
+  function renderMatchSemPar(semPar, arcsSemPar, minScore, aprox) {
+    matchSemParLista = [];
+    semPar.forEach(({ img, melhor }) => {
+      let motivo;
+      if (!melhor) motivo = 'Nenhum arquivo/pasta com nome parecido';
+      else if (melhor.dono) motivo = `Nome ${melhor.tipo === 'aprox' ? 'parecido' : 'igual'} ao de "${melhor.nome}", mas esse modelo já ficou com outra capa ("${melhor.dono}") — capa repetida`;
+      else if (!aprox) motivo = `Mais parecido: "${melhor.nome}" (${melhor.score}%) — "Nome aproximado" está desligado`;
+      else motivo = `Mais parecido: "${melhor.nome}" (${melhor.score}%) — abaixo do mínimo de ${minScore}%`;
+      matchSemParLista.push({ tipo: 'CAPA', nome: img.name, motivo });
+    });
+    arcsSemPar.forEach(({ group, melhor }) => {
+      matchSemParLista.push({
+        tipo: group.files[0].isFolder ? 'PASTA' : 'ARQUIVO',
+        nome: group.files.map(f => f.name).join(' + '),
+        motivo: melhor ? `Capa mais parecida: "${melhor.nome}" (${melhor.score}%)` : 'Nenhuma capa com nome parecido'
+      });
+    });
+    const box = document.getElementById('matchSemPar');
+    if (!matchSemParLista.length) { box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    document.getElementById('matchSemParResumo').innerHTML =
+      `<span style="color:#ffb300;font-weight:700">${semPar.length}</span> capas sem modelo · <span style="color:#ffb300;font-weight:700">${arcsSemPar.length}</span> arquivos/pastas sem capa`;
+    const cor = { CAPA: 'match-badge-img', PASTA: 'match-badge-file', ARQUIVO: 'match-badge-file' };
+    document.getElementById('matchSemParBody').innerHTML = matchSemParLista.map(r => `<tr>
+      <td style="white-space:nowrap"><span class="match-badge ${cor[r.tipo]}">${r.tipo}</span></td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px;color:#ddd;word-break:break-word">${esc(r.nome)}</td>
+      <td style="font-size:11px;color:#777">${esc(r.motivo)}</td>
+    </tr>`).join('');
+    document.getElementById('btnMatchCopiarSemPar').textContent = '📋 Copiar lista';
+  }
+
+  async function matchCopiarSemPar() {
+    const txt = matchSemParLista.map(r => `${r.tipo}\t${r.nome}\t${r.motivo}`).join('\n');
+    let ok = false;
+    try { await navigator.clipboard.writeText(txt); ok = true; } catch (_) {
+      const ta = document.createElement('textarea');
+      ta.value = txt; document.body.appendChild(ta); ta.select();
+      try { ok = document.execCommand('copy'); } catch (_) {}
+      ta.remove();
+    }
+    document.getElementById('btnMatchCopiarSemPar').textContent = ok ? `✓ ${matchSemParLista.length} linhas copiadas` : 'Não consegui copiar';
+  }
+
   function matchBadge(p) {
     if (p.tipo === 'aprox') {
       const cor = p.score >= 80 ? '#ffb300' : '#ff8c00';
@@ -4505,6 +4839,7 @@ Responda APENAS com JSON válido (sem markdown):
     }
 
     const batchUndo = [];
+    const lote = historicoIniciar('match', { pastaCapas: destId ? cfg.nome : null });
     let ok = 0, err = 0;
 
     for (let i = 0; i < selecionados.length; i++) {
@@ -4540,9 +4875,11 @@ Responda APENAS com JSON válido (sem markdown):
       const op = {
         p, oldBaseOriginal: p.baseOriginal, newBase: nomeBase,
         img: { id: p.imgFile.id, oldName: p.imgFile.name, newName: novoImg, oldParent: moverImg ? p.imgFile.parentId : null, newParent: moverImg ? destId : null },
-        arcs: p.arcFiles.map(a => ({ id: a.id, oldName: a.name, newName: nomeBase + a.ext }))
+        arcs: p.arcFiles.map(a => ({ id: a.id, tipo: a.isFolder ? 'pasta' : 'arquivo', oldName: a.name, newName: nomeBase + a.ext }))
       };
       batchUndo.push(op);
+      historicoAdd(lote, [{ id: op.img.id, tipo: 'capa', oldName: op.img.oldName, newName: op.img.newName, oldParent: op.img.oldParent, newParent: op.img.newParent }]
+        .concat(op.arcs.map(a => ({ id: a.id, tipo: a.tipo, oldName: a.oldName, newName: a.newName }))));
       matchLog('rename', p.baseOriginal + ' (par)', nomeBase + (moverImg ? `   → 📂 ${cfg.nome}` : ''));
       p.imgFile.name = novoImg;
       if (moverImg) p.imgFile.parentId = destId;
@@ -4553,9 +4890,13 @@ Responda APENAS com JSON válido (sem markdown):
     }
 
     if (batchUndo.length) {
+      batchUndo.histId = lote.id;
       matchUndoStack.push(batchUndo);
       matchUpdateDesfazer();
     }
+    const gravou = historicoFinalizar(lote);
+    if (gravou === false) matchLog('warn', '⚠ O histórico não coube no navegador — guarde o arquivo .json que foi baixado: ele desfaz tudo.');
+    else if (gravou) matchLog('info', '📜 Log salvo na aba Histórico e baixado como .json — guarde: com ele dá pra desfazer tudo, mesmo depois de recarregar.');
     matchProgress(selecionados.length, selecionados.length);
     matchSetStatus(err > 0 ? 'warn' : 'done', `${ok} pares OK${err ? ', '+err+' erros' : ''}`);
     matchLog('info', `✅ ${ok} pares renomeados, ${err} erros`);
@@ -4570,7 +4911,7 @@ Responda APENAS com JSON válido (sem markdown):
     matchSetStatus('running', `Desfazendo ${batch.length} pares...`);
     document.getElementById('btnMatchDesfazer').disabled = true;
     let ok = 0;
-    const falhas = [];
+    const falhas = [], revertidos = new Set();
     for (const op of batch) {
       try {
         for (const a of op.arcs) await renomearOuMoverItem(a.id, a.oldName);
@@ -4581,11 +4922,13 @@ Responda APENAS com JSON válido (sem markdown):
         op.p.arcFiles.forEach((a, i) => { a.name = op.arcs[i].oldName; });
         op.p.baseOriginal = op.oldBaseOriginal;
         matchLog('warn', `↩ ${op.newBase} → ${op.oldBaseOriginal} (par)`);
+        revertidos.add(op.img.id); op.arcs.forEach(a => revertidos.add(a.id));
         ok++;
       } catch(e) { matchLog('error', `Erro ao desfazer: ${e.message}`); falhas.push(op); }
       await sleep(100);
     }
-    if (falhas.length) matchUndoStack.push(falhas);   // dá p/ tentar de novo
+    historicoMarcar(batch.histId, revertidos);
+    if (falhas.length) { falhas.histId = batch.histId; matchUndoStack.push(falhas); }   // dá p/ tentar de novo
     matchUpdateDesfazer();
     matchSetStatus(falhas.length ? 'warn' : 'done', `${ok} pares revertidos${falhas.length ? ', '+falhas.length+' falharam' : ''}`);
     if (matchPares.filter(p => p.nomeNovo).length) renderMatchStep2(matchPares.filter(p => p.nomeNovo));
@@ -5337,6 +5680,7 @@ Responda APENAS com JSON válido, sem markdown:
 
     let ok = 0, err = 0;
     const batch = [];
+    const lote = historicoIniciar('vincular', { pastaCapas: destId ? cfg.nome : null });
 
     for (let i = 0; i < selecionados.length; i++) {
       const par = selecionados[i];
@@ -5348,6 +5692,7 @@ Responda APENAS com JSON válido, sem markdown:
           const mover = destId && paiAntigo !== destId ? { add: destId, remove: paiAntigo } : null;
           await renomearOuMoverItem(par.imageFile.id, novoNome, mover);
           batch.push({ id: par.imageFile.id, oldName: par.imageFile.name, newName: novoNome, oldParent: mover ? paiAntigo : null, newParent: mover ? destId : null, ref: par.imageFile });
+          historicoAdd(lote, [{ id: par.imageFile.id, tipo: 'capa', oldName: par.imageFile.name, newName: novoNome, oldParent: mover ? paiAntigo : null, newParent: mover ? destId : null }]);
           logVincular('info', `✅ ${par.imageFile.name} → ${novoNome}${mover ? `  (📂 ${cfg.nome})` : ''}`);
           par.imageFile.name = novoNome;
           if (mover) par.imageFile.parents = [destId];
@@ -5356,6 +5701,7 @@ Responda APENAS com JSON válido, sem markdown:
           const novoNome = par.imageFile.name.replace(/\.[^.]+$/, '');
           await renomearOuMoverItem(par.folderMatch.id, novoNome);
           batch.push({ id: par.folderMatch.id, oldName: par.folderMatch.name, newName: novoNome });
+          historicoAdd(lote, [{ id: par.folderMatch.id, tipo: 'pasta', oldName: par.folderMatch.name, newName: novoNome }]);
           logVincular('info', `✅ Pasta: ${par.folderMatch.name} → ${novoNome}`);
           par.folderMatch.name = novoNome;
         }
@@ -5367,7 +5713,10 @@ Responda APENAS com JSON válido, sem markdown:
       await sleep(150);
     }
 
-    if (batch.length) { vincularUndoStack.push(batch); vincularUpdateDesfazer(); }
+    if (batch.length) { batch.histId = lote.id; vincularUndoStack.push(batch); vincularUpdateDesfazer(); }
+    const gravou = historicoFinalizar(lote);
+    if (gravou === false) logVincular('warn', '⚠ O histórico não coube no navegador — guarde o arquivo .json que foi baixado: ele desfaz tudo.');
+    else if (gravou) logVincular('info', '📜 Log salvo na aba Histórico e baixado como .json.');
     updateProgressVincular(selecionados.length, selecionados.length);
     setStatusVincular(err > 0 ? 'warn' : 'done', `${ok} renomeados${err > 0 ? ', ' + err + ' erros' : ''}`);
     logVincular('info', `✅ Concluído! ${ok} renomeados, ${err} erros.`);
@@ -5380,17 +5729,19 @@ Responda APENAS com JSON válido, sem markdown:
     setStatusVincular('running', `Desfazendo ${batch.length} itens...`);
     document.getElementById('btnVincularDesfazer').disabled = true;
     let ok = 0;
-    const falhas = [];
+    const falhas = [], revertidos = new Set();
     for (const op of batch) {
       try {
         await renomearOuMoverItem(op.id, op.oldName, op.newParent ? { add: op.oldParent, remove: op.newParent } : null);
         if (op.ref) { op.ref.name = op.oldName; if (op.newParent) op.ref.parents = [op.oldParent]; }
         logVincular('warn', `↩ ${op.newName} → ${op.oldName}`);
+        revertidos.add(op.id);
         ok++;
       } catch(e) { logVincular('error', `Erro ao desfazer: ${e.message}`); falhas.push(op); }
       await sleep(100);
     }
-    if (falhas.length) vincularUndoStack.push(falhas);   // dá p/ tentar de novo
+    historicoMarcar(batch.histId, revertidos);
+    if (falhas.length) { falhas.histId = batch.histId; vincularUndoStack.push(falhas); }   // dá p/ tentar de novo
     vincularUpdateDesfazer();
     setStatusVincular(falhas.length ? 'warn' : 'done', `${ok} revertidos${falhas.length ? ', ' + falhas.length + ' falharam' : ''}`);
   }
