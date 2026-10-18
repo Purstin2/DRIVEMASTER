@@ -921,6 +921,25 @@
           </div>
         </div>
       </div>
+      <div id="recSemPar" style="display:none;margin-top:8px">
+        <div class="match-step">
+          <div class="match-step-title">⚠ Sem pareamento — conferir</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+            <div id="recSemParResumo" style="font-size:12px;color:#777"></div>
+            <button class="btn btn-secondary" id="btnRecCopiarSemPar" style="padding:5px 12px;font-size:11px" onclick="recCopiarSemPar()">📋 Copiar lista</button>
+          </div>
+          <div style="overflow-x:auto;max-height:360px;overflow-y:auto;border:1px solid #111;border-radius:8px">
+            <table class="match-table">
+              <thead><tr>
+                <th style="width:90px">Onde</th>
+                <th>Nome</th>
+                <th>Motivo / mais parecida</th>
+              </tr></thead>
+              <tbody id="recSemParBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="log-card">
       <div class="log-header">
@@ -1937,13 +1956,15 @@
 
   // pontuação: fração (ponderada) dos arquivos da pasta do Drive que existem, com o mesmo nome e tamanho,
   // numa pasta local. Arquivos raros pesam mais que "Info.txt"; atribuição 1 pasta local ↔ 1 pasta do Drive.
+  // → { props: [uma linha por pasta do Drive], locais: [{nome, motivo}] pastas locais que ninguém do Drive usou }
   function recPareamento(filhos, sigs, local) {
     const df = new Map(), idx = new Map();
     local.forEach((set, nome) => set.forEach(k => {
       df.set(k, (df.get(k) || 0) + 1);
       const l = idx.get(k); if (l) l.push(nome); else idx.set(k, [nome]);
     }));
-    const edges = [];
+    const pct = s => Math.round(s * 100) + '%';
+    const edges = [], melhorL = new Map();
     filhos.forEach((f, k) => {
       const chaves = sigs[k] ? sigs[k].chaves : [];
       if (!chaves.length) return;
@@ -1957,29 +1978,87 @@
       const tk = matchChaves(f.name.replace(/\s[A-Z0-9]{4}$/, '')).toks;   // tira o código aleatório que o app pôs
       acc.forEach((a, nome) => {
         const score = Math.round(a.w / total * 1000) / 1000;
-        if (score < 0.5) return;
-        edges.push({ k, nome, score, rec: a.n / local.get(nome).size, nSim: matchSimilaridade(tk, matchChaves(nome).toks), n: a.n, total: chaves.length });
+        if (score < 0.2) return;   // ruído; entre 20% e 50% só entra p/ explicar por que sobrou
+        const e = { k, nome, score, rec: a.n / local.get(nome).size, nSim: matchSimilaridade(tk, matchChaves(nome).toks), n: a.n, total: chaves.length };
+        edges.push(e);
+        const bl = melhorL.get(nome);
+        if (!bl || score > bl.score) melhorL.set(nome, e);
       });
     });
     edges.sort((x, y) => y.score - x.score || y.nSim - x.nSim || y.rec - x.rec || x.k - y.k || x.nome.localeCompare(y.nome));
     const usadoD = new Set(), usadoL = new Set(), atrib = new Map(), porK = new Map();
     edges.forEach(e => { const l = porK.get(e.k); if (l) l.push(e); else porK.set(e.k, [e]); });
     edges.forEach(e => {
-      if (usadoD.has(e.k) || usadoL.has(e.nome)) return;
+      if (e.score < 0.5 || usadoD.has(e.k) || usadoL.has(e.nome)) return;
       usadoD.add(e.k); usadoL.add(e.nome);
       e.empate = porK.get(e.k).some(x => x.nome !== e.nome && Math.abs(x.score - e.score) < 0.001);
       atrib.set(e.k, e);
     });
-    return filhos.map((f, k) => {
+    const props = filhos.map((f, k) => {
       const e = atrib.get(k);
       if (e) {
         const igual = e.nome === f.name;
         return { id: f.id, atual: f.name, original: e.nome, score: e.score, arqs: `${e.n}/${e.total}`, empate: e.empate,
           tipo: igual ? 'igual' : (e.score >= 0.9 ? (e.empate ? 'dup' : 'ok') : 'revisar'), sel: !igual && e.score >= 0.9 };
       }
+      // sem pareamento: explica o porquê
       const subs = sigs[k] ? sigs[k].subs : [];
-      return { id: f.id, atual: f.name, original: subs.length === 1 ? subs[0] : '', score: 0, arqs: '', tipo: 'sugestao', sel: false };
+      const lista = porK.get(k) || [];
+      const m = lista[0];   // melhor candidato (mesmo abaixo de 50% ou já usado por outra pasta)
+      let motivo;
+      if (!sigs[k] || !sigs[k].chaves.length) motivo = 'Pasta sem arquivos comparáveis (vazia ou só Google Docs)';
+      else if (!m) motivo = 'Nenhum arquivo dela existe na cópia local (nome + tamanho)';
+      else if (m.score >= 0.5) motivo = `Parecida com "${m.nome}" (${pct(m.score)}), mas essa pasta local já ficou com outra pasta do Drive`;
+      else motivo = `Só ${pct(m.score)} dos arquivos batem com "${m.nome}" — abaixo do mínimo de 50%`;
+      return { id: f.id, atual: f.name, original: subs.length === 1 ? subs[0] : '', score: 0, arqs: '', tipo: 'sugestao', sel: false, motivo };
     });
+    const locais = [...local.keys()].filter(n => !usadoL.has(n)).sort((a, b) => a.localeCompare(b)).map(nome => {
+      const e = melhorL.get(nome);
+      let motivo;
+      if (!e) motivo = 'Nenhuma pasta do Drive tem arquivos iguais — talvez ainda não esteja no Drive';
+      else if (e.score >= 0.5) motivo = `Parecida com a pasta do Drive "${filhos[e.k].name}" (${pct(e.score)}), mas ela ficou com outra pasta local`;
+      else motivo = `Mais parecida: "${filhos[e.k].name}" (${pct(e.score)}) — abaixo do mínimo de 50%`;
+      return { nome, motivo };
+    });
+    return { props, locais };
+  }
+
+  let recLocais = [];   // pastas locais sem pasta do Drive: [{nome, motivo}]
+
+  // Mostra TUDO que ficou sem pareamento (pastas do Drive sem original local + pastas locais sem pasta no Drive)
+  function recSemParLista() {
+    const l = [];
+    recProps.filter(p => p.tipo === 'sugestao').forEach(p => l.push({ origem: '☁ Drive', nome: p.atual, motivo: p.motivo + (p.original ? ` · sugestão: "${p.original}" (nome da subpasta)` : '') }));
+    recLocais.forEach(x => l.push({ origem: '💻 Local', nome: x.nome, motivo: x.motivo }));
+    return l;
+  }
+
+  function renderRecSemPar() {
+    const box = document.getElementById('recSemPar');
+    const lista = recSemParLista();
+    if (!lista.length) { box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    const nD = lista.filter(r => r.origem.includes('Drive')).length;
+    document.getElementById('recSemParResumo').innerHTML =
+      `<span style="color:#ffb300;font-weight:700">${nD}</span> pastas do Drive sem pareamento · <span style="color:#ffb300;font-weight:700">${lista.length - nD}</span> pastas locais sem pareamento`;
+    document.getElementById('recSemParBody').innerHTML = lista.map(r => `<tr>
+      <td style="white-space:nowrap"><span class="match-badge ${r.origem.includes('Drive') ? 'match-badge-img' : 'match-badge-file'}">${r.origem}</span></td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px;color:#ddd;word-break:break-word">${esc(r.nome)}</td>
+      <td style="font-size:11px;color:#777">${esc(r.motivo)}</td>
+    </tr>`).join('');
+    document.getElementById('btnRecCopiarSemPar').textContent = '📋 Copiar lista';
+  }
+
+  async function recCopiarSemPar() {
+    const txt = recSemParLista().map(r => `${r.origem}\t${r.nome}\t${r.motivo}`).join('\n');
+    let ok = false;
+    try { await navigator.clipboard.writeText(txt); ok = true; } catch (_) {
+      const ta = document.createElement('textarea');
+      ta.value = txt; document.body.appendChild(ta); ta.select();
+      try { ok = document.execCommand('copy'); } catch (_) {}
+      ta.remove();
+    }
+    document.getElementById('btnRecCopiarSemPar').textContent = ok ? '✓ Copiado' : 'Não consegui copiar';
   }
 
   async function recComparar() {
@@ -1988,8 +2067,9 @@
     const arquivos = document.getElementById('recLocal').files;
     if (!raiz) { alert('Cole o link ou ID da pasta do Drive!'); return; }
     if (!arquivos || !arquivos.length) { alert('Escolha a pasta LOCAL com os nomes originais!'); return; }
-    recStop = false; recProps = [];
+    recStop = false; recProps = []; recLocais = [];
     document.getElementById('recResultado').style.display = 'none';
+    document.getElementById('recSemPar').style.display = 'none';
     document.getElementById('btnRecComparar').disabled = true;
     document.getElementById('btnRecParar').style.display = 'inline-flex';
     setStatus('statusHistorico', 'running', 'Comparando...');
@@ -2007,10 +2087,13 @@
         recProgress(++feitos, filhos.length);
       });
       if (recStop) { recLog('warn', '⛔ Parado'); setStatus('statusHistorico', 'stopped', 'Parado'); return; }
-      recProps = recPareamento(filhos, sigs, local);
+      const r = recPareamento(filhos, sigs, local);
+      recProps = r.props; recLocais = r.locais;
       const n = t => recProps.filter(p => p.tipo === t).length;
-      recLog('info', `✅ ${n('ok') + n('dup')} com conteúdo igual a uma pasta local (${n('dup')} duplicadas), ${n('revisar')} para revisar, ${n('igual')} já com o nome original, ${n('sugestao')} sem correspondência local`);
+      recLog('info', `✅ ${n('ok') + n('dup')} com conteúdo igual a uma pasta local (${n('dup')} duplicadas), ${n('revisar')} para revisar, ${n('igual')} já com o nome original`);
+      recLog(n('sugestao') || recLocais.length ? 'warn' : 'info', `${n('sugestao')} pastas do Drive e ${recLocais.length} pastas locais ficaram SEM pareamento — lista com o motivo logo abaixo da tabela`);
       recRender();
+      renderRecSemPar();
       setStatus('statusHistorico', 'done', `${recProps.filter(p => p.sel).length} prontas para renomear`);
     } catch (e) {
       recLog('error', 'Erro: ' + e.message);
